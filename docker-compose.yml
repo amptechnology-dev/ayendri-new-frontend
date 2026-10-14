@@ -1,7 +1,7 @@
 services:
   app:
-    container_name: estore-frontend
-    image: ghcr.io/amptechnology-dev/store_product_frontend:latest
+    container_name: ayendri-frontend
+    image: ghcr.io/amptechnology-dev/ayendri-new-frontend:latest
     env_file:
       - .env
     expose:

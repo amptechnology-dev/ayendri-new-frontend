@@ -3,15 +3,16 @@ set -e
 
 cd "$(dirname "$0")"
 
-DOMAIN="estore.amptechnology.in"
+DOMAIN="ayendri.com"
+WWW_DOMAIN="www.ayendri.com"
 EMAIL="devs.amptechnology@gmail.com"
-CONTAINER="estore-frontend"
+CONTAINER="ayendri-frontend"
 APP_PORT="3061"
 CERT_PATH="/root/amp_portal_backend/certbot/conf/live/$DOMAIN/fullchain.pem"
 NGINX_CONF="/root/amp_portal_backend/nginx/conf.d/$DOMAIN.conf"
 SHARED_NETWORK="amp_portal_backend_app-network"
 
-echo "=== Starting deployment for $DOMAIN ==="
+echo "=== Starting deployment for $DOMAIN and $WWW_DOMAIN ==="
 
 # ── Pre-flight checks ──
 if [ ! -f .env ]; then
@@ -48,7 +49,7 @@ write_https_config() {
 cat > "$NGINX_CONF" << NGINXEOF
 server {
     listen 80;
-    server_name $DOMAIN;
+    server_name $DOMAIN $WWW_DOMAIN;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -61,7 +62,7 @@ server {
 
 server {
     listen 443 ssl;
-    server_name $DOMAIN;
+    server_name $DOMAIN $WWW_DOMAIN;
 
     ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
@@ -88,9 +89,6 @@ NGINXEOF
 if test -f "$CERT_PATH"; then
   echo "Certificate already exists - redeploying."
 
-  git pull --ff-only || echo "git pull skipped"
-
-  docker compose down || true
   docker compose pull
   docker compose up -d --remove-orphans
 
@@ -110,7 +108,7 @@ echo "No certificate found - starting first-time SSL setup..."
 cat > "$NGINX_CONF" << NGINXEOF
 server {
     listen 80;
-    server_name $DOMAIN;
+    server_name $DOMAIN $WWW_DOMAIN;
 
     location /.well-known/acme-challenge/ {
         root /var/www/certbot;
@@ -142,20 +140,21 @@ docker run --rm \
   --email "$EMAIL" \
   --agree-tos \
   --no-eff-email \
-  -d "$DOMAIN"
+  -d "$DOMAIN" \
+  -d "$WWW_DOMAIN"
 
 chown -R root:root /root/amp_portal_backend/certbot
 chmod -R 755 /root/amp_portal_backend/certbot
 
 if ! test -f "$CERT_PATH"; then
   echo "ERROR: Certificate not found at $CERT_PATH after certbot run!"
+  ls -la /root/amp_portal_backend/certbot/conf/live/ 2>/dev/null || true
   exit 1
 fi
 
 echo "Certificate obtained successfully!"
 
-# App age start, jate nginx upstream resolve kore
-docker compose down || true
+# App আগে start, যাতে nginx upstream resolve করতে পারে
 docker compose pull
 docker compose up -d --remove-orphans
 
@@ -165,4 +164,4 @@ write_https_config
 docker exec nginx nginx -t
 docker exec nginx nginx -s reload
 
-echo "=== SSL setup complete! https://$DOMAIN is now live! ==="
+echo "=== SSL setup complete! https://$DOMAIN and https://$WWW_DOMAIN are live! ==="

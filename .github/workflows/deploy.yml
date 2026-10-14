@@ -1,4 +1,4 @@
-name: Deploy Estore Frontend
+name: Deploy Ayendri Frontend
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - master
 
 concurrency:
-  group: deploy-estore-frontend
+  group: deploy-ayendri-frontend
   cancel-in-progress: false
 
 env:
@@ -66,17 +66,24 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           port: ${{ secrets.VPS_PORT }}
           timeout: 60s
-          command_timeout: 10m
+          command_timeout: 15m
           script: |
             set -e
-            cd /root/estore_frontend
-            git pull --ff-only origin master
-            docker compose pull
-            docker compose up -d --remove-orphans
+            cd /root/ayendri_frontend
+            git pull --ff-only
+            bash deploy.sh
             docker image prune -f
-            for i in $(seq 1 15); do
-              code=$(curl -s -o /dev/null -w "%{http_code}" https://estore.amptechnology.in/login || true)
-              if [ "$code" = "200" ]; then echo "health check OK"; exit 0; fi
-              sleep 2
+
+            echo "Running health check..."
+            for i in $(seq 1 10); do
+              CODE=$(curl -s -o /dev/null -w "%{http_code}" https://ayendri.com/ || echo "000")
+              if [ "$CODE" != "000" ] && [ "$CODE" -lt 500 ]; then
+                echo "health check OK (HTTP $CODE)"
+                exit 0
+              fi
+              echo "  attempt $i/10 - HTTP $CODE, waiting 5s..."
+              sleep 5
             done
-            echo "health check FAILED"; exit 1
+            echo "ERROR: health check failed"
+            docker logs --tail 50 ayendri-frontend || true
+            exit 1
