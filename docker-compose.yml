@@ -1,0 +1,21 @@
+services:
+  app:
+    container_name: estore-frontend
+    image: ghcr.io/amptechnology-dev/store_product_frontend:latest
+    env_file:
+      - .env
+    expose:
+      - "3061"
+    networks:
+      - shared-nginx-net
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  shared-nginx-net:
+    external: true
+    name: amp_portal_backend_app-network
