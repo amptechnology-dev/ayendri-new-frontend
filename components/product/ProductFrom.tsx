@@ -1149,7 +1149,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   const {
     register,
     handleSubmit,
-    control,
+    control: formControl, // [FIX] rename kora hoyeche, niche Control<any> e cast kora hocche
     reset,
     setValue,
     getValues,
@@ -1177,6 +1177,10 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       variants: [],
     },
   });
+
+  // [FIX] child components `Control<any>` expect kore, tai ekbar cast kore nilam.
+  // Runtime e kono change hoy na, shudhu TypeScript type check relax hoy.
+  const control = formControl as unknown as Control<any>;
 
   const {
     fields: variantFields,
