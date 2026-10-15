@@ -15,9 +15,6 @@ import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { Button } from "primereact/button";
 import { formatDate } from "@/helper/DateTime";
 import StoreForm from "@/components/store/StoreForm";
-// ✅ NEW
-import StoreQRCode from "@/components/store/StoreQRCode";
-import QRScannerDialog from "@/components/store/QRScannerDialog";
 
 const EmptyState = () => (
   <div className="flex flex-col items-center justify-center h-full text-center py-10">
@@ -41,9 +38,6 @@ function StoreListPage() {
   const [visible, setVisible] = useState(false);
   const [editStoreId, setEditStoreId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<"card" | "table">("card");
-
-  // ✅ NEW
-  const [scannerVisible, setScannerVisible] = useState(false);
 
   const [pagination, setPagination] = useState({
     page: 1,
@@ -174,58 +168,6 @@ function StoreListPage() {
       hash = str.charCodeAt(i) + ((hash << 5) - hash);
     }
     return colors[Math.abs(hash) % colors.length];
-  };
-
-  const getStoreUrl = (storeUniqueId?: string) => {
-    if (!storeUniqueId) return "";
-    const baseUrl = (process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
-    return `${baseUrl}/store/${storeUniqueId}`;
-  };
-
-  const copyToClipboard = async (text: string) => {
-    if (navigator.clipboard && window.isSecureContext) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch {
-        // fall through to fallback
-      }
-    }
-
-    try {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.style.position = "fixed";
-      textarea.style.left = "-9999px";
-      textarea.style.top = "0";
-      document.body.appendChild(textarea);
-      textarea.focus();
-      textarea.select();
-      const success = document.execCommand("copy");
-      document.body.removeChild(textarea);
-      return success;
-    } catch {
-      return false;
-    }
-  };
-
-  const handleCopyStoreUrl = async (storeUniqueId?: string) => {
-    const url = getStoreUrl(storeUniqueId);
-    if (!url) return;
-    const success = await copyToClipboard(url);
-    if (success) {
-      toast.success("Store URL copied to clipboard");
-    } else {
-      toast.error("Failed to copy URL");
-    }
-  };
-
-  const handleShareOnWhatsApp = (storeUniqueId?: string) => {
-    const url = getStoreUrl(storeUniqueId);
-    if (!url) return;
-    const message = `Check out our store: ${url}`;
-    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
-    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
   };
 
   const storeCardTemplate = (store: any) => {
@@ -402,7 +344,6 @@ function StoreListPage() {
   /* ================= STORE (single) USER VIEW ================= */
   if (isStoreUser) {
     const myStore = storeData[0];
-    const storeUrl = getStoreUrl(myStore?.storeUniqueId);
 
     return (
       <div className="w-full flex justify-start items-start pt-2">
@@ -496,124 +437,6 @@ function StoreListPage() {
                     )}
                   </div>
                 </div>
-
-                {storeUrl && (
-                  <div
-                    className="mt-4 rounded-xl p-3 sm:p-4 border"
-                    style={{
-                      background: "var(--surface-soft)",
-                      borderColor: "var(--border)",
-                    }}
-                  >
-                    <p
-                      className="text-xs sm:text-sm font-semibold mb-2 flex items-center gap-1.5"
-                      style={{ color: "var(--brand-primary-dark)" }}
-                    >
-                      <i className="pi pi-globe"></i>
-                      Your store URL for app
-                    </p>
-
-                    <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-                      {/* purely display text, <a href> na — direct browser e khulbe na */}
-                      <span
-                        className="text-xs sm:text-sm font-medium break-all flex-1 select-all"
-                        style={{ color: "var(--foreground)" }}
-                      >
-                        {storeUrl}
-                      </span>
-
-                      <div className="flex gap-2 shrink-0">
-                        <Button
-                          icon="pi pi-copy"
-                          label="Copy"
-                          onClick={() =>
-                            handleCopyStoreUrl(myStore.storeUniqueId)
-                          }
-                          className="text-xs"
-                          style={{
-                            background: "var(--brand-primary)",
-                            color: "#fff",
-                            border: "1px solid var(--brand-primary-dark)",
-                            padding: "6px 12px",
-                          }}
-                        />
-                        <Button
-                          icon="pi pi-whatsapp"
-                          label="Share"
-                          onClick={() =>
-                            handleShareOnWhatsApp(myStore.storeUniqueId)
-                          }
-                          className="text-xs"
-                          style={{
-                            background: "#25D366",
-                            color: "#fff",
-                            border: "1px solid #1ebe57",
-                            padding: "6px 12px",
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    <p
-                      className="text-[11px] mt-2"
-                      style={{ color: "var(--muted)" }}
-                    >
-                      This link only works inside the app — share it via
-                      WhatsApp or copy and send it to your customers.
-                    </p>
-
-                    {/* ✅ NEW: QR code + Scan QR section */}
-                    <div
-                      className="mt-4 pt-4 border-t flex flex-col sm:flex-row items-center gap-4"
-                      style={{ borderColor: "var(--border)" }}
-                    >
-                      <StoreQRCode
-                        storeId={myStore._id}
-                        url={storeUrl}
-                        qrImageUrl={myStore.qrCodeUrl}
-                        storeName={myStore.storeName}
-                        size={160}
-                        onGenerated={(qrCodeUrl) =>
-                          setStoreData((prev) =>
-                            prev.map((s) =>
-                              s._id === myStore._id ? { ...s, qrCodeUrl } : s,
-                            ),
-                          )
-                        }
-                      />
-
-                      <div className="flex flex-col gap-2 items-center sm:items-start text-center sm:text-left">
-                        <p
-                          className="text-xs sm:text-sm font-semibold flex items-center gap-1.5"
-                          style={{ color: "var(--brand-primary-dark)" }}
-                        >
-                          <i className="pi pi-qrcode"></i>
-                          Your store QR code
-                        </p>
-                        <p
-                          className="text-[11px]"
-                          style={{ color: "var(--muted)" }}
-                        >
-                          Customers can scan this QR to open your store directly
-                          in the app. Download and print it for your shop.
-                        </p>
-                        <Button
-                          icon="pi pi-camera"
-                          label="Scan QR"
-                          onClick={() => setScannerVisible(true)}
-                          className="text-xs"
-                          style={{
-                            background:
-                              "linear-gradient(110deg, var(--brand-orange), var(--brand-amber))",
-                            color: "#fff",
-                            border: "none",
-                            padding: "6px 12px",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
 
                 {/* Details grid */}
                 <div
@@ -724,12 +547,6 @@ function StoreListPage() {
               }}
             />
           </Dialog>
-
-          {/* ✅ NEW: QR Scanner dialog */}
-          <QRScannerDialog
-            visible={scannerVisible}
-            onHide={() => setScannerVisible(false)}
-          />
 
           <ConfirmDialog />
           <ToastContainer position="top-right" />
