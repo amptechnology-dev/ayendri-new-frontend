@@ -1,5 +1,5 @@
 "use client";
-
+import { Checkbox } from "primereact/checkbox";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   useForm,
@@ -21,8 +21,10 @@ import { toast } from "react-toastify";
 import axiosInstance from "@/service/axios.service";
 import {
   getStoreSettings,
+  updateStoreSettings,
   resolveBusinessType,
   StoreBusinessType,
+  PaymentMode,
 } from "@/service/storeSetting.service";
 import {
   createProductSchema,
@@ -1126,6 +1128,327 @@ function ColorVariantBlock({
 }
 
 // ===============================================================
+// [POLICY] Product type + Returnable / Replaceable / Refundable
+// ===============================================================
+type ProductType = "PRODUCT" | "SERVICE";
+
+type PolicyState = {
+  isReturnable: boolean;
+  returnDays: number | null;
+  isReplaceable: boolean;
+  replaceDays: number | null;
+  isRefundable: boolean;
+  refundDays: number | null;
+};
+
+const DEFAULT_POLICY: PolicyState = {
+  isReturnable: false,
+  returnDays: null,
+  isReplaceable: false,
+  replaceDays: null,
+  isRefundable: false,
+  refundDays: null,
+};
+
+const POLICY_ROWS = [
+  {
+    flag: "isReturnable",
+    days: "returnDays",
+    title: "Returnable",
+    hint: "Customer can send the product back. Leave days empty if the delivery agent will decide.",
+    daysRequired: false,
+  },
+  {
+    flag: "isReplaceable",
+    days: "replaceDays",
+    title: "Replaceable",
+    hint: "Customer can ask for a replacement. Leave days empty if the delivery agent will decide.",
+    daysRequired: false,
+  },
+  {
+    flag: "isRefundable",
+    days: "refundDays",
+    title: "Refundable",
+    hint: "Customer gets the money back on return or cancellation. You pay the refund to the customer's bank account.",
+    daysRequired: true,
+  },
+] as const;
+
+// FormData e policy field gulo boshay (faka days = "" pathay, backend e null hoy)
+const appendPolicyFields = (
+  fd: FormData,
+  type: ProductType,
+  p: PolicyState,
+) => {
+  const isService = type === "SERVICE";
+  const days = (on: boolean, v: number | null) =>
+    on && !isNil(v) ? String(v) : "";
+
+  fd.append("productType", type);
+  fd.append("isReturnable", String(!isService && p.isReturnable));
+  fd.append("returnDays", days(!isService && p.isReturnable, p.returnDays));
+  fd.append("isReplaceable", String(!isService && p.isReplaceable));
+  fd.append("replaceDays", days(!isService && p.isReplaceable, p.replaceDays));
+  fd.append("isRefundable", String(p.isRefundable));
+  fd.append("refundDays", days(!isService && p.isRefundable, p.refundDays));
+};
+
+function ProductPolicyBlock({
+  productType,
+  policy,
+  onTypeChange,
+  onPolicyChange,
+}: {
+  productType: ProductType;
+  policy: PolicyState;
+  onTypeChange: (t: ProductType) => void;
+  onPolicyChange: (patch: Partial<PolicyState>) => void;
+}) {
+  const isService = productType === "SERVICE";
+  const rows = isService
+    ? POLICY_ROWS.filter((r) => r.flag === "isRefundable")
+    : POLICY_ROWS;
+
+  const typeBtn = (value: ProductType, label: string, icon: string) => (
+    <button
+      type="button"
+      onClick={() => onTypeChange(value)}
+      className={`flex-1 flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
+        productType === value
+          ? "border-blue-500 bg-blue-50 text-blue-800"
+          : "border-gray-200 text-gray-600 hover:bg-gray-50"
+      }`}
+    >
+      <i className={`pi ${icon}`}></i>
+      {label}
+    </button>
+  );
+
+  return (
+    <div className="space-y-2">
+      <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+        <i className="pi pi-replay text-blue-600"></i>
+        Type, Returns &amp; Refunds
+      </h3>
+
+      <div className="flex gap-2">
+        {typeBtn("PRODUCT", "Product", "pi-box")}
+        {typeBtn("SERVICE", "Service", "pi-calendar")}
+      </div>
+      <p className="text-[11px] text-gray-500">
+        {isService
+          ? "Service: the customer chooses a booking date when ordering."
+          : "Product: the customer pays directly, no booking date is needed."}
+      </p>
+
+      <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-2.5 space-y-2">
+        {rows.map((row) => {
+          const on = policy[row.flag];
+          const showDays = !isService;
+          return (
+            <div
+              key={row.flag}
+              className="rounded-lg border border-gray-100 bg-white p-2"
+            >
+              <div className="flex items-start gap-2.5">
+                <Checkbox
+                  inputId={row.flag}
+                  checked={on}
+                  onChange={(e) =>
+                    onPolicyChange({
+                      [row.flag]: !!e.checked,
+                      ...(e.checked ? {} : { [row.days]: null }),
+                    } as Partial<PolicyState>)
+                  }
+                />
+                <div className="min-w-0 flex-1">
+                  <label
+                    htmlFor={row.flag}
+                    className="text-sm font-semibold text-gray-800 cursor-pointer"
+                  >
+                    {row.title}
+                  </label>
+                  <p className="text-[11px] text-gray-500">
+                    {isService
+                      ? "Customer can cancel and get a refund before the booking date. No refund on or after the booking date."
+                      : row.hint}
+                  </p>
+                </div>
+              </div>
+
+              {on && showDays && (
+                <div className="mt-2 sm:w-1/2">
+                  <label className="text-[10px] font-medium text-gray-500">
+                    Within how many days
+                    {row.daysRequired && (
+                      <span className="text-red-500"> *</span>
+                    )}
+                  </label>
+                  <InputNumber
+                    value={policy[row.days]}
+                    onValueChange={(e) =>
+                      onPolicyChange({
+                        [row.days]: e.value ?? null,
+                      } as Partial<PolicyState>)
+                    }
+                    min={1}
+                    max={365}
+                    suffix=" days"
+                    useGrouping={false}
+                    placeholder={
+                      row.daysRequired ? "Required" : "Delivery agent decides"
+                    }
+                    className="w-full"
+                    inputClassName="w-full p-inputtext-sm"
+                  />
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <p className="text-[10px] text-gray-500">
+          Customers must give a reason for every return, replacement, refund or
+          cancellation. You can reject a request if the reason is not valid.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ===============================================================
+// [SETTINGS] Payment option (Store Settings er moto, product form theke-o change kora jay)
+// ===============================================================
+const PAYMENT_CHOICES: {
+  value: PaymentMode;
+  title: string;
+  desc: string;
+  icon: string;
+}[] = [
+  {
+    value: "BOTH",
+    title: "Online + Cash on Delivery",
+    desc: "Customers choose how to pay",
+    icon: "pi-wallet",
+  },
+  {
+    value: "ONLINE_ONLY",
+    title: "Online payment only",
+    desc: "Cash on Delivery is hidden",
+    icon: "pi-credit-card",
+  },
+  {
+    value: "OFF",
+    title: "Payment off",
+    desc: "No payment inside the app",
+    icon: "pi-ban",
+  },
+];
+
+function PaymentModeBlock({ storeId }: { storeId?: string | null }) {
+  const [mode, setMode] = useState<PaymentMode | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (!isValidObjectId(storeId)) {
+      setMode(null);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await getStoreSettings(storeId as string);
+        const m = res.data?.settings?.paymentMode;
+        if (!cancelled) {
+          setMode(["BOTH", "ONLINE_ONLY", "OFF"].includes(m) ? m : "BOTH");
+        }
+      } catch {
+        if (!cancelled) setMode(null);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [storeId]);
+
+  const change = async (next: PaymentMode) => {
+    if (!isValidObjectId(storeId) || next === mode || saving) return;
+    const prev = mode;
+    setMode(next);
+    try {
+      setSaving(true);
+      await updateStoreSettings(storeId as string, { paymentMode: next });
+      toast.success("Payment option updated");
+      // sidebar menu refresh
+      window.dispatchEvent(new Event("storeSettingsChanged"));
+    } catch (err: any) {
+      setMode(prev);
+      toast.error(
+        err?.response?.data?.message || "Failed to update payment option",
+      );
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!mode) return null;
+
+  return (
+    <div className="rounded-xl border border-blue-100 p-2.5 space-y-2">
+      <div className="flex items-center justify-between">
+        <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+          <i className="pi pi-credit-card text-blue-600"></i>
+          Payment options
+        </p>
+        {saving && (
+          <i className="pi pi-spin pi-spinner text-blue-500 text-sm"></i>
+        )}
+      </div>
+      <p className="text-[11px] text-gray-500">
+        This is your store payment setting. Changing it here also changes it in
+        Store Settings for all products of this store.
+      </p>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        {PAYMENT_CHOICES.map((opt) => {
+          const active = mode === opt.value;
+          return (
+            <button
+              type="button"
+              key={opt.value}
+              disabled={saving}
+              onClick={() => change(opt.value)}
+              className={`text-left rounded-lg border p-2.5 transition-all disabled:opacity-60 ${
+                active
+                  ? "border-blue-500 bg-blue-50"
+                  : "border-gray-200 hover:bg-gray-50"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <i
+                  className={`pi ${opt.icon} ${
+                    active ? "text-blue-600" : "text-gray-400"
+                  }`}
+                />
+                <span
+                  className={`text-xs font-semibold ${
+                    active ? "text-blue-800" : "text-gray-700"
+                  }`}
+                >
+                  {opt.title}
+                </span>
+                {active && (
+                  <i className="pi pi-check-circle text-blue-600 ml-auto" />
+                )}
+              </div>
+              <p className="text-[11px] text-gray-500 mt-1">{opt.desc}</p>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ===============================================================
 // MAIN FORM
 // ===============================================================
 function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
@@ -1145,6 +1468,23 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
     useState<StoreBusinessType>("MADE_FOR_PRODUCT");
   const [madeForProduct, setMadeForProduct] = useState(false); // shudhu BOTH type e user choose kore
   const [editStockManaged, setEditStockManaged] = useState(true);
+  const [productType, setProductType] = useState<ProductType>("PRODUCT");
+  const [policy, setPolicy] = useState<PolicyState>(DEFAULT_POLICY);
+
+  const handleTypeChange = (t: ProductType) => {
+    setProductType(t);
+    if (t === "SERVICE") {
+      // service e return / replace nei
+      setPolicy((p) => ({
+        ...p,
+        isReturnable: false,
+        returnDays: null,
+        isReplaceable: false,
+        replaceDays: null,
+        refundDays: null,
+      }));
+    }
+  };
 
   const stockEnabled = isEditMode
     ? editStockManaged
@@ -1182,9 +1522,9 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       lowStockThreshold: 0,
       packagingDetails: {},
       priceTiers: [],
-      gst: {}, 
-      gstInclusive: false, 
-      hsnCode: "", 
+      gst: {},
+      gstInclusive: false,
+      hsnCode: "",
       variants: [],
     },
   });
@@ -1603,8 +1943,15 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       setValue("gstInclusive" as any, (product.gstInclusive === true) as any);
       setValue("hsnCode" as any, (product.hsnCode || "") as any);
 
-      // [STOCK] edit mode e product er nijer flag dekhe stock field show/hide
-      // [STORE TYPE] edit mode e product er nijer flag dekhe stock field show/hide
+      setProductType(product.productType === "SERVICE" ? "SERVICE" : "PRODUCT");
+      setPolicy({
+        isReturnable: product.isReturnable === true,
+        returnDays: product.returnDays ?? null,
+        isReplaceable: product.isReplaceable === true,
+        replaceDays: product.replaceDays ?? null,
+        isRefundable: product.isRefundable === true,
+        refundDays: product.refundDays ?? null,
+      });
       setEditStockManaged(product.hasStockManagement !== false);
       setMadeForProduct(product.isMadeForProduct === true);
 
@@ -1791,6 +2138,39 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       if (!HSN_REGEX.test(hsn)) return "HSN code must be 4, 6 or 8 digits";
     }
 
+    // ---- [POLICY] return / replace / refund days ----
+    if (
+      productType === "PRODUCT" &&
+      policy.isRefundable &&
+      isNil(policy.refundDays)
+    ) {
+      return "Refund days is required for a refundable product";
+    }
+    const daysChecks: [string, boolean, number | null][] = [
+      [
+        "Return days",
+        productType === "PRODUCT" && policy.isReturnable,
+        policy.returnDays,
+      ],
+      [
+        "Replace days",
+        productType === "PRODUCT" && policy.isReplaceable,
+        policy.replaceDays,
+      ],
+      [
+        "Refund days",
+        productType === "PRODUCT" && policy.isRefundable,
+        policy.refundDays,
+      ],
+    ];
+    for (const [label, on, val] of daysChecks) {
+      if (!on || isNil(val)) continue;
+      const n = Number(val);
+      if (!Number.isInteger(n) || n < 1 || n > 365) {
+        return `${label} must be a whole number between 1 and 365`;
+      }
+    }
+
     if (stockEnabled) {
       const rows: any[] = !hasVariants
         ? [values]
@@ -1902,6 +2282,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       formData.append("description", data.description || "");
       formData.append("unit", data.unit || "");
       formData.append("hasColor", String(hasColor));
+      appendPolicyFields(formData, productType, policy);
 
       if (!isEditMode) {
         formData.append(
@@ -2298,6 +2679,13 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
           <p className="text-[11px] text-gray-400">{MEDIA_HINT}</p>
         </div>
 
+        <ProductPolicyBlock
+          productType={productType}
+          policy={policy}
+          onTypeChange={handleTypeChange}
+          onPolicyChange={(patch) => setPolicy((p) => ({ ...p, ...patch }))}
+        />
+
         {/* VARIANT TOGGLES — independent */}
         <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-2.5 space-y-2.5">
           <div className="flex items-center justify-between">
@@ -2557,6 +2945,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
           </div>
 
           <PackagingFieldsBlock control={control} basePath="packagingDetails" />
+          <PaymentModeBlock storeId={selectedStoreId} />
         </div>
 
         {/* VARIANT MODE */}

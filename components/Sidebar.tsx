@@ -52,6 +52,9 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
   const [deliveryEnabled, setDeliveryEnabled] = useState(true);
   const [paymentEnabled, setPaymentEnabled] = useState(true);
 
+  // [REQUESTS] STORE er pending return / replace / refund request (badge er jonno)
+  const [pendingRequests, setPendingRequests] = useState(0);
+
   const isActive = (href?: string) => {
     if (!href) return false;
     if (href === "/dashboard") return pathname === "/dashboard";
@@ -100,6 +103,31 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
       window.removeEventListener("storeSettingsChanged", loadStockSetting);
     };
   }, [role]);
+
+  // [REQUESTS] STORE er pending request count. Page change hole ar
+  // request approve/reject hole refresh
+  useEffect(() => {
+    if (role !== "STORE") return;
+    let cancelled = false;
+
+    const loadPendingRequests = async () => {
+      try {
+        const res = await axiosInstance.get("/api/order/store-requests", {
+          params: { status: "REQUESTED", limit: 1 },
+        });
+        if (!cancelled) setPendingRequests(res.data?.total ?? 0);
+      } catch {
+        if (!cancelled) setPendingRequests(0);
+      }
+    };
+
+    loadPendingRequests();
+    window.addEventListener("storeRequestsChanged", loadPendingRequests);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("storeRequestsChanged", loadPendingRequests);
+    };
+  }, [role, pathname]);
 
   // Load collapsed state
   useEffect(() => {
@@ -230,6 +258,12 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                 label: "Orders",
                 icon: "pi-shopping-cart",
                 href: "/dashboard/orders",
+              },
+              // [REQUESTS] return / replace / refund requests (sudhu STORE)
+              {
+                label: "Returns & Refunds",
+                icon: "pi-replay",
+                href: "/dashboard/requests",
               },
               ...(deliveryEnabled
                 ? [
@@ -451,8 +485,18 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
 
             {sec.items.map((item) => {
               const active = isActive(item.href);
-              const showBadge =
-                item.label === "Orders" && role === "STORE" && unreadCount > 0;
+
+              // [REQUESTS] Orders = notun notification, Returns & Refunds = pending request
+              // (duto-i sudhu STORE e dekhabe)
+              const badgeCount =
+                role !== "STORE"
+                  ? 0
+                  : item.label === "Orders"
+                    ? unreadCount
+                    : item.label === "Returns & Refunds"
+                      ? pendingRequests
+                      : 0;
+              const showBadge = badgeCount > 0;
 
               return (
                 <Link
@@ -539,7 +583,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                           lineHeight: 1,
                         }}
                       >
-                        {unreadCount > 9 ? "9+" : unreadCount}
+                        {badgeCount > 9 ? "9+" : badgeCount}
                       </span>
                     )}
                   </span>

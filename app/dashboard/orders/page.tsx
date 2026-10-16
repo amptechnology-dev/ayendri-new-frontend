@@ -751,6 +751,14 @@ function OrdersPage() {
               header="Delivery"
               body={(row: OrderRow) => deliveryCell(row)}
             />
+            <Column
+              header="Booking"
+              body={(row: OrderRow) =>
+                (row as any).hasService
+                  ? formatDeliveryDate((row as any).bookingDate)
+                  : "-"
+              }
+            />
             <Column header="Courier" body={courierCell} />
             <Column
               header="Placed On"

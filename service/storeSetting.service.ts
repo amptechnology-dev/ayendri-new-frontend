@@ -1,6 +1,7 @@
 import axiosInstance from "@/service/axios.service";
 
 export type StoreBusinessType = "RETAIL" | "MADE_FOR_PRODUCT" | "BOTH";
+export type PaymentMode = "BOTH" | "ONLINE_ONLY" | "OFF";
 
 export type StoreSettings = {
   hasVariants: boolean;
@@ -8,6 +9,7 @@ export type StoreSettings = {
   hasStockManagement?: boolean;
   hasDelivery?: boolean;
   paymentFirst?: boolean;
+  paymentMode?: PaymentMode;
   storeBusinessType?: StoreBusinessType;
 };
 

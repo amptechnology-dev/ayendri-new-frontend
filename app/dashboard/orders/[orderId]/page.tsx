@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState,useCallback } from "react";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
 import axiosInstance from "@/service/axios.service";
@@ -978,6 +978,312 @@ function QuotePanel({
   );
 }
 
+// ===============================================================
+// Return / Replace / Refund requests (store side)
+// ===============================================================
+type RequestRow = {
+  _id: string;
+  requestNumber: string;
+  type: "RETURN" | "REPLACE" | "REFUND";
+  source: "CUSTOMER" | "ORDER_CANCEL";
+  status: "REQUESTED" | "APPROVED" | "REJECTED" | "COMPLETED";
+  itemName: string;
+  quantity: number;
+  reason: string;
+  refundAmount: number;
+  bankDetails?: {
+    accountHolder?: string;
+    accountNumber?: string;
+    ifsc?: string;
+    bankName?: string;
+    upiId?: string;
+  } | null;
+  storeNote?: string | null;
+  referenceNo?: string | null;
+  completeNote?: string | null;
+  createdAt: string;
+};
+
+const REQ_TYPE_LABEL: Record<RequestRow["type"], string> = {
+  RETURN: "Return",
+  REPLACE: "Replacement",
+  REFUND: "Refund",
+};
+
+const REQ_STATUS_STYLES: Record<RequestRow["status"], string> = {
+  REQUESTED: "bg-amber-100 text-amber-800",
+  APPROVED: "bg-blue-100 text-blue-800",
+  REJECTED: "bg-red-100 text-red-700",
+  COMPLETED: "bg-green-100 text-green-800",
+};
+
+function OrderRequestsCard({
+  order,
+  onChanged,
+}: {
+  order: OrderRow;
+  onChanged: () => void;
+}) {
+  const [rows, setRows] = useState<RequestRow[]>([]);
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const [dialog, setDialog] = useState<{
+    visible: boolean;
+    mode: "REJECT" | "COMPLETE";
+    row: RequestRow | null;
+  }>({ visible: false, mode: "REJECT", row: null });
+  const [note, setNote] = useState("");
+  const [refNo, setRefNo] = useState("");
+  const [error, setError] = useState("");
+
+  const load = useCallback(async () => {
+    try {
+      const res = await axiosInstance.get("/api/order/store-requests", {
+        params: { orderId: order._id, limit: 50 },
+      });
+      setRows(res.data.requests || []);
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to load requests");
+    }
+  }, [order._id]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const act = async (id: string, path: "decision" | "complete", body: any) => {
+    try {
+      setBusyId(id);
+      const res = await axiosInstance.patch(
+        `/api/order/store-requests/${id}/${path}`,
+        body,
+      );
+      toast.success(res.data.message || "Updated");
+      await load();
+      onChanged();
+      return true;
+    } catch (err: any) {
+      toast.error(
+        err?.response?.data?.errors?.[0]?.message ||
+          err?.response?.data?.message ||
+          "Action failed",
+      );
+      return false;
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const openDialog = (mode: "REJECT" | "COMPLETE", row: RequestRow) => {
+    setNote("");
+    setRefNo("");
+    setError("");
+    setDialog({ visible: true, mode, row });
+  };
+  const closeDialog = () => setDialog((d) => ({ ...d, visible: false }));
+
+  const submitDialog = async () => {
+    const row = dialog.row;
+    if (!row) return;
+    const text = note.trim();
+
+    if (dialog.mode === "REJECT" && text.length < 3) {
+      setError("Reason is required (at least 3 characters)");
+      return;
+    }
+    if (
+      dialog.mode === "COMPLETE" &&
+      row.type === "REFUND" &&
+      !refNo.trim()
+    ) {
+      setError("Payment reference (UTR / transaction ID) is required");
+      return;
+    }
+
+    const ok =
+      dialog.mode === "REJECT"
+        ? await act(row._id, "decision", { action: "REJECT", note: text })
+        : await act(row._id, "complete", {
+            referenceNo: refNo.trim() || undefined,
+            note: text || undefined,
+          });
+    if (ok) closeDialog();
+  };
+
+  if (rows.length === 0) return null;
+
+  const dRow = dialog.row;
+
+  return (
+    <SectionCard
+      icon="pi-replay"
+      title={`Return / Refund Requests (${rows.length})`}
+    >
+      <div className="space-y-3">
+        {rows.map((r) => (
+          <div
+            key={r._id}
+            className="border border-gray-100 rounded-lg p-3 text-sm space-y-2"
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="font-semibold text-gray-800">
+                {REQ_TYPE_LABEL[r.type]}
+                <span className="text-xs font-normal text-gray-400">
+                  {" "}
+                  • {r.requestNumber}
+                </span>
+              </p>
+              <span
+                className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${REQ_STATUS_STYLES[r.status]}`}
+              >
+                {r.status}
+              </span>
+            </div>
+
+            <p className="text-xs text-gray-600">
+              {r.itemName}
+              {r.source === "CUSTOMER" ? ` × ${r.quantity}` : ""}
+              {r.source === "ORDER_CANCEL" && (
+                <span className="ml-1 text-red-600">(order cancelled)</span>
+              )}
+            </p>
+
+            <p className="text-xs bg-gray-50 border border-gray-100 rounded-md p-2 text-gray-700">
+              <span className="font-semibold">Customer reason:</span> {r.reason}
+            </p>
+
+            {r.type === "REFUND" && (
+              <div className="text-xs space-y-1">
+                <KV label="Refund amount">{money(r.refundAmount)}</KV>
+                {r.bankDetails?.upiId && (
+                  <KV label="UPI ID">{r.bankDetails.upiId}</KV>
+                )}
+                {r.bankDetails?.accountNumber && (
+                  <>
+                    <KV label="Account holder">{r.bankDetails.accountHolder}</KV>
+                    <KV label="Account number">{r.bankDetails.accountNumber}</KV>
+                    <KV label="IFSC">{r.bankDetails.ifsc}</KV>
+                    {r.bankDetails.bankName && (
+                      <KV label="Bank">{r.bankDetails.bankName}</KV>
+                    )}
+                  </>
+                )}
+              </div>
+            )}
+
+            {r.storeNote && (
+              <p className="text-xs text-gray-500">
+                Store note: {r.storeNote}
+              </p>
+            )}
+            {r.status === "COMPLETED" && (
+              <p className="text-xs text-green-700">
+                {r.referenceNo ? `Ref: ${r.referenceNo} • ` : ""}
+                {r.completeNote || "Completed"}
+              </p>
+            )}
+
+            {r.status === "REQUESTED" && (
+              <div className="flex gap-2">
+                <Button
+                  label="Approve"
+                  icon="pi pi-check"
+                  size="small"
+                  loading={busyId === r._id}
+                  onClick={() => act(r._id, "decision", { action: "APPROVE" })}
+                />
+                <Button
+                  label="Reject"
+                  icon="pi pi-times"
+                  size="small"
+                  severity="danger"
+                  outlined
+                  disabled={busyId === r._id}
+                  onClick={() => openDialog("REJECT", r)}
+                />
+              </div>
+            )}
+            {r.status === "APPROVED" && (
+              <Button
+                label={
+                  r.type === "REFUND" ? "Mark refund as paid" : "Mark as completed"
+                }
+                icon="pi pi-check-circle"
+                size="small"
+                loading={busyId === r._id}
+                onClick={() => openDialog("COMPLETE", r)}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <Dialog
+        header={
+          dialog.mode === "REJECT"
+            ? "Reject Request"
+            : dRow?.type === "REFUND"
+              ? "Confirm Refund Payment"
+              : "Complete Request"
+        }
+        visible={dialog.visible}
+        style={{ width: "28rem", maxWidth: "95vw" }}
+        onHide={closeDialog}
+        draggable={false}
+      >
+        {dialog.mode === "COMPLETE" && dRow?.type === "REFUND" && (
+          <div className="mb-3 space-y-2">
+            <p className="text-sm text-gray-600">
+              Pay <b>{money(dRow.refundAmount)}</b> to the customer, then enter
+              the payment reference.
+            </p>
+            <InputText
+              value={refNo}
+              onChange={(e) => {
+                setRefNo(e.target.value);
+                if (error) setError("");
+              }}
+              placeholder="UTR / transaction ID *"
+              className="w-full"
+            />
+          </div>
+        )}
+
+        <InputTextarea
+          value={note}
+          onChange={(e) => {
+            setNote(e.target.value);
+            if (error) setError("");
+          }}
+          rows={3}
+          maxLength={300}
+          className={`w-full ${error && dialog.mode === "REJECT" ? "p-invalid" : ""}`}
+          placeholder={
+            dialog.mode === "REJECT"
+              ? "Reason for rejecting (required, customer will see this)"
+              : "Note (optional)"
+          }
+        />
+        {error && (
+          <small className="text-red-500 flex items-center gap-1 mt-1">
+            <i className="pi pi-exclamation-circle"></i>
+            {error}
+          </small>
+        )}
+
+        <div className="flex justify-end gap-2 mt-4">
+          <Button label="Back" text onClick={closeDialog} />
+          <Button
+            label={dialog.mode === "REJECT" ? "Reject" : "Confirm"}
+            severity={dialog.mode === "REJECT" ? "danger" : undefined}
+            loading={busyId === dRow?._id}
+            onClick={submitDialog}
+          />
+        </div>
+      </Dialog>
+    </SectionCard>
+  );
+}
+
 function OrderDetailsPage() {
   const router = useRouter();
   const { orderId } = useParams<{ orderId: string }>();
@@ -1592,6 +1898,7 @@ function OrderDetailsPage() {
             {/* Courier & shipment */}
             {order.deliveryEnabled !== false && (
               <div className="space-y-4">
+                <OrderRequestsCard order={order} onChanged={getOrderDetails} />
                 <ShipmentCard
                   order={order}
                   onUpdated={(o) =>
@@ -1600,6 +1907,7 @@ function OrderDetailsPage() {
                 />
                 <CourierDetailsCard order={order} />
               </div>
+              
             )}
 
             {/* Packaging + Address side by side */}
@@ -1627,6 +1935,12 @@ function OrderDetailsPage() {
                   </p>
                   <p>{order.deliveryAddress.country}</p>
                 </div>
+                {(order as any).hasService && (
+                  <p className="mt-3 text-xs text-blue-800 bg-blue-50 border border-blue-100 rounded-lg p-2.5">
+                    <span className="font-semibold">Booking date:</span>{" "}
+                    {formatDeliveryDate((order as any).bookingDate)}
+                  </p>
+                )}
                 {order.note && (
                   <p className="mt-3 text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-lg p-2.5">
                     <span className="font-semibold">Note:</span> {order.note}
