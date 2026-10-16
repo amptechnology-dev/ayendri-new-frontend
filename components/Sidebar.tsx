@@ -206,7 +206,11 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                 icon: "pi-mobile",
                 href: "/dashboard/app-releases",
               },
-              // [PAYMENT] ADMIN: kon store theke koto payment eseche
+               {
+                label: "Terms & Conditions",
+                icon: "pi-file-edit",
+                href: "/dashboard/terms-conditions",
+              },
               {
                 label: "Store Payments",
                 icon: "pi-wallet",
