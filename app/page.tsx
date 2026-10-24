@@ -149,6 +149,93 @@ const STEPS = [
   },
 ];
 
+const FOOTER_COLUMNS = [
+  {
+    title: "Explore",
+    links: [
+      { label: "Collections", href: "#collections" },
+      { label: "The AYENDRI Experience", href: "#experience" },
+      { label: "Get the App", href: "#download" },
+      { label: "Visit Store", href: "/store" },
+      { label: "Store Login", href: "/login" },
+    ],
+  },
+  {
+    title: "Categories",
+    links: [
+      { label: "Rudraksha", href: "#collections" },
+      { label: "Malas", href: "#collections" },
+      { label: "Idols & Deities", href: "#collections" },
+      { label: "Puja Essentials", href: "#collections" },
+    ],
+  },
+  {
+    title: "Support",
+    links: [
+      // ⚠️ PLACEHOLDER: real page thakle href gulo change koro
+      { label: "Contact Us", href: "#contact" },
+      { label: "FAQs", href: "#faq" },
+      { label: "Privacy Policy", href: "#privacy" },
+      { label: "Terms of Use", href: "#terms" },
+    ],
+  },
+];
+
+/* ───────────────────────── Social icons (inline SVG) ───────────────────────── */
+type IconProps = { className?: string };
+
+function InstagramIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+      <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+      <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+    </svg>
+  );
+}
+
+function YoutubeIcon({ className }: IconProps) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M2.5 17a24.12 24.12 0 0 1 0-10 2 2 0 0 1 1.4-1.4 49.56 49.56 0 0 1 16.2 0A2 2 0 0 1 21.5 7a24.12 24.12 0 0 1 0 10 2 2 0 0 1-1.4 1.4 49.55 49.55 0 0 1-16.2 0A2 2 0 0 1 2.5 17" />
+      <path d="m10 15 5-3-5-3z" />
+    </svg>
+  );
+}
+
+function XIcon({ className }: IconProps) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  );
+}
+
+// ⚠️ PLACEHOLDER: official profile link diye replace koro
+const SOCIAL_LINKS = [
+  { label: "Instagram", href: "https://instagram.com/REPLACE_WITH_AYENDRI_HANDLE", icon: InstagramIcon },
+  { label: "YouTube", href: "https://youtube.com/@REPLACE_WITH_AYENDRI_HANDLE", icon: YoutubeIcon },
+  { label: "X", href: "https://x.com/REPLACE_WITH_AYENDRI_HANDLE", icon: XIcon },
+];
+
 function DisableAdminKitCss() {
   useLayoutEffect(() => {
     const links = Array.from(
@@ -323,7 +410,6 @@ function Navbar() {
   );
 }
 
-/* ───────────────────────── Hero ───────────────────────── */
 function Hero() {
   const bgRef = useRef<HTMLDivElement>(null);
 
@@ -386,40 +472,59 @@ function Hero() {
       <div className="relative z-10 mx-auto w-full max-w-7xl px-5 pb-28 pt-36 sm:px-8 sm:pt-40">
         <div className="max-w-2xl">
           <Reveal>
-            <p className="ay-eyebrow text-[var(--ay-gold)]">Multi-vendor Spiritual Marketplace</p>
+            <p className="ay-eyebrow text-[var(--ay-gold)]">Curated Hindu Spiritual Essentials</p>
           </Reveal>
+
           <Reveal delay={0.12}>
             <h1 className="ay-display mt-6 text-5xl leading-[1.05] tracking-tight text-[var(--ay-ivory)] sm:text-6xl lg:text-7xl">
               Where devotion
               <span className="block text-[var(--ay-gold)]">meets everyday grace</span>
             </h1>
           </Reveal>
+
           <Reveal delay={0.24}>
             <p className="mt-7 max-w-xl text-base leading-relaxed text-[var(--ay-ivory)]/75 sm:text-lg">
-              Register your store, list authentic products and start selling — all from one powerful
-              dashboard, built for store owners by AMP Technology.
+              AYENDRI brings you authentic rudraksha, hand-strung malas, sacred idols and puja
+              essentials — sourced with reverence, delivered with care.
             </p>
           </Reveal>
+
           <Reveal delay={0.36}>
             <div className="mt-10 flex flex-wrap items-center gap-4">
-              <Link href="/login" className="ay-btn ay-btn-hero">
-                Get Started <ArrowRight className="h-4 w-4" aria-hidden="true" />
-              </Link>
-              <Link href="/store" className="ay-btn ay-btn-outline-light">
-                <ShoppingBag className="h-4 w-4" aria-hidden="true" /> Visit Store
-              </Link>
+              <a
+                href={DOWNLOAD_LINKS.googlePlay}
+                target="_blank"
+                rel="noreferrer"
+                className="ay-btn ay-btn-hero"
+              >
+                <Play className="h-4 w-4 fill-current" aria-hidden="true" />
+                Download on Google Play
+              </a>
+              <a
+                href={DOWNLOAD_LINKS.apk}
+                target="_blank"
+                rel="noreferrer"
+                className="ay-btn ay-btn-outline-light"
+              >
+                <Download className="h-4 w-4" aria-hidden="true" />
+                Download APK
+              </a>
             </div>
           </Reveal>
+
           <Reveal delay={0.48}>
-            <div className="mt-9 flex items-center gap-3 text-sm text-[var(--ay-ivory)]/70">
+            <div
+              className="mt-9 flex items-center gap-3 text-sm text-[var(--ay-ivory)]/70"
+              aria-label="Rated 4.8 by over ten thousand devotees"
+            >
               <span className="flex items-center gap-1 text-[var(--ay-gold)]" aria-hidden="true">
                 {[0, 1, 2, 3, 4].map((i) => (
                   <Star key={i} className="h-3.5 w-3.5 fill-current" />
                 ))}
               </span>
               <span>
-                <strong className="font-semibold text-[var(--ay-ivory)]">4.9/5</strong> · trusted by 500+
-                store owners
+                <strong className="font-semibold text-[var(--ay-ivory)]">4.8</strong> · loved by
+                10,000+ devotees
               </span>
             </div>
           </Reveal>
@@ -724,39 +829,77 @@ function DownloadCta() {
 /* ───────────────────────── Footer ───────────────────────── */
 function Footer() {
   return (
-    <footer className="bg-[var(--ay-deep)] text-[var(--ay-ivory)]/70">
-      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 px-5 py-10 sm:flex-row sm:px-8">
-        <div className="flex items-center gap-3">
+    <footer className="bg-[var(--ay-deep)] pt-16 text-[var(--ay-ivory)]/70 sm:pt-20">
+      <div className="mx-auto grid max-w-7xl gap-12 px-5 pb-14 sm:px-8 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+        {/* Brand */}
+        <div className="max-w-sm">
           <Image
             src={IMAGES.logo}
             alt={`${SITE.name} logo`}
-            width={40}
-            height={40}
-            className="h-10 w-10 rounded-xl object-cover"
+            width={48}
+            height={48}
+            className="h-12 w-12 rounded-xl object-cover"
           />
-          <div>
-            <p className="ay-display text-lg leading-tight text-[var(--ay-ivory)]">{SITE.name}</p>
-            <p className="text-xs text-[var(--ay-ivory)]/55">{SITE.tagline}</p>
+          <p className="ay-display mt-4 text-xl text-[var(--ay-ivory)]">{SITE.name}</p>
+          <p className="mt-3 text-sm leading-relaxed text-[var(--ay-ivory)]/60">
+            {SITE.tagline}. Authentic rudraksha, malas, idols and puja essentials — curated with
+            reverence for your spiritual journey.
+          </p>
+          <div className="mt-6 flex gap-3">
+            {SOCIAL_LINKS.map((social) => (
+              <a
+                key={social.label}
+                href={social.href}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`${SITE.name} on ${social.label}`}
+                className="grid h-10 w-10 place-items-center rounded-full border border-[var(--ay-ivory)]/15 text-[var(--ay-ivory)]/70 transition-all duration-300 hover:border-[var(--ay-gold)]/50 hover:text-[var(--ay-gold)]"
+              >
+                <social.icon className="h-4 w-4" aria-hidden="true" />
+              </a>
+            ))}
           </div>
         </div>
 
-        <div className="flex items-center gap-6 text-sm">
-          <Link href="/store" className="transition-colors hover:text-[var(--ay-gold)]">
-            Visit Store
-          </Link>
-          <a href="#download" className="transition-colors hover:text-[var(--ay-gold)]">
-            Download App
-          </a>
-          <Link href="/login" className="transition-colors hover:text-[var(--ay-gold)]">
-            Login
-          </Link>
-        </div>
+        {/* Link columns */}
+        {FOOTER_COLUMNS.map((column) => (
+          <nav key={column.title} aria-label={column.title}>
+            <h3 className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--ay-gold)]">
+              {column.title}
+            </h3>
+            <ul className="mt-5 flex flex-col gap-3">
+              {column.links.map((link) => (
+                <li key={link.label}>
+                  {link.href.startsWith("#") ? (
+                    <a
+                      href={link.href}
+                      className="text-sm transition-colors duration-200 hover:text-[var(--ay-gold)]"
+                    >
+                      {link.label}
+                    </a>
+                  ) : (
+                    <Link
+                      href={link.href}
+                      className="text-sm transition-colors duration-200 hover:text-[var(--ay-gold)]"
+                    >
+                      {link.label}
+                    </Link>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </nav>
+        ))}
       </div>
 
+      {/* Bottom bar */}
       <div className="border-t border-[var(--ay-ivory)]/10">
-        <p className="mx-auto max-w-7xl px-5 py-6 text-center text-xs text-[var(--ay-ivory)]/45 sm:px-8">
-          © {new Date().getFullYear()} AMP Technology · All rights reserved
-        </p>
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 py-7 text-xs text-[var(--ay-ivory)]/45 sm:flex-row sm:px-8">
+          <p>
+            © {new Date().getFullYear()} {SITE.name}. All rights reserved. · Powered by AMP Technology
+          </p>
+          <p>{PRODUCTS.length} sacred categories · Made with devotion in India</p>
+        </div>
       </div>
     </footer>
   );
