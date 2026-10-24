@@ -17,7 +17,13 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("login-token")?.value;
 
-  if (pathname === "/" || pathname === "/store") {
+  // "/" ekhon public landing page: kono redirect nei, sobai dekhte parbe
+  if (pathname === "/") {
+    return NextResponse.next();
+  }
+
+  // "/store" ager moto login e redirect hobe (public korte chaile ei block ta delete koro)
+  if (pathname === "/store") {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 

@@ -352,7 +352,7 @@ export default function LoginPage() {
           <div className="relative z-10">
             <div className="flex items-center gap-3">
               <img
-                src="/img/photos/amp-logo.png"
+                src="/img/photos/ayendri-logo.png"
                 alt="Logo"
                 className="h-11 w-11 rounded-xl object-contain bg-white p-1 shadow-lg"
               />
@@ -404,7 +404,7 @@ export default function LoginPage() {
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center justify-center gap-2 mb-5">
             <img
-              src="/img/photos/amp-logo.png"
+              src="/img/photos/ayendri-logo.png"
               alt="Logo"
               className="h-10 w-10 rounded-xl object-contain shadow-md"
               style={{ border: `1px solid ${ORANGE_BORDER}` }}

@@ -423,3 +423,123 @@ body {
   .jd-simple-card { padding: 18px; border-radius: 16px; }
   .jd-simple-image { height: 180px; }
 }
+
+/* ================= AYENDRI-style landing (scoped) ================= */
+.ay-landing {
+  --ay-background: oklch(0.975 0.013 85);
+  --ay-foreground: oklch(0.28 0.045 40);
+  --ay-card: oklch(0.995 0.006 90);
+  --ay-primary: oklch(0.645 0.185 48);
+  --ay-primary-fg: oklch(0.98 0.012 85);
+  --ay-muted-fg: oklch(0.51 0.035 55);
+  --ay-border: oklch(0.89 0.02 82);
+  --ay-ivory: oklch(0.975 0.013 85);
+  --ay-deep: oklch(0.25 0.05 38);
+  --ay-gold: oklch(0.78 0.115 85);
+  --ay-gold-soft: oklch(0.86 0.08 88);
+  --ay-ember: oklch(0.55 0.19 35);
+
+  background: var(--ay-background);
+  color: var(--ay-foreground);
+  font-family: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+.ay-landing .ay-display { font-family: "Marcellus", Georgia, serif; font-weight: 400; }
+
+.ay-landing .ay-eyebrow {
+  display: inline-flex; align-items: center; gap: .75rem;
+  font-size: .75rem; font-weight: 700; letter-spacing: .28em; text-transform: uppercase;
+}
+.ay-landing .ay-eyebrow::before {
+  content: ""; display: inline-block; height: 1px; width: 2.25rem;
+  background: currentColor; opacity: .6;
+}
+
+.ay-landing .ay-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: .625rem;
+  border-radius: 9999px; font-weight: 700; letter-spacing: .01em; white-space: nowrap;
+  cursor: pointer; border: 1px solid transparent; text-decoration: none;
+  padding: .95rem 1.9rem; font-size: .95rem;
+  transition: transform 300ms cubic-bezier(.22,1,.36,1), box-shadow 300ms cubic-bezier(.22,1,.36,1),
+              background-color 300ms ease, border-color 300ms ease, color 300ms ease;
+}
+.ay-landing .ay-btn:active { transform: scale(.97); }
+.ay-landing .ay-btn:focus-visible { outline: 2px solid var(--ay-primary); outline-offset: 3px; }
+.ay-landing .ay-btn-sm { padding: .6rem 1.25rem; font-size: .85rem; }
+
+.ay-landing .ay-btn-hero {
+  position: relative; overflow: hidden;
+  background: var(--ay-primary); color: var(--ay-primary-fg);
+  box-shadow: 0 14px 34px -14px color-mix(in oklab, var(--ay-primary) 60%, transparent);
+}
+.ay-landing .ay-btn-hero::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(105deg, transparent 40%,
+    color-mix(in oklab, var(--ay-gold-soft) 55%, transparent) 50%, transparent 60%);
+  transform: translateX(-130%); transition: transform 750ms ease;
+}
+.ay-landing .ay-btn-hero:hover { background: var(--ay-ember); transform: translateY(-2px); }
+.ay-landing .ay-btn-hero:hover::after { transform: translateX(130%); }
+
+.ay-landing .ay-btn-outline-light {
+  background: transparent; color: var(--ay-ivory);
+  border-color: color-mix(in oklab, var(--ay-ivory) 45%, transparent);
+  backdrop-filter: blur(6px);
+}
+.ay-landing .ay-btn-outline-light:hover {
+  background: color-mix(in oklab, var(--ay-ivory) 12%, transparent);
+  border-color: var(--ay-ivory); transform: translateY(-2px);
+}
+.ay-landing .ay-btn-outline-dark {
+  background: transparent; color: var(--ay-foreground); border-color: var(--ay-border);
+}
+.ay-landing .ay-btn-outline-dark:hover {
+  border-color: var(--ay-primary); color: var(--ay-primary);
+  background: color-mix(in oklab, var(--ay-primary) 6%, transparent); transform: translateY(-2px);
+}
+
+.ay-landing .ay-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.ay-landing .ay-no-scrollbar::-webkit-scrollbar { display: none; }
+
+@keyframes ay-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+@keyframes ay-scroll-cue { 0%,100% { transform: translateY(0); opacity: .9; } 50% { transform: translateY(8px); opacity: .4; } }
+.ay-landing .ay-float { animation: ay-float 7s ease-in-out infinite; }
+.ay-landing .ay-scroll-cue { animation: ay-scroll-cue 2.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ay-landing .ay-float, .ay-landing .ay-scroll-cue { animation: none; }
+  .ay-landing { scroll-behavior: auto; }
+}
+
+@keyframes ay-glow-pulse {
+  0%, 100% { opacity: .45; }
+  50% { opacity: .8; }
+}
+.ay-landing .ay-glow-pulse { animation: ay-glow-pulse 8s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ay-landing .ay-glow-pulse { animation: none; }
+}
+
+/* Neutralise AdminKit (app.css) heading/paragraph/link styles inside the landing page only */
+.ay-landing.ay-landing :is(h1, h2, h3, h4, h5, h6, p) {
+  margin: revert-layer;
+  font-size: revert-layer;
+  font-weight: revert-layer;
+  line-height: revert-layer;
+  letter-spacing: revert-layer;
+  text-transform: revert-layer;
+  color: revert-layer;
+}
+.ay-landing.ay-landing a:not(.ay-btn) {
+  color: revert-layer;
+  text-decoration: revert-layer;
+}
+.ay-landing.ay-landing a:not(.ay-btn):hover {
+  color: revert-layer;
+  text-decoration: revert-layer;
+}
+.ay-landing.ay-landing .ay-btn {
+  text-decoration: none;
+}
