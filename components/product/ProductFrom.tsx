@@ -1469,12 +1469,13 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   const [madeForProduct, setMadeForProduct] = useState(false); // shudhu BOTH type e user choose kore
   const [editStockManaged, setEditStockManaged] = useState(true);
   const [productType, setProductType] = useState<ProductType>("PRODUCT");
+  const [fastestDelivery, setFastestDelivery] = useState(false);
   const [policy, setPolicy] = useState<PolicyState>(DEFAULT_POLICY);
 
   const handleTypeChange = (t: ProductType) => {
     setProductType(t);
     if (t === "SERVICE") {
-      // service e return / replace nei
+      setFastestDelivery(false);
       setPolicy((p) => ({
         ...p,
         isReturnable: false,
@@ -1944,6 +1945,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       setValue("hsnCode" as any, (product.hsnCode || "") as any);
 
       setProductType(product.productType === "SERVICE" ? "SERVICE" : "PRODUCT");
+      setFastestDelivery(product.fastestDelivery === true);
       setPolicy({
         isReturnable: product.isReturnable === true,
         returnDays: product.returnDays ?? null,
@@ -2283,6 +2285,10 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       formData.append("unit", data.unit || "");
       formData.append("hasColor", String(hasColor));
       appendPolicyFields(formData, productType, policy);
+      formData.append(
+        "fastestDelivery",
+        String(productType !== "SERVICE" && fastestDelivery),
+      );
 
       if (!isEditMode) {
         formData.append(
@@ -2685,6 +2691,26 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
           onTypeChange={handleTypeChange}
           onPolicyChange={(patch) => setPolicy((p) => ({ ...p, ...patch }))}
         />
+
+        {productType !== "SERVICE" && (
+          <div className="flex items-center justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50/50 p-2.5">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                <i className="pi pi-bolt text-orange-500"></i>
+                Fastest delivery
+              </p>
+              <p className="text-xs text-gray-500">
+                Turn on to show the time and charge of the fastest Shiprocket
+                courier for this product. The shipping charge may be higher.
+                When off, the normal delivery estimate is shown.
+              </p>
+            </div>
+            <InputSwitch
+              checked={fastestDelivery}
+              onChange={(e) => setFastestDelivery(!!e.value)}
+            />
+          </div>
+        )}
 
         {/* VARIANT TOGGLES — independent */}
         <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-2.5 space-y-2.5">

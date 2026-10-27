@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import axios from "axios";
 import axiosInstance from "@/service/axios.service";
 import { ToastContainer, toast } from "react-toastify";
@@ -71,6 +77,7 @@ type ProductRow = {
   createdAt?: string;
   store?: { _id?: string; storeName?: string; storeUniqueId?: string };
   category?: { _id?: string; name?: string };
+  fastestDelivery?: boolean;
 };
 
 type MediaItem = { url: string; label?: string };
@@ -209,8 +216,7 @@ const gstOf = (g?: Gst | null) =>
 const hasGst = (p: ProductRow) =>
   !!gstOf(p.gst) ||
   (p.variants || []).some(
-    (v) =>
-      !!gstOf(v.gst) || (v.sizeVariants || []).some((s) => !!gstOf(s.gst)),
+    (v) => !!gstOf(v.gst) || (v.sizeVariants || []).some((s) => !!gstOf(s.gst)),
   );
 
 const tierRangeLabel = (t: PriceTier) =>
@@ -409,7 +415,13 @@ function PriceBlock({ p }: { p: ProductRow }) {
   );
 }
 
-const EmptyState = ({ searching, term }: { searching: boolean; term: string }) => (
+const EmptyState = ({
+  searching,
+  term,
+}: {
+  searching: boolean;
+  term: string;
+}) => (
   <div className="flex flex-col items-center justify-center text-center py-12">
     <div className="text-6xl mb-4">{searching ? "🔍" : "📦"}</div>
     <h2 className="text-xl font-semibold text-gray-700">
@@ -458,6 +470,10 @@ function PreviewBody({
         : "-",
     },
     { label: "HSN", value: product.hsnCode || "-" },
+    {
+      label: "Delivery",
+      value: product.fastestDelivery ? "⚡ Fastest courier" : "Standard",
+    },
     { label: "Stock", value: <StockBadge p={product} /> },
     { label: "Status", value: <StatusBadges p={product} /> },
     { label: "Created", value: formatDate(product.createdAt || "") },
@@ -800,14 +816,19 @@ function Page() {
     const gstBadge = hasGst(row) ? (
       <Badge className="bg-green-100 text-green-800">GST</Badge>
     ) : null;
+    // [FAST] badge
+    const fastBadge = row.fastestDelivery ? (
+      <Badge className="bg-orange-100 text-orange-800">⚡ Fast</Badge>
+    ) : null;
 
     if (!colors && !sizes) {
-      if (!bulk && !gstBadge)
+      if (!bulk && !gstBadge && !fastBadge)
         return <span className="text-xs text-gray-400">Simple</span>;
       return (
         <div className="flex flex-wrap gap-1">
           {bulk}
           {gstBadge}
+          {fastBadge}
         </div>
       );
     }
@@ -825,6 +846,7 @@ function Page() {
         )}
         {bulk}
         {gstBadge}
+        {fastBadge}
       </div>
     );
   };
@@ -1109,6 +1131,12 @@ function Page() {
                         {hasGst(p) && (
                           <Badge className="bg-green-100 text-green-800">
                             GST{p.gstInclusive ? " incl." : ""}
+                          </Badge>
+                        )}
+                        {/* [FAST] */}
+                        {p.fastestDelivery && (
+                          <Badge className="bg-orange-100 text-orange-800">
+                            ⚡ Fastest delivery
                           </Badge>
                         )}
                         {p.isMadeForProduct && (
