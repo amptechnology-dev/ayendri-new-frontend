@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState,useCallback } from "react";
+import React, {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useCallback,
+} from "react";
 import axios from "axios";
 import { useParams, useRouter } from "next/navigation";
 import axiosInstance from "@/service/axios.service";
@@ -36,6 +42,7 @@ import DeliveryDateDialog, {
 // [DELIVERY] order place er somoy er estimate dekhano
 import { formatEstimateRange, getEtaLabel } from "@/helper/delivery";
 import ShipmentCard from "@/components/orders/ShipmentCard";
+import DeliverySpeedCard from "@/components/orders/DeliverySpeedCard";
 
 const WORKER_ENDPOINT = "/api/worker/all-workers";
 
@@ -612,7 +619,7 @@ function CourierDetailsCard({ order }: { order: OrderRow }) {
         </div>
       )}
 
-      {/* shipment nei */}
+            {/* shipment nei */}
       {!s && d && (
         <>
           <div
@@ -628,14 +635,32 @@ function CourierDetailsCard({ order }: { order: OrderRow }) {
               : "Shipment is not created yet. Confirm the order, then create the courier shipment."}
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <InfoTile label="Quoted courier">{d.courierName || "-"}</InfoTile>
+            <InfoTile label="Selected courier">{d.courierName || "-"}</InfoTile>
             <InfoTile label="Courier rate">
               {d.courierRate != null ? money(d.courierRate) : "-"}
             </InfoTile>
-            <InfoTile label="Rate based on">
-              {d.chargeableWeightKg != null
-                ? `${d.chargeableWeightKg} kg`
+            <InfoTile label="Transport">
+              {d.courierMode === "AIR"
+                ? "Air"
+                : d.courierMode === "SURFACE"
+                  ? "Surface"
+                  : "-"}
+            </InfoTile>
+            <InfoTile label="Courier ETA">
+              {d.courierEtaDays != null ? `~${d.courierEtaDays} day(s)` : "-"}
+            </InfoTile>
+            <InfoTile label="Requested speed">
+              {d.requestedMaxDays != null
+                ? d.requestedMaxDays === 0
+                  ? "Same day"
+                  : `Within ${d.requestedMaxDays} day(s)`
                 : "-"}
+            </InfoTile>
+            <InfoTile label="Selected by">
+              {d.courierSelectedBy === "STORE" ? "Store (manual)" : "Auto"}
+            </InfoTile>
+            <InfoTile label="Rate based on">
+              {d.chargeableWeightKg != null ? `${d.chargeableWeightKg} kg` : "-"}
             </InfoTile>
             <InfoTile label="Estimate source">
               {d.source === "SHIPROCKET" ? "Live courier rate" : "Store backup"}
@@ -1090,11 +1115,7 @@ function OrderRequestsCard({
       setError("Reason is required (at least 3 characters)");
       return;
     }
-    if (
-      dialog.mode === "COMPLETE" &&
-      row.type === "REFUND" &&
-      !refNo.trim()
-    ) {
+    if (dialog.mode === "COMPLETE" && row.type === "REFUND" && !refNo.trim()) {
       setError("Payment reference (UTR / transaction ID) is required");
       return;
     }
@@ -1159,8 +1180,12 @@ function OrderRequestsCard({
                 )}
                 {r.bankDetails?.accountNumber && (
                   <>
-                    <KV label="Account holder">{r.bankDetails.accountHolder}</KV>
-                    <KV label="Account number">{r.bankDetails.accountNumber}</KV>
+                    <KV label="Account holder">
+                      {r.bankDetails.accountHolder}
+                    </KV>
+                    <KV label="Account number">
+                      {r.bankDetails.accountNumber}
+                    </KV>
                     <KV label="IFSC">{r.bankDetails.ifsc}</KV>
                     {r.bankDetails.bankName && (
                       <KV label="Bank">{r.bankDetails.bankName}</KV>
@@ -1171,9 +1196,7 @@ function OrderRequestsCard({
             )}
 
             {r.storeNote && (
-              <p className="text-xs text-gray-500">
-                Store note: {r.storeNote}
-              </p>
+              <p className="text-xs text-gray-500">Store note: {r.storeNote}</p>
             )}
             {r.status === "COMPLETED" && (
               <p className="text-xs text-green-700">
@@ -1205,7 +1228,9 @@ function OrderRequestsCard({
             {r.status === "APPROVED" && (
               <Button
                 label={
-                  r.type === "REFUND" ? "Mark refund as paid" : "Mark as completed"
+                  r.type === "REFUND"
+                    ? "Mark refund as paid"
+                    : "Mark as completed"
                 }
                 icon="pi pi-check-circle"
                 size="small"
@@ -1899,6 +1924,14 @@ function OrderDetailsPage() {
             {order.deliveryEnabled !== false && (
               <div className="space-y-4">
                 <OrderRequestsCard order={order} onChanged={getOrderDetails} />
+
+                <DeliverySpeedCard
+                  order={order}
+                  onUpdated={(o) =>
+                    setOrder((prev) => (prev ? { ...prev, ...o } : prev))
+                  }
+                />
+
                 <ShipmentCard
                   order={order}
                   onUpdated={(o) =>
@@ -1907,7 +1940,6 @@ function OrderDetailsPage() {
                 />
                 <CourierDetailsCard order={order} />
               </div>
-              
             )}
 
             {/* Packaging + Address side by side */}

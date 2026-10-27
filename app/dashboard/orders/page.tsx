@@ -121,15 +121,33 @@ const deliveryCell = (row: OrderRow) => {
   return estimate || row.deliveryInfo?.etaLabel || "-";
 };
 
+// [নতুন] courier + Air/Surface + ETA + "chosen" dekhay
 const courierCell = (row: OrderRow) => {
   const s = row.shipment;
+  const d: any = row.deliveryInfo;
+  const modeLabel =
+    d?.courierMode === "AIR"
+      ? "Air"
+      : d?.courierMode === "SURFACE"
+        ? "Surface"
+        : null;
+
   if (!s?.awb) {
-    return row.deliveryInfo?.courierName ? (
-      <span className="text-xs text-gray-400">
-        {row.deliveryInfo.courierName} (not shipped)
-      </span>
-    ) : (
-      "-"
+    if (!d?.courierName) return "-";
+    const bits = [
+      modeLabel,
+      d.courierEtaDays != null ? `~${d.courierEtaDays}d` : null,
+    ].filter(Boolean);
+    return (
+      <div>
+        <p className="text-xs text-gray-500">{d.courierName} (not shipped)</p>
+        {(bits.length > 0 || d.courierSelectedBy === "STORE") && (
+          <p className="text-[11px] text-gray-400">
+            {bits.join(" • ")}
+            {d.courierSelectedBy === "STORE" ? " • chosen" : ""}
+          </p>
+        )}
+      </div>
     );
   }
   return (
@@ -138,6 +156,7 @@ const courierCell = (row: OrderRow) => {
         {s.courierName || "Courier"}
       </p>
       <p className="text-[11px] text-gray-500">{s.awb}</p>
+      {modeLabel && <p className="text-[11px] text-gray-500">{modeLabel}</p>}
       {s.status && <p className="text-[11px] text-indigo-700">{s.status}</p>}
     </div>
   );
@@ -444,6 +463,19 @@ function OrdersPage() {
         icon: "pi pi-calendar",
         command: () =>
           setDateDialog({ visible: true, order: rowData, mode: "edit" }),
+      });
+    }
+
+    // [নতুন] courier / delivery speed bachte details page e niye jay
+    if (
+      (rowData.deliveryInfo as any)?.mode === "NATIONAL" &&
+      ["PENDING", "CONFIRMED"].includes(rowData.status) &&
+      !rowData.shipment?.awb
+    ) {
+      items.unshift({
+        label: "Choose courier / speed",
+        icon: "pi pi-bolt",
+        command: () => goToDetails(rowData._id),
       });
     }
 

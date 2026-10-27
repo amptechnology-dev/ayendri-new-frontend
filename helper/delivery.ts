@@ -24,6 +24,10 @@ export type DeliveryInfo = {
   pincode?: string | null;
   courierEtaDays?: number | null;
   chargeableWeightKg?: number | null;
+  courierMode?: "AIR" | "SURFACE" | null;
+  requestedMaxDays?: number | null;
+  requestedMode?: "ANY" | "AIR" | "SURFACE";
+  courierSelectedBy?: "AUTO" | "STORE";
 };
 
 export type ShipmentEvent = {
