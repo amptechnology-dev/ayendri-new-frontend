@@ -206,7 +206,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                 icon: "pi-mobile",
                 href: "/dashboard/app-releases",
               },
-               {
+              {
                 label: "Terms & Conditions",
                 icon: "pi-file-edit",
                 href: "/dashboard/terms-conditions",
@@ -269,12 +269,19 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                 icon: "pi-replay",
                 href: "/dashboard/requests",
               },
+              // delivery off hole Delivery + Shipping Cost dutoi hide hobe
               ...(deliveryEnabled
                 ? [
                     {
                       label: "Delivery",
                       icon: "pi-truck",
                       href: "/dashboard/delivery",
+                    },
+                    // [SHIPPING COST] courier cost / store bears report
+                    {
+                      label: "Shipping Cost",
+                      icon: "pi-calculator",
+                      href: "/dashboard/shipping-cost",
                     },
                   ]
                 : []),

@@ -413,6 +413,26 @@ const optionalCharge = zod.preprocess(
     .optional(),
 );
 
+const chargeRuleSchema = zod.object({
+  minOrderValue: zod
+    .number({ message: "Enter minimum order value" })
+    .min(1, "Minimum order value must be at least ₹1")
+    .max(10000000, "Value is too large"),
+  charge: zod
+    .number({ message: "Enter delivery charge" })
+    .min(0, "Charge cannot be negative")
+    .max(100000, "Charge is too large"),
+});
+
+const chargeRulesSchema = zod
+  .array(chargeRuleSchema)
+  .max(10, "Maximum 10 rules allowed")
+  .refine(
+    (rules) => new Set(rules.map((r) => r.minOrderValue)).size === rules.length,
+    { message: "Two rules cannot have the same order value" },
+  )
+  .default([]);
+
 export const deliverySettingsSchema = zod
   .object({
     storeId: zod.string().min(1, "Store is required"),
@@ -434,7 +454,13 @@ export const deliverySettingsSchema = zod
     localSlabs: zod.array(slabItemSchema).max(20, "Too many slabs").default([]),
 
     // order value rules
-    chargeRules: zod.array(ruleItemSchema).max(20, "Too many rules").default([]),
+    chargeRules: zod
+      .array(ruleItemSchema)
+      .max(20, "Too many rules")
+      .default([]),
+
+    productChargeRules: chargeRulesSchema,
+    serviceChargeRules: chargeRulesSchema,
 
     // national
     nationalMinDays: optionalDays(60),

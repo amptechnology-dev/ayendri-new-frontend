@@ -22,7 +22,11 @@ export type DeliverySettings = {
   localSlabs?: LocalSlab[];
   localDeliveryDays?: number;
   localDeliveryCharge?: number;
+  // purono field (notun save e khali). Notun rule na thakle eta-i duto type er fallback
   chargeRules?: ChargeRule[];
+  // [NEW] product / service alada rule
+  productChargeRules?: ChargeRule[];
+  serviceChargeRules?: ChargeRule[];
   nationalMinDays: number;
   nationalMaxDays: number;
   nationalFallbackCharge?: number;
@@ -42,7 +46,9 @@ export type SaveDeliveryPayload = {
   pincode: string;
   radiusKm?: number;
   localSlabs?: LocalSlab[];
-  chargeRules?: ChargeRule[];
+  // [NEW]
+  productChargeRules?: ChargeRule[];
+  serviceChargeRules?: ChargeRule[];
   nationalMinDays?: number;
   nationalMaxDays?: number;
   nationalFallbackCharge?: number;
@@ -61,12 +67,18 @@ export type PincodeInfo = {
   state?: string;
 };
 
+export type ProductType = "PRODUCT" | "SERVICE";
+
 export type DeliveryCheckResult = {
   success: boolean;
   deliverable: boolean;
   configured: boolean;
   message: string | null;
+  productType?: ProductType; // [NEW]
   delivery: DeliveryInfo | null;
+  isFree?: boolean; // [NEW]
+  freeDeliveryAbove?: number | null; // [NEW] ei product type er free threshold
+  freeDeliveryRules?: { PRODUCT: number | null; SERVICE: number | null } | null; // [NEW]
   payment?: {
     paymentMode: "BOTH" | "ONLINE_ONLY" | "OFF";
     codAvailable: boolean;
@@ -96,6 +108,7 @@ export const checkDelivery = (
     variantId?: string | null;
     quantity?: number;
     cod?: boolean;
+    productType?: ProductType; // [NEW]
   },
 ) =>
   axiosInstance.get("/api/delivery/check", {
@@ -110,5 +123,45 @@ export const checkDelivery = (
       ...(opts?.variantId ? { variantId: opts.variantId } : {}),
       ...(opts?.quantity ? { quantity: opts.quantity } : {}),
       ...(opts?.cod ? { cod: 1 } : {}),
+      ...(opts?.productType ? { productType: opts.productType } : {}),
     },
   });
+
+// ===================== [NEW] SHIPPING COST REPORT (STORE) =====================
+export type ShippingCostRow = {
+  orderId: string;
+  orderNumber: string;
+  createdAt: string;
+  storeName?: string;
+  status: string;
+  paymentMethod: string;
+  courierName: string | null;
+  courierMode: "AIR" | "SURFACE" | null;
+  awb: string | null;
+  shipmentStatus: string | null;
+  booked: boolean;
+  courierCost: number;
+  customerPaid: number;
+  freeForCustomer: boolean;
+  storeBears: number;
+  note: string | null;
+};
+
+export type ShippingCostSummary = {
+  orders: number;
+  courierCost: number;
+  customerPaid: number;
+  storeBears: number;
+  freeOrders: number;
+  booked: { orders: number; courierCost: number; storeBears: number };
+  pending: { orders: number; courierCost: number; storeBears: number };
+};
+
+export const getShippingCostReport = (params?: {
+  storeId?: string;
+  from?: string;
+  to?: string;
+  booked?: "true" | "false";
+  page?: number;
+  limit?: number;
+}) => axiosInstance.get("/api/delivery/shipping-cost", { params });

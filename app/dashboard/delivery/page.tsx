@@ -19,6 +19,8 @@ import {
   DeliveryCheckResult,
   PincodeInfo,
   SaveDeliveryPayload,
+  ChargeRule,
+  ProductType,
   getDeliverySettings,
   saveDeliverySettings,
   getServicePincodes,
@@ -61,7 +63,8 @@ type FormState = {
   pincode: string;
   radiusKm: number | null;
   slabs: SlabForm[];
-  rules: RuleForm[];
+  productRules: RuleForm[]; // [NEW] product order er jonno order value rule
+  serviceRules: RuleForm[]; // [NEW] service order er jonno order value rule
   nationalMinDays: number | null;
   nationalMaxDays: number | null;
   nationalFallbackCharge: number | null;
@@ -71,6 +74,8 @@ type FormState = {
   handlingValue: number | null;
   handlingUnit: DurationUnit;
 };
+
+type RuleKind = "productRules" | "serviceRules";
 
 const UNIT_OPTIONS: { value: DurationUnit; label: string }[] = [
   { value: "MINUTES", label: "Minutes" },
@@ -104,7 +109,8 @@ const makeDefaultForm = (): FormState => ({
   pincode: "",
   radiusKm: 20,
   slabs: [newSlab(20)],
-  rules: [],
+  productRules: [],
+  serviceRules: [],
   nationalMinDays: 4,
   nationalMaxDays: 7,
   nationalFallbackCharge: 0,
@@ -299,6 +305,90 @@ function DaysInput({
   );
 }
 
+// ---------- [NEW] order value rule section (product / service alada) ----------
+function RuleSection({
+  icon,
+  title,
+  hint,
+  rules,
+  errorPrefix,
+  errors,
+  onAdd,
+  onUpdate,
+  onRemove,
+}: {
+  icon: string;
+  title: string;
+  hint: string;
+  rules: RuleForm[];
+  errorPrefix: string; // "productChargeRules" | "serviceChargeRules"
+  errors: Record<string, string>;
+  onAdd: () => void;
+  onUpdate: (id: string, patch: Partial<RuleForm>) => void;
+  onRemove: (id: string) => void;
+}) {
+  return (
+    <div className="border border-blue-100 rounded-lg p-3">
+      <p className="text-sm font-semibold text-gray-700 mb-1">
+        <i className={`pi ${icon} text-blue-600 mr-1.5`}></i>
+        {title}
+      </p>
+      <p className="text-xs text-gray-500 mb-2">{hint}</p>
+
+      <div className="space-y-2">
+        {rules.map((r, i) => (
+          <div
+            key={r.id}
+            className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-start"
+          >
+            <div className="sm:col-span-5">
+              <label className="text-[11px] font-semibold text-gray-500 block mb-0.5">
+                If order is at least
+              </label>
+              <MoneyInput
+                value={r.minOrderValue}
+                onChange={(v) => onUpdate(r.id, { minOrderValue: v })}
+                error={errors[`${errorPrefix}.${i}.minOrderValue`]}
+              />
+            </div>
+            <div className="sm:col-span-5">
+              <label className="text-[11px] font-semibold text-gray-500 block mb-0.5">
+                Delivery charge becomes
+              </label>
+              <MoneyInput
+                value={r.charge}
+                onChange={(v) => onUpdate(r.id, { charge: v })}
+                error={errors[`${errorPrefix}.${i}.charge`]}
+              />
+            </div>
+            <div className="sm:col-span-2 flex sm:pt-5">
+              <Button
+                icon="pi pi-trash"
+                text
+                severity="danger"
+                size="small"
+                onClick={() => onRemove(r.id)}
+                aria-label="Remove rule"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <FieldError msg={errors[errorPrefix]} />
+
+      <Button
+        label="Add rule"
+        icon="pi pi-plus"
+        outlined
+        size="small"
+        className="mt-2"
+        onClick={onAdd}
+      />
+    </div>
+  );
+}
+
 function DeliveryPage() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [storesLoading, setStoresLoading] = useState(true);
@@ -341,6 +431,7 @@ function DeliveryPage() {
   const [testPin, setTestPin] = useState("");
   const [testCountry, setTestCountry] = useState("India");
   const [testValue, setTestValue] = useState<number | null>(null);
+  const [testType, setTestType] = useState<ProductType>("PRODUCT"); // [NEW]
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<DeliveryCheckResult | null>(null);
 
@@ -409,6 +500,18 @@ function DeliveryPage() {
               },
             ];
 
+      // [NEW] purono setting e sudhu chargeRules thakle duto type-ei oi rule dekhai
+      const toRules = (list?: ChargeRule[]): RuleForm[] =>
+        (list || []).map((r) => ({
+          id: uid(),
+          minOrderValue: r.minOrderValue,
+          charge: r.charge,
+        }));
+      const hasNewRules =
+        (s.productChargeRules?.length || 0) +
+          (s.serviceChargeRules?.length || 0) >
+        0;
+
       setForm({
         local: s.deliveryType !== "NATIONAL",
         outside: s.deliveryType !== "LOCAL",
@@ -416,11 +519,12 @@ function DeliveryPage() {
         pincode: s.pincode,
         radiusKm: s.radiusKm ?? 20,
         slabs,
-        rules: (s.chargeRules || []).map((r) => ({
-          id: uid(),
-          minOrderValue: r.minOrderValue,
-          charge: r.charge,
-        })),
+        productRules: toRules(
+          hasNewRules ? s.productChargeRules : s.chargeRules,
+        ),
+        serviceRules: toRules(
+          hasNewRules ? s.serviceChargeRules : s.chargeRules,
+        ),
         nationalMinDays: s.nationalMinDays ?? 4,
         nationalMaxDays: s.nationalMaxDays ?? 7,
         nationalFallbackCharge: s.nationalFallbackCharge ?? 0,
@@ -526,18 +630,20 @@ function DeliveryPage() {
     setErrors({});
   };
 
-  const updateRule = (id: string, patch: Partial<RuleForm>) => {
+  // [NEW] product / service rule handlers
+  const updateRule = (kind: RuleKind, id: string, patch: Partial<RuleForm>) => {
     setForm((p) => ({
       ...p,
-      rules: p.rules.map((r) => (r.id === id ? { ...r, ...patch } : r)),
+      [kind]: p[kind].map((r) => (r.id === id ? { ...r, ...patch } : r)),
     }));
     setErrors({});
   };
 
-  const addRule = () => setForm((p) => ({ ...p, rules: [...p.rules, newRule()] }));
+  const addRule = (kind: RuleKind) =>
+    setForm((p) => ({ ...p, [kind]: [...p[kind], newRule()] }));
 
-  const removeRule = (id: string) => {
-    setForm((p) => ({ ...p, rules: p.rules.filter((r) => r.id !== id) }));
+  const removeRule = (kind: RuleKind, id: string) => {
+    setForm((p) => ({ ...p, [kind]: p[kind].filter((r) => r.id !== id) }));
     setErrors({});
   };
 
@@ -566,7 +672,8 @@ function DeliveryPage() {
       // local OFF hole hidden radius / slab validate korbo na
       radiusKm: form.local ? form.radiusKm : undefined,
       localSlabs: form.local ? form.slabs.map(({ id, ...rest }) => rest) : [],
-      chargeRules: form.rules.map(({ id, ...rest }) => rest),
+      productChargeRules: form.productRules.map(({ id, ...rest }) => rest),
+      serviceChargeRules: form.serviceRules.map(({ id, ...rest }) => rest),
       nationalMinDays: form.nationalMinDays,
       nationalMaxDays: form.nationalMaxDays,
       nationalFallbackCharge: form.nationalFallbackCharge,
@@ -610,7 +717,8 @@ function DeliveryPage() {
       pincode: d.pincode,
       handlingValue: d.handlingValue,
       handlingUnit: d.handlingUnit,
-      chargeRules: d.chargeRules,
+      productChargeRules: d.productChargeRules,
+      serviceChargeRules: d.serviceChargeRules,
       ...(local
         ? { radiusKm: d.radiusKm, localSlabs: d.localSlabs }
         : {}),
@@ -709,6 +817,7 @@ function DeliveryPage() {
       setTestResult(null);
       const res = await checkDelivery(selectedStore.storeUniqueId, pin, {
         country: testCountry.trim() || "India",
+        productType: testType,
         ...(testValue !== null ? { itemsTotal: testValue } : {}),
       });
       setTestResult(res.data);
@@ -735,9 +844,13 @@ function DeliveryPage() {
       };
     });
 
-  const rulePreview = [...form.rules]
-    .filter((r) => r.minOrderValue !== null)
-    .sort((a, b) => (a.minOrderValue ?? 0) - (b.minOrderValue ?? 0));
+  const sortRules = (list: RuleForm[]) =>
+    [...list]
+      .filter((r) => r.minOrderValue !== null)
+      .sort((a, b) => (a.minOrderValue ?? 0) - (b.minOrderValue ?? 0));
+
+  const productRulePreview = sortRules(form.productRules);
+  const serviceRulePreview = sortRules(form.serviceRules);
 
   const nationalLabel = formatDurationLabel(
     handlingMin + (form.nationalMinDays ?? 0) * 1440,
@@ -1053,75 +1166,38 @@ function DeliveryPage() {
                 </div>
               )}
 
-              {/* Order value rules */}
-              <div className="border border-blue-100 rounded-lg p-3">
-                <p className="text-sm font-semibold text-gray-700 mb-1">
-                  <i className="pi pi-tag text-blue-600 mr-1.5"></i>
-                  Charge by order value
-                </p>
-                <p className="text-xs text-gray-500 mb-2">
-                  Change the delivery charge when the order is big enough. Use ₹0
-                  for free delivery. The highest matching rule is used and the
-                  customer sees it before paying.
-                </p>
+              {/* [NEW] Order value rules: product / service alada */}
+              <RuleSection
+                icon="pi-box"
+                title="Free / cheaper delivery for PRODUCTS"
+                hint="When a product order value (price × quantity) reaches this amount, the delivery charge changes. Use ₹0 for free delivery. The highest matching rule is used."
+                rules={form.productRules}
+                errorPrefix="productChargeRules"
+                errors={errors}
+                onAdd={() => addRule("productRules")}
+                onUpdate={(id, patch) => updateRule("productRules", id, patch)}
+                onRemove={(id) => removeRule("productRules", id)}
+              />
 
-                <div className="space-y-2">
-                  {form.rules.map((r, i) => (
-                    <div
-                      key={r.id}
-                      className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-start"
-                    >
-                      <div className="sm:col-span-5">
-                        <label className="text-[11px] font-semibold text-gray-500 block mb-0.5">
-                          If order is at least
-                        </label>
-                        <MoneyInput
-                          value={r.minOrderValue}
-                          onChange={(v) => updateRule(r.id, { minOrderValue: v })}
-                          error={errors[`chargeRules.${i}.minOrderValue`]}
-                        />
-                      </div>
-                      <div className="sm:col-span-5">
-                        <label className="text-[11px] font-semibold text-gray-500 block mb-0.5">
-                          Delivery charge becomes
-                        </label>
-                        <MoneyInput
-                          value={r.charge}
-                          onChange={(v) => updateRule(r.id, { charge: v })}
-                          error={errors[`chargeRules.${i}.charge`]}
-                        />
-                      </div>
-                      <div className="sm:col-span-2 flex sm:pt-5">
-                        <Button
-                          icon="pi pi-trash"
-                          text
-                          severity="danger"
-                          size="small"
-                          onClick={() => removeRule(r.id)}
-                          aria-label="Remove rule"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
+              <RuleSection
+                icon="pi-calendar"
+                title="Free / cheaper delivery for SERVICES"
+                hint="Separate rule for service orders. Example: products free above ₹500, services free above ₹600."
+                rules={form.serviceRules}
+                errorPrefix="serviceChargeRules"
+                errors={errors}
+                onAdd={() => addRule("serviceRules")}
+                onUpdate={(id, patch) => updateRule("serviceRules", id, patch)}
+                onRemove={(id) => removeRule("serviceRules", id)}
+              />
 
-                <FieldError msg={errors.chargeRules} />
-
-                <Button
-                  label="Add rule"
-                  icon="pi pi-plus"
-                  outlined
-                  size="small"
-                  className="mt-2"
-                  onClick={addRule}
-                />
-                <p className="text-[11px] text-gray-400 mt-2">
-                  Applies to your own delivery and courier delivery. If you give
-                  free or cheaper courier delivery, the extra courier cost is
-                  taken from your payout. International orders always pay the
-                  courier rate.
-                </p>
-              </div>
+              <p className="text-[11px] text-gray-400 -mt-1">
+                These rules apply to your own delivery and courier delivery. If
+                you give free or cheaper courier delivery, the extra courier cost
+                is taken from your payout. International orders always pay the
+                courier rate. If a cart has both products and services, delivery
+                is free only when both types meet their rule.
+              </p>
 
               {/* National */}
               {/* {form.outside && (
@@ -1346,12 +1422,20 @@ function DeliveryPage() {
                     </div>
                   )}
 
-                  {rulePreview.length > 0 && (
+                  {(productRulePreview.length > 0 ||
+                    serviceRulePreview.length > 0) && (
                     <div className="border-t border-gray-100 pt-2 space-y-1">
-                      {rulePreview.map((r) => (
+                      {productRulePreview.map((r) => (
                         <p key={r.id} className="text-xs text-gray-600">
-                          <i className="pi pi-tag mr-1 text-blue-500"></i>
-                          Orders of ₹{r.minOrderValue}+ : delivery{" "}
+                          <i className="pi pi-box mr-1 text-blue-500"></i>
+                          Products ₹{r.minOrderValue}+ : delivery{" "}
+                          <b>{inr(r.charge ?? 0)}</b>
+                        </p>
+                      ))}
+                      {serviceRulePreview.map((r) => (
+                        <p key={r.id} className="text-xs text-gray-600">
+                          <i className="pi pi-calendar mr-1 text-purple-500"></i>
+                          Services ₹{r.minOrderValue}+ : delivery{" "}
                           <b>{inr(r.charge ?? 0)}</b>
                         </p>
                       ))}
@@ -1403,6 +1487,16 @@ function DeliveryPage() {
                           disabled={testPin.trim().length < 3}
                         />
                       </div>
+                      <select
+                        value={testType}
+                        onChange={(e) =>
+                          setTestType(e.target.value as ProductType)
+                        }
+                        className="border rounded-md px-2 py-1.5 bg-white text-sm w-full"
+                      >
+                        <option value="PRODUCT">Product order</option>
+                        <option value="SERVICE">Service order</option>
+                      </select>
                       <InputNumber
                         value={testValue}
                         onValueChange={(e) => setTestValue(e.value ?? null)}
@@ -1438,6 +1532,16 @@ function DeliveryPage() {
                               {testResult.delivery.shippingNote && (
                                 <p>{testResult.delivery.shippingNote}</p>
                               )}
+                              {!testResult.isFree &&
+                                testResult.freeDeliveryAbove != null && (
+                                  <p>
+                                    Free delivery on{" "}
+                                    {testType === "SERVICE"
+                                      ? "service"
+                                      : "product"}{" "}
+                                    orders of ₹{testResult.freeDeliveryAbove}+
+                                  </p>
+                                )}
                               <p>
                                 Expected by{" "}
                                 {(testResult.delivery.maxMinutes ?? 99999) < 1440
@@ -1468,7 +1572,7 @@ function DeliveryPage() {
                 <p className="font-semibold text-gray-700">How it works</p>
                 <p>• The delivery charge is shown to the customer and added to the order total at payment.</p>
                 <p>• Inside your radius the matching distance slab is used. Outside it, the courier rate is used (if enabled).</p>
-                <p>• Order value rules can lower or remove the charge for bigger orders.</p>
+                <p>• Product and service orders have their own order value rules, which can lower or remove the charge for bigger orders.</p>
               </div>
             </div>
           </div>

@@ -43,6 +43,7 @@ import DeliveryDateDialog, {
 import { formatEstimateRange, getEtaLabel } from "@/helper/delivery";
 import ShipmentCard from "@/components/orders/ShipmentCard";
 import DeliverySpeedCard from "@/components/orders/DeliverySpeedCard";
+import ShippingCostCard from "@/components/orders/ShippingCostCard";
 
 const WORKER_ENDPOINT = "/api/worker/all-workers";
 
@@ -2064,6 +2065,8 @@ function OrderDetailsPage() {
           {/* ---------- RIGHT ---------- */}
           <div className="lg:col-span-5 space-y-4 min-w-0 self-start">
             <PriceSummary order={order} />
+
+            {order.deliveryEnabled !== false && <ShippingCostCard order={order} />}
 
             {!order.paymentOff && <PaymentCard order={order} />}
 
