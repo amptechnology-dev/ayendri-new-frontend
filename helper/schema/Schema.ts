@@ -189,6 +189,7 @@ export const createBannerSchema = zod.object({
   categoryIds: zod.array(zod.string()),
   productId: zod.string().nullable().optional(),
   offerBanner: zod.boolean(),
+  isWeb: zod.boolean(),
 });
 
 export const updateBannerSchema = createBannerSchema.partial();
