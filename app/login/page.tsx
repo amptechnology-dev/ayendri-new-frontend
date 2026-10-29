@@ -2,10 +2,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useForm, Controller } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { LoginSchema } from "@/helper/schema/Schema";
 import axiosInstance from "@/service/axios.service";
 import { useAppDispatch } from "@/lib/store/hooks";
 import { tokenSlice } from "../../lib/store/features/storeToken";
@@ -24,6 +20,11 @@ const ROLE_LABELS: Record<string, string> = {
   ADMIN: "Admin",
   STORE: "Store",
 };
+
+const PHONE_REGEX = /^[6-9]\d{9}$/;
+const OTP_REGEX = /^\d{6}$/;
+const OTP_LENGTH = 6;
+const RESEND_SECONDS = 60;
 
 // ---------------- THEME ----------------
 const ORANGE = "#f97316";
@@ -55,10 +56,22 @@ const generateCaptchaText = () =>
     () => CAPTCHA_CHARS[randInt(CAPTCHA_CHARS.length)],
   ).join("");
 
+// pasted "+91 98765 43210" / "09876543210" ke 10 digit e ana
+const cleanPastedPhone = (value: string) => {
+  let d = value.replace(/\D/g, "");
+  if (d.length > 10 && d.startsWith("91")) d = d.slice(2);
+  else if (d.length > 10 && d.startsWith("0")) d = d.slice(1);
+  return d.slice(0, 10);
+};
+
 export default function LoginPage() {
-  const [showPassword, setShowPassword] = useState(false);
+  const [step, setStep] = useState<"phone" | "otp">("phone");
+  const [phone, setPhone] = useState("");
+  const [otp, setOtp] = useState("");
+  const [phoneError, setPhoneError] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [resendIn, setResendIn] = useState(0);
   // filled when the backend finds more than one matching account (ADMIN + STORE)
   const [roleOptions, setRoleOptions] = useState<string[]>([]);
   const router = useRouter();
@@ -70,26 +83,17 @@ export default function LoginPage() {
   const [captchaInput, setCaptchaInput] = useState("");
   const [captchaError, setCaptchaError] = useState("");
 
-  type LoginForm = z.infer<typeof LoginSchema>;
-
-  const {
-    register,
-    control,
-    handleSubmit,
-    getValues,
-    watch,
-    formState: { errors },
-  } = useForm<LoginForm>({
-    resolver: zodResolver(LoginSchema),
-  });
-
-  const emailValue = watch("email");
-  const passwordValue = watch("password");
-
-  // credentials changed, so any previous role choice is no longer valid
+  // OTP change hole purono role choice r valid na
   useEffect(() => {
     setRoleOptions([]);
-  }, [emailValue, passwordValue]);
+  }, [otp]);
+
+  // resend countdown
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
 
   // Draw the captcha on the canvas (clear, readable, light noise)
   const drawCaptcha = useCallback((text: string) => {
@@ -173,10 +177,11 @@ export default function LoginPage() {
     [drawCaptcha],
   );
 
-  // Generate on the client only (avoids SSR hydration mismatch)
+  // Generate on the client only (avoids SSR hydration mismatch).
+  // Phone step e ferot ashle canvas notun mount hoy, tai abar draw
   useEffect(() => {
-    refreshCaptcha();
-  }, [refreshCaptcha]);
+    if (step === "phone") refreshCaptcha();
+  }, [step, refreshCaptcha]);
 
   const clearAuth = () => {
     localStorage.removeItem(AUTH_TOKEN_KEY);
@@ -184,14 +189,70 @@ export default function LoginPage() {
     document.cookie = `${AUTH_TOKEN_KEY}=; path=/; max-age=0`;
   };
 
-  // Sends the login request. `role` is only sent after the user picks one.
-  const performLogin = async (data: LoginForm, role?: string) => {
+  // ---------------- SEND OTP ----------------
+  const requestOtp = async (isResend = false) => {
     setError("");
     setLoading(true);
     try {
-      const res = await axiosInstance.post("/api/login", {
-        email: data.email,
-        password: data.password,
+      await axiosInstance.post("/api/login/send-otp", {
+        phone,
+        allowedRoles: PORTAL_ROLES,
+      });
+      setStep("otp");
+      setOtp("");
+      setResendIn(RESEND_SECONDS);
+    } catch (err: any) {
+      const errData = err.response?.data;
+
+      // age-i OTP pathano hoyeche, cooldown cholche: OTP step e niye jao
+      if (err.response?.status === 429 && errData?.retryAfter) {
+        setStep("otp");
+        setResendIn(Number(errData.retryAfter));
+      }
+
+      setError(errData?.message || "Could not send OTP. Please try again.");
+      if (!isResend) refreshCaptcha();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onSubmitPhone = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    setPhoneError("");
+
+    if (!PHONE_REGEX.test(phone)) {
+      setPhoneError("Enter a valid 10-digit mobile number");
+      return;
+    }
+    // Captcha check (before the API call)
+    if (!captchaInput.trim()) {
+      setCaptchaError("Please enter the captcha");
+      return;
+    }
+    if (captchaInput.trim().toUpperCase() !== captchaText) {
+      refreshCaptcha("Captcha does not match. Try a new one.");
+      return;
+    }
+
+    await requestOtp();
+  };
+
+  // ---------------- VERIFY OTP ----------------
+  // `role` is only sent after the user picks one.
+  const verifyOtp = async (role?: string) => {
+    setError("");
+    if (!OTP_REGEX.test(otp)) {
+      setError(`Enter the ${OTP_LENGTH}-digit OTP`);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await axiosInstance.post("/api/login/verify-otp", {
+        phone,
+        otp,
         allowedRoles: PORTAL_ROLES,
         ...(role ? { role } : {}),
       });
@@ -231,14 +292,15 @@ export default function LoginPage() {
         clearAuth();
         setError("This portal is only for Admin and Store accounts.");
         setRoleOptions([]);
-        refreshCaptcha();
+        setOtp("");
+        setStep("phone");
         return;
       }
       router.push(target);
     } catch (err: any) {
       const errData = err.response?.data;
 
-      // same email + password matched more than one account, let the user choose
+      // same phone + OTP matched more than one account, let the user choose
       if (errData?.requireRole && Array.isArray(errData.roles)) {
         const options = errData.roles.filter((r: string) =>
           PORTAL_ROLES.includes(r),
@@ -251,32 +313,24 @@ export default function LoginPage() {
 
       setError(errData?.message || "Login failed. Please try again.");
       setRoleOptions([]);
-      // new captcha after every failed attempt
-      refreshCaptcha();
+      setOtp("");
     } finally {
       setLoading(false);
     }
   };
 
-  const onSubmit = async (data: LoginForm) => {
-    setError("");
-
-    // Captcha check (before the API call)
-    if (!captchaInput.trim()) {
-      setCaptchaError("Please enter the captcha");
-      return;
-    }
-    if (captchaInput.trim().toUpperCase() !== captchaText) {
-      refreshCaptcha("Captcha does not match. Try a new one.");
-      return;
-    }
-
-    await performLogin(data);
+  const onSubmitOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (roleOptions.length > 0) return;
+    await verifyOtp();
   };
 
-  // captcha was already verified on the first submit, so it is not asked again
-  const handleRoleSelect = (role: string) => {
-    performLogin(getValues(), role);
+  const changeNumber = () => {
+    setStep("phone");
+    setOtp("");
+    setError("");
+    setRoleOptions([]);
+    setResendIn(0);
   };
 
   const focusStyle = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -303,6 +357,15 @@ export default function LoginPage() {
     { icon: "📊", text: "Real-time sales and order insights" },
     { icon: "🔐", text: "Secure access for Admin and Store teams" },
   ];
+
+  const maskedPhone = `+91 ${phone.slice(0, 2)}XXXXXX${phone.slice(-2)}`;
+
+  const primaryButtonStyle: React.CSSProperties = {
+    height: 48,
+    marginTop: 6,
+    background: `linear-gradient(110deg, ${ORANGE}, ${ORANGE_DARK})`,
+    boxShadow: "0 8px 22px rgba(234,88,12,0.35)",
+  };
 
   return (
     <main
@@ -368,7 +431,10 @@ export default function LoginPage() {
               <br />
               smarter, faster.
             </h2>
-            <p className="text-sm mb-7" style={{ color: "rgba(255,255,255,0.85)" }}>
+            <p
+              className="text-sm mb-7"
+              style={{ color: "rgba(255,255,255,0.85)" }}
+            >
               One powerful dashboard to manage your products, orders and teams.
             </p>
 
@@ -426,7 +492,9 @@ export default function LoginPage() {
               Welcome to <span style={{ color: ORANGE }}>Ayendri</span>
             </h1>
             <p className="text-sm mt-1.5" style={{ color: TEXT_MUTED }}>
-              Sign in to your account to continue
+              {step === "phone"
+                ? "Sign in with your mobile number"
+                : `Enter the OTP sent to ${maskedPhone}`}
             </p>
             <div
               className="mt-3 h-1 w-14 rounded-full mx-auto lg:mx-0"
@@ -450,267 +518,288 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            {/* Email */}
-            <div>
-              <label
-                htmlFor="email"
-                className="text-sm font-semibold block mb-1.5"
-                style={{ color: TEXT_DARK }}
-              >
-                Email address
-              </label>
-              <div className="relative">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none">
-                  ✉️
-                </span>
-                <input
-                  id="email"
-                  type="email"
-                  {...register("email")}
-                  placeholder="your@email.com"
-                  autoComplete="email"
-                  className="w-full rounded-xl text-sm outline-none transition-all"
-                  style={{
-                    ...inputBase,
-                    paddingLeft: 42,
-                    paddingRight: 14,
-                    border: errors.email
-                      ? "1.5px solid #ef4444"
-                      : "1.5px solid #e5e7eb",
-                  }}
-                  onFocus={focusStyle}
-                  onBlur={blurStyle(!!errors.email)}
-                />
-              </div>
-              {errors.email && (
-                <small className="text-red-500 text-xs mt-1 block">
-                  ⚠️ {errors.email.message}
-                </small>
-              )}
-            </div>
-
-            {/* Password */}
-            <div>
-              <label
-                htmlFor="password"
-                className="text-sm font-semibold block mb-1.5"
-                style={{ color: TEXT_DARK }}
-              >
-                Password
-              </label>
-              <Controller
-                name="password"
-                control={control}
-                render={({ field }) => (
-                  <div className="relative">
-                    <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none">
-                      🔒
-                    </span>
-                    <input
-                      id="password"
-                      type={showPassword ? "text" : "password"}
-                      value={field.value || ""}
-                      onChange={(e) => field.onChange(e.target.value)}
-                      placeholder="Enter your password"
-                      autoComplete="current-password"
-                      className="w-full rounded-xl text-sm outline-none transition-all"
-                      style={{
-                        ...inputBase,
-                        paddingLeft: 42,
-                        paddingRight: 48,
-                        border: errors.password
-                          ? "1.5px solid #ef4444"
-                          : "1.5px solid #e5e7eb",
-                      }}
-                      onFocus={focusStyle}
-                      onBlur={blurStyle(!!errors.password)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((p) => !p)}
-                      className="absolute right-3.5 top-1/2 -translate-y-1/2 text-lg leading-none"
-                      aria-label="Toggle password visibility"
-                    >
-                      {showPassword ? "🙈" : "👁️"}
-                    </button>
-                  </div>
-                )}
-              />
-              {errors.password && (
-                <small className="text-red-500 text-xs mt-1 block">
-                  ⚠️ {errors.password.message}
-                </small>
-              )}
-              <div className="text-right mt-1.5">
-                <button
-                  type="button"
-                  onClick={() => router.push("/forget-password")}
-                  className="text-xs font-semibold hover:underline"
-                  style={{ color: ORANGE_DARK }}
+          {/* ---------------- STEP 1: PHONE + CAPTCHA ---------------- */}
+          {step === "phone" && (
+            <form onSubmit={onSubmitPhone} className="space-y-4">
+              {/* Phone */}
+              <div>
+                <label
+                  htmlFor="phone"
+                  className="text-sm font-semibold block mb-1.5"
+                  style={{ color: TEXT_DARK }}
                 >
-                  Forgot password?
-                </button>
-              </div>
-            </div>
-
-            {/* CAPTCHA */}
-            <div>
-              <label
-                htmlFor="captcha"
-                className="text-sm font-semibold block mb-1.5"
-                style={{ color: TEXT_DARK }}
-              >
-                Security check
-              </label>
-
-              <div className="flex items-center gap-2">
-                {/* Canvas wrapper: blocks select / copy / drag / right-click */}
-                <div
-                  className="relative rounded-xl overflow-hidden flex-shrink-0 select-none"
-                  style={{
-                    width: CAPTCHA_W,
-                    maxWidth: "100%",
-                    height: CAPTCHA_H,
-                    border: `1.5px solid ${ORANGE_BORDER}`,
-                    userSelect: "none",
-                    WebkitUserSelect: "none",
-                  }}
-                  onContextMenu={(e) => e.preventDefault()}
-                  onDragStart={(e) => e.preventDefault()}
-                  onCopy={(e) => e.preventDefault()}
-                >
-                  <canvas
-                    ref={canvasRef}
-                    aria-label="Captcha image"
-                    draggable={false}
-                    style={{
-                      width: CAPTCHA_W,
-                      height: CAPTCHA_H,
-                      display: "block",
-                      pointerEvents: "none",
+                  Mobile number
+                </label>
+                <div className="relative">
+                  <span
+                    className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm font-bold leading-none"
+                    style={{ color: TEXT_MUTED }}
+                  >
+                    +91
+                  </span>
+                  <input
+                    id="phone"
+                    type="tel"
+                    inputMode="numeric"
+                    value={phone}
+                    onChange={(e) => {
+                      setPhone(e.target.value.replace(/\D/g, "").slice(0, 10));
+                      if (phoneError) setPhoneError("");
                     }}
+                    onPaste={(e) => {
+                      e.preventDefault();
+                      setPhone(cleanPastedPhone(e.clipboardData.getData("text")));
+                      if (phoneError) setPhoneError("");
+                    }}
+                    placeholder="10-digit mobile number"
+                    autoComplete="tel-national"
+                    className="w-full rounded-xl text-sm outline-none transition-all"
+                    style={{
+                      ...inputBase,
+                      paddingLeft: 50,
+                      paddingRight: 14,
+                      letterSpacing: "0.08em",
+                      fontWeight: 600,
+                      border: phoneError
+                        ? "1.5px solid #ef4444"
+                        : "1.5px solid #e5e7eb",
+                    }}
+                    onFocus={focusStyle}
+                    onBlur={blurStyle(!!phoneError)}
                   />
                 </div>
-
-                <button
-                  type="button"
-                  onClick={() => refreshCaptcha()}
-                  title="Refresh captcha"
-                  aria-label="Refresh captcha"
-                  className="flex items-center justify-center rounded-xl transition-all hover:rotate-180 hover:bg-orange-50"
-                  style={{
-                    width: 46,
-                    height: 46,
-                    minWidth: 46,
-                    background: "#fff",
-                    border: `1.5px solid ${ORANGE_BORDER}`,
-                    color: ORANGE_DARK,
-                    transitionDuration: "0.4s",
-                  }}
-                >
-                  <i className="pi pi-refresh" style={{ fontSize: 16 }} />
-                </button>
+                {phoneError && (
+                  <small className="text-red-500 text-xs mt-1 block">
+                    ⚠️ {phoneError}
+                  </small>
+                )}
               </div>
 
-              <div className="relative mt-2.5">
-                <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none">
-                  🛡️
-                </span>
-                <input
-                  id="captcha"
-                  type="text"
-                  value={captchaInput}
-                  onChange={(e) => {
-                    setCaptchaInput(e.target.value.toUpperCase());
-                    if (captchaError) setCaptchaError("");
-                  }}
-                  // Paste / copy / cut / drop are blocked, the code must be typed manually
-                  onPaste={(e) => e.preventDefault()}
-                  onCopy={(e) => e.preventDefault()}
-                  onCut={(e) => e.preventDefault()}
-                  onDrop={(e) => e.preventDefault()}
-                  onContextMenu={(e) => e.preventDefault()}
-                  maxLength={CAPTCHA_LENGTH}
-                  placeholder="Type the characters shown above"
-                  autoComplete="off"
-                  autoCorrect="off"
-                  autoCapitalize="characters"
-                  spellCheck={false}
-                  className="w-full rounded-xl text-sm outline-none transition-all"
-                  style={{
-                    ...inputBase,
-                    paddingLeft: 42,
-                    paddingRight: 14,
-                    letterSpacing: "0.2em",
-                    fontWeight: 600,
-                    border: captchaError
-                      ? "1.5px solid #ef4444"
-                      : "1.5px solid #e5e7eb",
-                  }}
-                  onFocus={focusStyle}
-                  onBlur={blurStyle(!!captchaError)}
-                />
-              </div>
-              {captchaError && (
-                <small className="text-red-500 text-xs mt-1 block">
-                  ⚠️ {captchaError}
-                </small>
-              )}
-            </div>
-
-            {/* Role selection (only when the same email + password matches both accounts) */}
-            {roleOptions.length > 0 ? (
-              <div
-                className="rounded-xl p-4"
-                style={{
-                  border: `1px solid ${ORANGE_BORDER}`,
-                  background: ORANGE_SOFT,
-                }}
-              >
-                <p
-                  className="text-sm font-semibold mb-3"
-                  style={{ color: ORANGE_DEEP }}
+              {/* CAPTCHA */}
+              <div>
+                <label
+                  htmlFor="captcha"
+                  className="text-sm font-semibold block mb-1.5"
+                  style={{ color: TEXT_DARK }}
                 >
-                  This email has more than one account. Sign in as:
-                </p>
-                <div className="flex gap-2">
-                  {roleOptions.map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      disabled={loading}
-                      onClick={() => handleRoleSelect(r)}
-                      className="flex-1 rounded-xl font-bold text-sm transition-all hover:-translate-y-0.5 hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+                  Security check
+                </label>
+
+                <div className="flex items-center gap-2">
+                  {/* Canvas wrapper: blocks select / copy / drag / right-click */}
+                  <div
+                    className="relative rounded-xl overflow-hidden flex-shrink-0 select-none"
+                    style={{
+                      width: CAPTCHA_W,
+                      maxWidth: "100%",
+                      height: CAPTCHA_H,
+                      border: `1.5px solid ${ORANGE_BORDER}`,
+                      userSelect: "none",
+                      WebkitUserSelect: "none",
+                    }}
+                    onContextMenu={(e) => e.preventDefault()}
+                    onDragStart={(e) => e.preventDefault()}
+                    onCopy={(e) => e.preventDefault()}
+                  >
+                    <canvas
+                      ref={canvasRef}
+                      aria-label="Captcha image"
+                      draggable={false}
                       style={{
-                        height: 44,
-                        background: "#fff",
-                        border: `1.5px solid ${ORANGE}`,
-                        color: ORANGE_DARK,
+                        width: CAPTCHA_W,
+                        height: CAPTCHA_H,
+                        display: "block",
+                        pointerEvents: "none",
                       }}
-                    >
-                      {loading ? "⏳" : ROLE_LABELS[r] || r}
-                    </button>
-                  ))}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => refreshCaptcha()}
+                    title="Refresh captcha"
+                    aria-label="Refresh captcha"
+                    className="flex items-center justify-center rounded-xl transition-all hover:rotate-180 hover:bg-orange-50"
+                    style={{
+                      width: 46,
+                      height: 46,
+                      minWidth: 46,
+                      background: "#fff",
+                      border: `1.5px solid ${ORANGE_BORDER}`,
+                      color: ORANGE_DARK,
+                      transitionDuration: "0.4s",
+                    }}
+                  >
+                    <i className="pi pi-refresh" style={{ fontSize: 16 }} />
+                  </button>
                 </div>
+
+                <div className="relative mt-2.5">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none">
+                    🛡️
+                  </span>
+                  <input
+                    id="captcha"
+                    type="text"
+                    value={captchaInput}
+                    onChange={(e) => {
+                      setCaptchaInput(e.target.value.toUpperCase());
+                      if (captchaError) setCaptchaError("");
+                    }}
+                    // Paste / copy / cut / drop are blocked, the code must be typed manually
+                    onPaste={(e) => e.preventDefault()}
+                    onCopy={(e) => e.preventDefault()}
+                    onCut={(e) => e.preventDefault()}
+                    onDrop={(e) => e.preventDefault()}
+                    onContextMenu={(e) => e.preventDefault()}
+                    maxLength={CAPTCHA_LENGTH}
+                    placeholder="Type the characters shown above"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    className="w-full rounded-xl text-sm outline-none transition-all"
+                    style={{
+                      ...inputBase,
+                      paddingLeft: 42,
+                      paddingRight: 14,
+                      letterSpacing: "0.2em",
+                      fontWeight: 600,
+                      border: captchaError
+                        ? "1.5px solid #ef4444"
+                        : "1.5px solid #e5e7eb",
+                    }}
+                    onFocus={focusStyle}
+                    onBlur={blurStyle(!!captchaError)}
+                  />
+                </div>
+                {captchaError && (
+                  <small className="text-red-500 text-xs mt-1 block">
+                    ⚠️ {captchaError}
+                  </small>
+                )}
               </div>
-            ) : (
+
               <button
                 type="submit"
                 disabled={loading}
                 className="w-full rounded-xl font-bold text-sm text-white transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
-                style={{
-                  height: 48,
-                  marginTop: 6,
-                  background: `linear-gradient(110deg, ${ORANGE}, ${ORANGE_DARK})`,
-                  boxShadow: "0 8px 22px rgba(234,88,12,0.35)",
-                }}
+                style={primaryButtonStyle}
               >
-                {loading ? "⏳ Signing in..." : "Sign in →"}
+                {loading ? "⏳ Sending OTP..." : "Send OTP →"}
               </button>
-            )}
-          </form>
+            </form>
+          )}
+
+          {/* ---------------- STEP 2: OTP ---------------- */}
+          {step === "otp" && (
+            <form onSubmit={onSubmitOtp} className="space-y-4">
+              <div>
+                <label
+                  htmlFor="otp"
+                  className="text-sm font-semibold block mb-1.5"
+                  style={{ color: TEXT_DARK }}
+                >
+                  One-time password
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-base leading-none">
+                    🔑
+                  </span>
+                  <input
+                    id="otp"
+                    type="text"
+                    inputMode="numeric"
+                    value={otp}
+                    onChange={(e) =>
+                      setOtp(e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH))
+                    }
+                    placeholder="------"
+                    autoComplete="one-time-code"
+                    autoFocus
+                    className="w-full rounded-xl outline-none transition-all"
+                    style={{
+                      ...inputBase,
+                      paddingLeft: 42,
+                      paddingRight: 14,
+                      fontSize: 18,
+                      letterSpacing: "0.5em",
+                      fontWeight: 700,
+                      border: "1.5px solid #e5e7eb",
+                    }}
+                    onFocus={focusStyle}
+                    onBlur={blurStyle(false)}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between mt-2">
+                  <button
+                    type="button"
+                    onClick={changeNumber}
+                    className="text-xs font-semibold hover:underline"
+                    style={{ color: ORANGE_DARK }}
+                  >
+                    ← Change number
+                  </button>
+                  <button
+                    type="button"
+                    disabled={resendIn > 0 || loading}
+                    onClick={() => requestOtp(true)}
+                    className="text-xs font-semibold hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
+                    style={{ color: ORANGE_DARK }}
+                  >
+                    {resendIn > 0 ? `Resend OTP in ${resendIn}s` : "Resend OTP"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Role selection (only when the same phone matches both accounts) */}
+              {roleOptions.length > 0 ? (
+                <div
+                  className="rounded-xl p-4"
+                  style={{
+                    border: `1px solid ${ORANGE_BORDER}`,
+                    background: ORANGE_SOFT,
+                  }}
+                >
+                  <p
+                    className="text-sm font-semibold mb-3"
+                    style={{ color: ORANGE_DEEP }}
+                  >
+                    This number has more than one account. Sign in as:
+                  </p>
+                  <div className="flex gap-2">
+                    {roleOptions.map((r) => (
+                      <button
+                        key={r}
+                        type="button"
+                        disabled={loading}
+                        onClick={() => verifyOtp(r)}
+                        className="flex-1 rounded-xl font-bold text-sm transition-all hover:-translate-y-0.5 hover:shadow-md disabled:opacity-60 disabled:cursor-not-allowed"
+                        style={{
+                          height: 44,
+                          background: "#fff",
+                          border: `1.5px solid ${ORANGE}`,
+                          color: ORANGE_DARK,
+                        }}
+                      >
+                        {loading ? "⏳" : ROLE_LABELS[r] || r}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="submit"
+                  disabled={loading || otp.length !== OTP_LENGTH}
+                  className="w-full rounded-xl font-bold text-sm text-white transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
+                  style={primaryButtonStyle}
+                >
+                  {loading ? "⏳ Verifying..." : "Verify & Sign in →"}
+                </button>
+              )}
+            </form>
+          )}
 
           <p
             className="text-center text-xs mt-6"

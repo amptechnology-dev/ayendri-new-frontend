@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -9,14 +9,34 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { ToastContainer, toast } from "react-toastify";
 import axiosInstance from "@/service/axios.service";
 
+const PHONE_REGEX = /^[6-9]\d{9}$/;
+const OTP_REGEX = /^\d{6}$/;
+const OTP_LENGTH = 6;
+const RESEND_SECONDS = 60;
+
+// +91 / 0 / space soho jai-i type koruk, 10 digit e ana
+const normalizePhone = (value: string) => {
+  let d = value.replace(/\D/g, "");
+  if (d.length === 12 && d.startsWith("91")) d = d.slice(2);
+  else if (d.length === 11 && d.startsWith("0")) d = d.slice(1);
+  return d;
+};
+
 const registerSchema = z.object({
   name: z.string().trim().min(2, "Name is required"),
   email: z.string().trim().email("Enter a valid email address"),
-  phone: z.string().trim().min(10, "Phone number is required"),
+  phone: z
+    .string()
+    .trim()
+    .refine(
+      (v) => PHONE_REGEX.test(normalizePhone(v)),
+      "Enter a valid 10-digit mobile number",
+    ),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
+type OtpRole = "STORE" | "ADMIN";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -25,9 +45,12 @@ export default function RegisterPage() {
 
   // ---- OTP state ----
   const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
-  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [registeredPhone, setRegisteredPhone] = useState("");
+  const [otpRole, setOtpRole] = useState<OtpRole>("STORE");
   const [otp, setOtp] = useState("");
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const [isResending, setIsResending] = useState(false);
+  const [resendIn, setResendIn] = useState(0);
 
   // ---- Admin mode state ----
   const [isAdminMode, setIsAdminMode] = useState(false);
@@ -45,6 +68,13 @@ export default function RegisterPage() {
     defaultValues: { name: "", email: "", phone: "", password: "" },
   });
 
+  // resend countdown
+  useEffect(() => {
+    if (resendIn <= 0) return;
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
+    return () => clearTimeout(t);
+  }, [resendIn]);
+
   const toggleAdminMode = () => {
     setIsAdminMode((prev) => !prev);
     setAdminCode("");
@@ -52,11 +82,20 @@ export default function RegisterPage() {
     setShowAdminCode(false);
   };
 
+  const startOtpFlow = (phone: string, role: OtpRole, otpSent: boolean) => {
+    setRegisteredPhone(phone);
+    setOtpRole(role);
+    setOtp("");
+    // SMS jai-ni hole sathe sathe resend korte dao
+    setResendIn(otpSent ? RESEND_SECONDS : 0);
+    setIsOtpModalOpen(true);
+  };
+
   const onSubmit = async (values: RegisterFormValues) => {
     const payload = {
       name: values.name.trim(),
       email: values.email.trim(),
-      phone: values.phone.trim(),
+      phone: normalizePhone(values.phone),
       password: values.password,
     };
 
@@ -77,7 +116,13 @@ export default function RegisterPage() {
         toast.success(response.data?.message || "Admin registered successfully");
         reset();
         toggleAdminMode();
-        router.push("/login");
+
+        // backend OTP pathale modal, nahole sorasori login
+        if (typeof response.data?.otpSent === "boolean") {
+          startOtpFlow(payload.phone, "ADMIN", response.data.otpSent);
+        } else {
+          router.push("/login");
+        }
       } catch (error: any) {
         const message =
           error?.response?.data?.message || "Admin registration failed.";
@@ -91,7 +136,7 @@ export default function RegisterPage() {
       return;
     }
 
-    // ---------- STORE OWNER REGISTER (OTP flow) ----------
+    // ---------- STORE OWNER REGISTER (phone OTP flow) ----------
     setIsSubmitting(true);
     try {
       const response = await axiosInstance.post(
@@ -99,9 +144,7 @@ export default function RegisterPage() {
         payload,
       );
       toast.success(response.data?.message || "Registration successful");
-      setRegisteredEmail(payload.email);
-      setOtp("");
-      setIsOtpModalOpen(true);
+      startOtpFlow(payload.phone, "STORE", response.data?.otpSent !== false);
       reset();
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "Registration failed.");
@@ -111,29 +154,50 @@ export default function RegisterPage() {
   };
 
   const handleVerifyOtp = async () => {
-    if (!registeredEmail.trim()) {
-      toast.error("Email missing.");
+    if (!registeredPhone) {
+      toast.error("Mobile number missing.");
       return;
     }
-    if (!otp.trim()) {
-      toast.error("Please enter OTP.");
+    if (!OTP_REGEX.test(otp)) {
+      toast.error(`Please enter the ${OTP_LENGTH}-digit OTP.`);
       return;
     }
     setIsVerifyingOtp(true);
     try {
       const response = await axiosInstance.post(
-        "/api/register/verify-email-otp",
-        { email: registeredEmail.trim(), otp: otp.trim() },
+        "/api/register/verify-phone-otp",
+        { phone: registeredPhone, otp, role: otpRole },
       );
-      toast.success(response.data?.message || "Email verified!");
+      toast.success(response.data?.message || "Mobile number verified!");
       setIsOtpModalOpen(false);
-      setRegisteredEmail("");
+      setRegisteredPhone("");
       setOtp("");
       router.push("/login");
     } catch (error: any) {
       toast.error(error?.response?.data?.message || "OTP verification failed.");
+      setOtp("");
     } finally {
       setIsVerifyingOtp(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!registeredPhone || resendIn > 0) return;
+    setIsResending(true);
+    try {
+      const response = await axiosInstance.post(
+        "/api/register/resend-phone-otp",
+        { phone: registeredPhone, role: otpRole },
+      );
+      toast.success(response.data?.message || "OTP sent");
+      setOtp("");
+      setResendIn(RESEND_SECONDS);
+    } catch (error: any) {
+      const data = error?.response?.data;
+      if (data?.retryAfter) setResendIn(Number(data.retryAfter));
+      toast.error(data?.message || "Could not resend OTP.");
+    } finally {
+      setIsResending(false);
     }
   };
 
@@ -281,7 +345,7 @@ export default function RegisterPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <div>
                   <label className={labelClass} style={labelColor}>
-                    Phone <span style={{ color: "#ef4444" }}>*</span>
+                    Mobile number <span style={{ color: "#ef4444" }}>*</span>
                   </label>
                   <div className="relative">
                     <span
@@ -293,7 +357,7 @@ export default function RegisterPage() {
                     <input
                       id="phone"
                       type="tel"
-                      placeholder="10-digit number"
+                      placeholder="10-digit number (OTP login)"
                       autoComplete="tel"
                       {...register("phone")}
                       className={inputClass}
@@ -451,7 +515,7 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      {/* OTP Modal (sudhu store owner flow) */}
+      {/* OTP Modal (Store Owner + Admin) */}
       {isOtpModalOpen && (
         <div
           role="dialog"
@@ -493,16 +557,16 @@ export default function RegisterPage() {
                     border: "1px solid var(--border)",
                   }}
                 >
-                  📧
+                  📱
                 </div>
                 <p
                   className="text-lg font-black leading-tight"
                   style={{ color: "var(--brand-primary-dark)" }}
                 >
-                  Verify your email
+                  Verify your mobile number
                 </p>
                 <p className="text-xs mt-0.5" style={{ color: "var(--muted)" }}>
-                  Enter the OTP sent to your email address
+                  Enter the OTP sent to your mobile number
                 </p>
                 <div
                   className="w-full h-px mt-2"
@@ -511,21 +575,21 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                {/* Email readonly */}
+                {/* Phone readonly */}
                 <div>
                   <label className={labelClass} style={labelColor}>
-                    Email
+                    Mobile number
                   </label>
                   <div className="relative">
                     <span
                       className={iconClass}
                       style={{ color: "var(--muted)" }}
                     >
-                      ✉️
+                      📱
                     </span>
                     <input
-                      type="email"
-                      value={registeredEmail}
+                      type="text"
+                      value={`+91 ${registeredPhone}`}
                       readOnly
                       className={inputClass}
                       style={inputStyle(false, {
@@ -551,10 +615,15 @@ export default function RegisterPage() {
                     <input
                       type="text"
                       inputMode="numeric"
-                      placeholder="Enter OTP"
+                      placeholder="Enter 6-digit OTP"
+                      autoComplete="one-time-code"
                       value={otp}
                       autoFocus
-                      onChange={(e) => setOtp(e.target.value)}
+                      onChange={(e) =>
+                        setOtp(
+                          e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH),
+                        )
+                      }
                       onKeyDown={(e) => {
                         if (e.key === "Enter" && !isVerifyingOtp) {
                           handleVerifyOtp();
@@ -568,6 +637,22 @@ export default function RegisterPage() {
                       onFocus={focusStyle}
                       onBlur={blurStyle(false)}
                     />
+                  </div>
+
+                  <div className="text-right mt-1">
+                    <button
+                      type="button"
+                      disabled={resendIn > 0 || isResending || isVerifyingOtp}
+                      onClick={handleResendOtp}
+                      className="text-xs font-semibold hover:underline disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed"
+                      style={{ color: "var(--brand-orange)" }}
+                    >
+                      {isResending
+                        ? "Sending..."
+                        : resendIn > 0
+                          ? `Resend OTP in ${resendIn}s`
+                          : "Resend OTP"}
+                    </button>
                   </div>
                 </div>
 
@@ -592,7 +677,7 @@ export default function RegisterPage() {
                   </button>
                   <button
                     type="button"
-                    disabled={isVerifyingOtp}
+                    disabled={isVerifyingOtp || otp.length !== OTP_LENGTH}
                     onClick={handleVerifyOtp}
                     className="flex-1 rounded-xl font-bold text-sm text-white transition-all hover:-translate-y-0.5 hover:shadow-lg disabled:opacity-60 disabled:cursor-not-allowed"
                     style={{
