@@ -15,6 +15,11 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return {
+      beforeFiles: [{ source: "/", destination: "/shop" }],
+    };
+  },
 };
 
 export default nextConfig;
