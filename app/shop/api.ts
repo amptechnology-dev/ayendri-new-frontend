@@ -4,7 +4,7 @@ import type { Product, Category } from "./data";
 import { API } from "./config";
 
 export { API };
-export const STORE_ID = process.env.NEXT_PUBLIC_STORE_ID || "STR-1791975244727";
+export const STORE_ID = process.env.NEXT_PUBLIC_STORE_ID ?? "";
 const REAL_API = API.replace(/\/api$/, "");
 const sid = encodeURIComponent(STORE_ID);
 
