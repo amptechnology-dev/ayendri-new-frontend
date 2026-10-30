@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useShop } from "../../shop-data";
 import WishlistButton from "../../components/WishlistButton";
-
+import PageArt from "../../components/PageArt";
 // Adjust these two to your real routes
 const CATEGORY_BASE = "/category";
 const PRODUCT_BASE = "/product";
@@ -71,7 +71,8 @@ export default function Category() {
   const total = sections.reduce((n, s) => n + s.list.length, 0);
 
   return (
-    <div className="pb-24">
+    <div className="relative isolate pb-24">
+      <PageArt />
       {/* HERO */}
       <section className="mx-auto mt-6 max-w-[1140px] px-4">
         <div

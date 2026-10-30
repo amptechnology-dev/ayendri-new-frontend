@@ -17,6 +17,7 @@ import { useShop } from "../shop-data";
 import { useAuth } from "../auth";
 import ProfileForm from "../components/ProfileForm";
 import ProductCard from "../components/ProductCard";
+import PageArt from "../components/PageArt";
 
 export default function Profile() {
   const router = useRouter();
@@ -50,7 +51,8 @@ export default function Profile() {
     "flex w-full items-center gap-4 border-t border-[#e5e7eb] px-6 py-5 text-left";
 
   return (
-    <main className="min-h-screen bg-[#e5e7eb] px-4 py-8 md:px-8">
+    <main className="relative isolate min-h-screen bg-[#e5e7eb] px-4 py-8 md:px-8">
+      <PageArt />
       <div className="mx-auto grid max-w-[1240px] gap-5 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
         {/* Left sidebar */}
         <aside className="overflow-hidden rounded-xl bg-white shadow-sm">

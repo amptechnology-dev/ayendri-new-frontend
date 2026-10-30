@@ -10,6 +10,7 @@ import Countdown from "./components/Countdown";
 import HeroCarousel from "./components/HeroCarousel";
 import Carousel from "./components/Carousel";
 import HomeSections from "./components/HomeSections";
+import HeroArt from "./components/HeroArt";
 
 function Reveal({
   children,
@@ -32,7 +33,8 @@ export default function ShopHome() {
   return (
     <>
       {/* HERO */}
-      <section className="shop-hero-bg">
+      <section className="shop-hero-bg relative isolate overflow-hidden">
+        <HeroArt />
         <div className="relative mx-auto max-w-[1000px] px-4 pt-5">
           <HeroCarousel />
           <Link

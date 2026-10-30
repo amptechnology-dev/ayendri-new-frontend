@@ -24,8 +24,14 @@ export default function AccountMenu() {
 
   return (
     <div ref={box} className="relative">
-      <button onClick={() => setOpen((o) => !o)} aria-label="Account" aria-expanded={open}>
-        <User size={22} />
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-label="Account"
+        aria-expanded={open}
+        className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[#f6c453]/70 bg-white/15 text-white shadow-[0_2px_10px_rgba(0,0,0,.35)] backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:border-[#fff1c2] hover:bg-[#f2b632] hover:text-[#4a0710] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fff1c2]"
+      >
+        <User size={20} />
       </button>
 
       {open && (

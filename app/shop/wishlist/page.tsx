@@ -11,6 +11,7 @@ import {
   type WishlistProduct,
 } from "../wishlist";
 import { fetchProducts, mapProduct } from "../api";
+import PageArt from "../components/PageArt";
 
 const inr = (amount: number) =>
 new Intl.NumberFormat("en-IN", {
@@ -96,12 +97,17 @@ try {
 };
 
 if (!ready) {
-return <main className="mx-auto min-h-[60vh] max-w-6xl px-4 py-12" aria-busy="true" />;
+return (
+  <main className="relative isolate mx-auto min-h-[60vh] max-w-6xl px-4 py-12" aria-busy="true">
+    <PageArt />
+  </main>
+);
 }
 
 if (!token) {
 return (
-<main className="mx-auto flex min-h-[60vh] max-w-5xl flex-col items-center justify-center px-6 text-center">
+<main className="relative isolate mx-auto flex min-h-[60vh] max-w-5xl flex-col items-center justify-center px-6 text-center">
+<PageArt />
 <Heart size={48} className="mb-4 text-[#D5684A]" />
 <h1 className="text-2xl font-extrabold text-[#17211D]">
 Your Wishlist
@@ -117,7 +123,8 @@ Sign In
 }
 
 return (
-<main className="mx-auto min-h-[65vh] max-w-6xl px-4 py-8 sm:px-6 lg:py-12">
+<main className="relative isolate mx-auto min-h-[65vh] max-w-6xl px-4 py-8 sm:px-6 lg:py-12">
+<PageArt />
 <Link href="/shop" className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-gray-600 transition hover:text-[#D5684A]" >
 <ArrowLeft size={17} />
 Continue Shopping

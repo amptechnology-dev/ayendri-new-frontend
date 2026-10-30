@@ -8,6 +8,7 @@ import axios from "axios";
 import axiosInstance from "@/service/axios.service";
 import { useAuth } from "../auth";
 import AuthShell, { btnCls, inputCls, Notice } from "../components/AuthShell";
+import PageArt from "../components/PageArt";
 
 const safeNext = (n: string | null) => (n && n.startsWith("/shop") ? n : "/shop");
 type Step = "FORM" | "PHONE_OTP";
@@ -169,6 +170,8 @@ function RegisterForm() {
       : `Enter the SMS code sent to ${f.phone}`;
 
   return (
+    <div className="relative isolate">
+      <PageArt />
     <AuthShell
       title={title}
       subtitle={subtitle}
@@ -289,6 +292,7 @@ function RegisterForm() {
         </form>
       )}
     </AuthShell>
+    </div>
   );
 }
 

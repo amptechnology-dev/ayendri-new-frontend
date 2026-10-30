@@ -12,6 +12,7 @@ import AuthShell, {
   inputCls,
   Notice,
 } from "../components/AuthShell";
+import PageArt from "../components/PageArt";
 
 const ALLOWED_ROLES = ["USER"] as const;
 
@@ -131,6 +132,8 @@ function LoginForm() {
   };
 
   return (
+    <div className="relative isolate">
+      <PageArt />
     <AuthShell
       title="Login"
       subtitle={
@@ -270,6 +273,7 @@ function LoginForm() {
         )}
       </form>
     </AuthShell>
+    </div>
   );
 }
 
