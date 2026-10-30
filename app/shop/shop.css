@@ -1,0 +1,83 @@
+.shop-root {
+  --maroon: #4a0710; --maroon-2: #7a1118; --red: #a3161c;
+  --gold: #f2b632; --gold-2: #c98a12; --saffron: #f7a04b;
+  --cream: #fff7ec; --ink: #2a0a0d;
+  background: var(--cream); color: var(--ink);
+  font-family: var(--font-shop), system-ui, sans-serif;
+  min-height: 100vh;
+}
+.shop-root a { color: inherit; text-decoration: none; }
+.shop-root button { font-family: inherit; cursor: pointer; }
+
+/* maroon hero backdrop with a faint mandala-dot pattern */
+.shop-hero-bg {
+  background:
+    radial-gradient(circle at 20px 20px, rgba(255,255,255,.07) 2px, transparent 3px) 0 0/48px 48px,
+    linear-gradient(180deg, var(--maroon) 0%, var(--maroon-2) 55%, var(--red) 100%);
+}
+/* scalloped edge between hero and cream content */
+.shop-scallop {
+  height: 14px;
+  background: radial-gradient(circle at 14px 14px, transparent 13px, var(--cream) 14px) 0 0/28px 14px repeat-x;
+}
+.shop-gold-btn {
+  background: linear-gradient(180deg, #ffd466, var(--gold-2));
+  color: var(--maroon); font-weight: 700; border: 1px solid #fff3c4;
+  box-shadow: 0 8px 22px rgba(0,0,0,.28);
+}
+.shop-pill {
+  border: 1.5px solid rgba(242,182,50,.7); color: #fff;
+  background: rgba(255,255,255,.08); backdrop-filter: blur(6px);
+}
+.shop-card { background:#fff; border-radius:20px; box-shadow:0 10px 30px rgba(74,7,16,.08); transition:.25s; }
+.shop-card:hover { transform: translateY(-4px); box-shadow:0 18px 40px rgba(74,7,16,.16); }
+.shop-scroll { scrollbar-width: none; }
+.shop-scroll::-webkit-scrollbar { display: none; }
+
+
+
+/* ---------- header theme (scroll aware) ---------- */
+.shop-header { transition: background .45s ease, color .45s ease, box-shadow .45s ease; }
+.shop-strip { max-height: 40px; overflow: hidden; transition: max-height .35s ease, opacity .25s ease; }
+.shop-header[data-scrolled="true"] {
+  background: linear-gradient(90deg, #ffd9dc, #fff1d6 55%, #ffffff);
+  color: var(--maroon); box-shadow: 0 8px 28px rgba(74,7,16,.14);
+}
+.shop-header[data-scrolled="true"] .shop-strip { max-height: 0; opacity: 0; }
+.shop-header[data-scrolled="true"] .shop-pill { background: #fff; color: var(--maroon); border-color: var(--gold); }
+.shop-header[data-scrolled="true"] .shop-search { background: #fff; color: var(--ink); border-color: #eadfce; box-shadow: 0 4px 14px rgba(74,7,16,.08); }
+.shop-header[data-scrolled="true"] .shop-donate { background: var(--maroon-2); color: #fff; border-color: transparent; }
+
+/* ---------- animations ---------- */
+@keyframes shop-slide-up { from { opacity: 0; transform: translateY(70%); } to { opacity: 1; transform: none; } }
+.shop-ph { animation: shop-slide-up .45s ease both; }
+
+@keyframes shop-bump { 0%,100% { transform: scale(1); } 40% { transform: scale(1.45); } }
+.shop-bump { animation: shop-bump .4s ease; }
+
+@keyframes shop-mega-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.shop-mega { animation: shop-mega-in .22s ease both; }
+
+.shop-reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
+.shop-reveal.shop-in { opacity: 1; transform: none; }
+
+.shop-slide { opacity: 0; transition: opacity .9s ease, transform 1.2s ease; transform: scale(1.03); pointer-events: none; }
+.shop-slide.on { opacity: 1; transform: none; pointer-events: auto; }
+
+.shop-add { transition: transform .2s ease, background .2s ease, color .2s ease; }
+.shop-add:hover { transform: scale(1.1); }
+.shop-add:active { transform: scale(.92); }
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-reveal, .shop-slide, .shop-ph, .shop-mega, .shop-bump { animation: none; transition: none; opacity: 1; transform: none; }
+}
+
+.shop-arch { border-radius: 999px 999px 18px 18px; }
+.shop-pattern { background: radial-gradient(circle at 20px 20px, rgba(255,255,255,.14) 2px, transparent 3px) 0 0/44px 44px, #7a1118; }
+.shop-band { height: 30px; background: radial-gradient(circle at 10px 15px, #f7d9a0 4px, transparent 5px) 0 0/20px 30px repeat-x, #7a1118; }
+
+
+/* Divine Picks: shrink cards, keep layout (desktop only) */
+@media (min-width: 1100px) {
+  .dp-zoom { zoom: 0.8; }
+}

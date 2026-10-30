@@ -1,27 +1,39 @@
-import axios from 'axios'
+import axios from "axios";
+
+const SHOP_KEY = "ayendri-shop-auth";
+
+const readShopToken = (): string | null => {
+  try {
+    const raw =
+      localStorage.getItem(SHOP_KEY) ?? sessionStorage.getItem(SHOP_KEY);
+    return raw ? (JSON.parse(raw)?.token ?? null) : null;
+  } catch {
+    return null;
+  }
+};
 
 const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
-  timeout: 10000,
-  withCredentials: true
-})
+  timeout: 30000,
+  withCredentials: true,
+});
 
 axiosInstance.interceptors.request.use(
-  async function (config) {
-    const token =
-      localStorage.getItem("login-token") ||
-      sessionStorage.getItem("login-token");
+  (config) => {
+    if (typeof window !== "undefined") {
+      const token =
+        readShopToken() ||
+        localStorage.getItem("login-token") ||
+        sessionStorage.getItem("login-token");
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+        config.headers["x-access-token"] = token;
+      }
     }
-
     return config;
   },
-  function (err) {
-    return Promise.reject(err);
-  }
+  (err) => Promise.reject(err),
 );
 
-
-export default axiosInstance
+export default axiosInstance;
