@@ -1193,6 +1193,174 @@ const appendPolicyFields = (
   fd.append("refundDays", days(!isService && p.isRefundable, p.refundDays));
 };
 
+// ---------- [PICKUP] ----------
+type PickupAddress = {
+  contactName: string;
+  phone: string;
+  email: string;
+  addressLine: string;
+  area: string;
+  city: string;
+  state: string;
+  pincode: string;
+  country: string;
+};
+
+const EMPTY_PICKUP: PickupAddress = {
+  contactName: "",
+  phone: "",
+  email: "",
+  addressLine: "",
+  area: "",
+  city: "",
+  state: "",
+  pincode: "",
+  country: "India",
+};
+
+// [CHANGE] email ekhon required (pickup contact ke mail jabe)
+const validatePickup = (p: PickupAddress): string | null => {
+  if (!p.contactName.trim()) return "Pickup contact name is required";
+  if (!/^\d{10}$/.test(p.phone.trim()))
+    return "Pickup phone must be a 10 digit number";
+  if (!p.email.trim()) return "Pickup contact email is required";
+  if (!/^\S+@\S+\.\S+$/.test(p.email.trim())) return "Pickup email is invalid";
+  if (!p.addressLine.trim()) return "Pickup address is required";
+  if (p.addressLine.trim().length < 10)
+    return "Pickup address is too short. Please add a full address";
+  if (!p.city.trim()) return "Pickup city is required";
+  if (!p.state.trim()) return "Pickup state is required";
+  if (!/^\d{6}$/.test(p.pincode.trim()))
+    return "Pickup pincode must be 6 digits";
+  return null;
+};
+
+const cleanPickup = (p: PickupAddress) => ({
+  contactName: p.contactName.trim(),
+  phone: p.phone.trim(),
+  email: p.email.trim().toLowerCase(),
+  addressLine: p.addressLine.trim(),
+  area: p.area.trim() || undefined,
+  city: p.city.trim(),
+  state: p.state.trim(),
+  pincode: p.pincode.trim(),
+  country: p.country.trim() || "India",
+});
+
+// [CHANGE] isService prop: PRODUCT ar SERVICE duitar-i pickup address deoya jay
+function PickupAddressBlock({
+  enabled,
+  onToggle,
+  value,
+  onChange,
+  isService,
+}: {
+  enabled: boolean;
+  onToggle: (on: boolean) => void;
+  value: PickupAddress;
+  onChange: (patch: Partial<PickupAddress>) => void;
+  isService: boolean;
+}) {
+  const fields: {
+    key: keyof PickupAddress;
+    label: string;
+    required?: boolean;
+    placeholder?: string;
+    full?: boolean;
+    clean?: (v: string) => string;
+  }[] = [
+    { key: "contactName", label: "Contact person", required: true },
+    {
+      key: "phone",
+      label: "Phone",
+      required: true,
+      placeholder: "10 digit number",
+      clean: (v) => v.replace(/\D/g, "").slice(0, 10),
+    },
+    {
+      key: "email",
+      label: "Email",
+      required: true,
+      placeholder: "contact@example.com",
+    },
+    {
+      key: "addressLine",
+      label: "Address (house, street)",
+      required: true,
+      full: true,
+    },
+    { key: "area", label: "Area / Landmark (optional)" },
+    { key: "city", label: "City", required: true },
+    { key: "state", label: "State", required: true },
+    {
+      key: "pincode",
+      label: "Pincode",
+      required: true,
+      placeholder: "6 digit pincode",
+      clean: (v) => v.replace(/\D/g, "").slice(0, 6),
+    },
+  ];
+
+  const kind = isService ? "service" : "product";
+
+  return (
+    <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-2.5 space-y-2">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+            <i className="pi pi-map-marker text-blue-600"></i>
+            Pickup address for this {kind}
+          </p>
+          <p className="text-xs text-gray-500">
+            {isService
+              ? "Turn on to add the address and contact person for this service."
+              : "Turn on if the courier should pick this product up from a different address. When off, your store's default pickup address is used."}
+          </p>
+        </div>
+        <InputSwitch checked={enabled} onChange={(e) => onToggle(!!e.value)} />
+      </div>
+
+      {enabled && (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {fields.map((f) => (
+              <div
+                key={f.key}
+                className={`space-y-1 min-w-0 ${f.full ? "sm:col-span-2" : ""}`}
+              >
+                <label className="text-[11px] font-semibold text-gray-600">
+                  {f.label}
+                  {f.required && <span className="text-red-500"> *</span>}
+                </label>
+                <InputText
+                  className="w-full p-inputtext-sm"
+                  value={value[f.key]}
+                  placeholder={f.placeholder}
+                  inputMode={f.clean ? "numeric" : undefined}
+                  onChange={(e) =>
+                    onChange({
+                      [f.key]: f.clean
+                        ? f.clean(e.target.value)
+                        : e.target.value,
+                    } as Partial<PickupAddress>)
+                  }
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-500">
+            The contact person gets an email when this {kind} is added or its
+            pickup details change, when an order is placed, and when the courier
+            pickup is scheduled.
+            {!isService &&
+              " Shipping charge and delivery time are calculated from this pincode. Products with different pickup addresses are placed as separate orders. Local (own) delivery is not available for products with a custom pickup address."}
+          </p>
+        </>
+      )}
+    </div>
+  );
+}
+
 function ProductPolicyBlock({
   productType,
   policy,
@@ -1472,6 +1640,11 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   const [fastestDelivery, setFastestDelivery] = useState(false);
   const [policy, setPolicy] = useState<PolicyState>(DEFAULT_POLICY);
 
+  // [PICKUP] product er nijosho pickup address (off thakle store default)
+  const [customPickup, setCustomPickup] = useState(false);
+  const [pickup, setPickup] = useState<PickupAddress>(EMPTY_PICKUP);
+
+  // [CHANGE] SERVICE e gele pickup address reset hobe na (service er-o pickup address thake)
   const handleTypeChange = (t: ProductType) => {
     setProductType(t);
     if (t === "SERVICE") {
@@ -2057,6 +2230,28 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
         }
       }
 
+      // [PICKUP] address private, alada owner-only API theke ane
+      try {
+        const pr = await axiosInstance.get(
+          `/api/product/pickup-address/${productId}`,
+        );
+        const pa = pr.data?.pickupAddress;
+        if (pa) {
+          setCustomPickup(true);
+          setPickup({
+            ...EMPTY_PICKUP,
+            ...Object.fromEntries(
+              Object.entries(pa).map(([k, v]) => [k, v ?? ""]),
+            ),
+          } as PickupAddress);
+        } else {
+          setCustomPickup(false);
+          setPickup(EMPTY_PICKUP);
+        }
+      } catch {
+        /* na ashle default store pickup-i thakbe */
+      }
+
       setProductCode(product.productCode || "");
       if (Array.isArray(product.images)) setExistingImages(product.images);
 
@@ -2171,6 +2366,12 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       if (!Number.isInteger(n) || n < 1 || n > 365) {
         return `${label} must be a whole number between 1 and 365`;
       }
+    }
+
+    // ---- [PICKUP] [CHANGE] PRODUCT ar SERVICE duitar-i ----
+    if (customPickup) {
+      const pickupErr = validatePickup(pickup);
+      if (pickupErr) return pickupErr;
     }
 
     if (stockEnabled) {
@@ -2288,6 +2489,12 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       formData.append(
         "fastestDelivery",
         String(productType !== "SERVICE" && fastestDelivery),
+      );
+
+      // [PICKUP] [CHANGE] PRODUCT ar SERVICE duitar-i. Faka string = backend e purono pickup muche jabe
+      formData.append(
+        "pickupAddress",
+        customPickup ? JSON.stringify(cleanPickup(pickup)) : "",
       );
 
       if (!isEditMode) {
@@ -2474,6 +2681,8 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       clearNewImages();
       setExistingImages([]);
       setColorImages({});
+      setCustomPickup(false); // [PICKUP]
+      setPickup(EMPTY_PICKUP); // [PICKUP]
       onSuccess();
     } catch (error: any) {
       const apiErrors = error.response?.data?.errors;
@@ -2711,6 +2920,15 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
             />
           </div>
         )}
+
+        {/* [PICKUP] [CHANGE] PRODUCT ar SERVICE duitar-i pickup address */}
+        <PickupAddressBlock
+          enabled={customPickup}
+          onToggle={setCustomPickup}
+          value={pickup}
+          onChange={(patch) => setPickup((p) => ({ ...p, ...patch }))}
+          isService={productType === "SERVICE"}
+        />
 
         {/* VARIANT TOGGLES — independent */}
         <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-2.5 space-y-2.5">

@@ -107,6 +107,7 @@ function BannerForm({ bannerId, onClose, onSuccess }: BannerFormProps) {
       categoryIds: [],
       productId: undefined,
       offerBanner: false,
+      isWeb: false,
     },
   });
 
@@ -122,8 +123,12 @@ function BannerForm({ bannerId, onClose, onSuccess }: BannerFormProps) {
   const [products, setProducts] = useState<any[]>([]);
   const [productsLoading, setProductsLoading] = useState(false);
 
+  // edit e ashar somoy isWeb koto chilo (change hole warning dekhabo)
+  const [originalIsWeb, setOriginalIsWeb] = useState<boolean | null>(null);
+
   const selectedStoreId = watch("storeId");
   const selectedCategoryIds = watch("categoryIds");
+  const isWeb = !!watch("isWeb");
   // array identity badle, tai effect e string key use kora hocche
   const categoryKey = (selectedCategoryIds || []).join(",");
 
@@ -202,6 +207,8 @@ function BannerForm({ bannerId, onClose, onSuccess }: BannerFormProps) {
 
       setValue("name", banner.name);
       setValue("offerBanner", !!banner.offerBanner);
+      setValue("isWeb", !!banner.isWeb);
+      setOriginalIsWeb(!!banner.isWeb);
 
       if (banner.image) {
         setExistingMedia({
@@ -313,6 +320,9 @@ function BannerForm({ bannerId, onClose, onSuccess }: BannerFormProps) {
 
       formData.append("offerBanner", String(!!data.offerBanner));
 
+      // true = web (high quality), false = phone
+      formData.append("isWeb", String(!!data.isWeb));
+
       // video hole trim (start/end) file er naam e jay, backend oi part ta kete GIF banay
       if (mediaFile) {
         appendMediaFile(formData, "media", mediaFile);
@@ -358,6 +368,10 @@ function BannerForm({ bannerId, onClose, onSuccess }: BannerFormProps) {
   const mediaIsVideo = !!mediaFile && mediaFile.type.startsWith("video/");
   const trim = mediaIsVideo ? getTrim(mediaFile) : null;
 
+  // edit e platform badlalo kintu notun file dilo na -> purono media er quality same thakbe
+  const platformChangedWithoutNewMedia =
+    isEditMode && originalIsWeb !== null && originalIsWeb !== isWeb && !mediaFile;
+
   return (
     <div className="px-4 pt-2 pb-4 min-h-[40vh]">
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
@@ -382,6 +396,45 @@ function BannerForm({ bannerId, onClose, onSuccess }: BannerFormProps) {
                 <small className="text-red-500 flex items-center gap-1">
                   <i className="pi pi-exclamation-circle"></i>
                   {errors.name.message}
+                </small>
+              )}
+            </div>
+
+            {/* WEB BANNER TOGGLE */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-3 py-2">
+                <div className="min-w-0">
+                  <label
+                    htmlFor="isWeb"
+                    className="text-sm font-semibold text-gray-800 flex items-center gap-1"
+                  >
+                    <span>{isWeb ? "🖥️" : "📱"}</span>
+                    {isWeb ? "Web Banner" : "Phone Banner"}
+                  </label>
+                  <small className="text-gray-600 block">
+                    {isWeb
+                      ? "For website: media is saved in high quality."
+                      : "For phone app: media is optimized for mobile."}
+                  </small>
+                </div>
+                <Controller
+                  name="isWeb"
+                  control={control}
+                  render={({ field }) => (
+                    <InputSwitch
+                      inputId="isWeb"
+                      checked={!!field.value}
+                      onChange={(e) => field.onChange(!!e.value)}
+                    />
+                  )}
+                />
+              </div>
+              {platformChangedWithoutNewMedia && (
+                <small className="text-orange-600 flex items-start gap-1">
+                  <i className="pi pi-exclamation-triangle mt-0.5"></i>
+                  Platform changed, but the current media keeps its old
+                  quality. Upload a new file to apply{" "}
+                  {isWeb ? "web" : "phone"} quality.
                 </small>
               )}
             </div>

@@ -74,6 +74,19 @@ export type GstRates = {
 
 export type GstMode = "INTRA" | "INTER";
 
+// [PICKUP] order place er somoy er pickup address snapshot (shudhu store side e ashe)
+export type OrderPickupAddress = {
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  addressLine?: string;
+  area?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  country?: string;
+};
+
 export type OrderItem = {
   _id: string;
   productId: string;
@@ -172,6 +185,9 @@ export type OrderRow = {
   shippingCharge?: number;
   itemsTotal?: number | null;
   deliveryEnabled?: boolean;
+
+  // [PICKUP] store side order details e ashe, customer API te kokhono na
+  pickupAddress?: OrderPickupAddress | null;
 
   // ---------- payment ----------
   paymentMethod: PaymentMethod;

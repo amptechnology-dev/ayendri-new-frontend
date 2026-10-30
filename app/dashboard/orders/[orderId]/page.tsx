@@ -620,7 +620,7 @@ function CourierDetailsCard({ order }: { order: OrderRow }) {
         </div>
       )}
 
-            {/* shipment nei */}
+      {/* shipment nei */}
       {!s && d && (
         <>
           <div
@@ -851,6 +851,36 @@ function PackagingCard({ order }: { order: OrderRow }) {
           rates are accurate.
         </p>
       )}
+    </SectionCard>
+  );
+}
+
+// ===============================================================
+// [PICKUP] Pickup address (store side only)
+// ===============================================================
+function PickupCard({ order }: { order: OrderRow }) {
+  const a = order.pickupAddress;
+  if (!a?.pincode) return null;
+  return (
+    <SectionCard icon="pi-map-marker" title="Pickup Address">
+      <p className="text-sm font-semibold text-gray-800">{a.contactName}</p>
+      <p className="text-sm text-gray-600">
+        <i className="pi pi-phone text-[11px] mr-1.5 text-gray-400"></i>
+        {a.phone}
+      </p>
+      <div className="mt-2 text-sm text-gray-600 leading-relaxed">
+        <p>
+          {a.addressLine}
+          {a.area ? `, ${a.area}` : ""}
+        </p>
+        <p>
+          {a.city}, {a.state} - {a.pincode}
+        </p>
+        <p>{a.country}</p>
+      </div>
+      <p className="mt-2 text-[11px] text-gray-400">
+        Courier will pick up the parcel from this address.
+      </p>
     </SectionCard>
   );
 }
@@ -1942,6 +1972,9 @@ function OrderDetailsPage() {
                 <CourierDetailsCard order={order} />
               </div>
             )}
+
+            {/* [PICKUP] product er nijosho pickup address (shudhu thakle dekhabe) */}
+            {order.deliveryEnabled !== false && <PickupCard order={order} />}
 
             {/* Packaging + Address side by side */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">

@@ -19,6 +19,12 @@ import { InputText } from "primereact/inputtext";
 import { Button } from "primereact/button";
 import { formatDate } from "@/helper/DateTime";
 import ProductForm from "@/components/product/ProductFrom";
+// [CHANGE] pickup contact WhatsApp
+import {
+  PickupWhatsAppButton,
+  buildPickupMessage,
+  formatPickupAddress,
+} from "@/components/product/PickupWhatsApp";
 
 // ---------- API endpoints (tomar route onujayi change koro) ----------
 const LIST_ENDPOINT = "/api/product/all-products";
@@ -50,6 +56,18 @@ type Variant = SizeVariant & {
   sizeVariants?: SizeVariant[];
 };
 
+// [CHANGE] pickup address er full type (contact + phone + email soho)
+type PickupAddressInfo = {
+  contactName?: string;
+  phone?: string;
+  email?: string;
+  addressLine?: string;
+  area?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+};
+
 type ProductRow = {
   _id: string;
   name: string;
@@ -78,6 +96,8 @@ type ProductRow = {
   store?: { _id?: string; storeName?: string; storeUniqueId?: string };
   category?: { _id?: string; name?: string };
   fastestDelivery?: boolean;
+  productType?: "PRODUCT" | "SERVICE"; // [CHANGE]
+  pickupAddress?: PickupAddressInfo | null; // [PICKUP] [CHANGE]
 };
 
 type MediaItem = { url: string; label?: string };
@@ -474,6 +494,13 @@ function PreviewBody({
       label: "Delivery",
       value: product.fastestDelivery ? "⚡ Fastest courier" : "Standard",
     },
+    // [PICKUP]
+    {
+      label: "Pickup",
+      value: product.pickupAddress?.pincode
+        ? `${product.pickupAddress.city || ""} - ${product.pickupAddress.pincode}`
+        : "Store default",
+    },
     { label: "Stock", value: <StockBadge p={product} /> },
     { label: "Status", value: <StatusBadges p={product} /> },
     { label: "Created", value: formatDate(product.createdAt || "") },
@@ -559,6 +586,40 @@ function PreviewBody({
           </div>
         ))}
       </div>
+
+      {/* [CHANGE] [PICKUP] contact + WhatsApp. Ei page shudhu STORE role er nijer product dekhay, tai canSend always true */}
+      {product.pickupAddress?.phone && (
+        <div className="bg-green-50/60 border border-green-100 rounded-lg p-3 space-y-1">
+          <h4 className="text-sm font-semibold text-gray-800">
+            Pickup contact
+          </h4>
+          <p className="text-sm text-gray-700">
+            {product.pickupAddress.contactName || "-"}
+          </p>
+          <p className="text-sm">
+            <PickupWhatsAppButton
+              phone={product.pickupAddress.phone}
+              canSend
+              message={buildPickupMessage({
+                contactName: product.pickupAddress.contactName,
+                storeName: product.store?.storeName,
+                productName: product.name,
+                productCode: product.productCode,
+                productType: product.productType,
+                address: formatPickupAddress(product.pickupAddress),
+              })}
+            />
+          </p>
+          {product.pickupAddress.email && (
+            <p className="text-xs text-gray-500">
+              {product.pickupAddress.email}
+            </p>
+          )}
+          <p className="text-xs text-gray-500">
+            {formatPickupAddress(product.pickupAddress)}
+          </p>
+        </div>
+      )}
 
       {/* [TIER] simple product er quantity pricing */}
       {(product.priceTiers?.length ?? 0) > 0 && (
@@ -820,15 +881,22 @@ function Page() {
     const fastBadge = row.fastestDelivery ? (
       <Badge className="bg-orange-100 text-orange-800">⚡ Fast</Badge>
     ) : null;
+    // [PICKUP] badge
+    const pickupBadge = row.pickupAddress?.pincode ? (
+      <Badge className="bg-sky-100 text-sky-800">
+        📍 {row.pickupAddress.pincode}
+      </Badge>
+    ) : null;
 
     if (!colors && !sizes) {
-      if (!bulk && !gstBadge && !fastBadge)
+      if (!bulk && !gstBadge && !fastBadge && !pickupBadge)
         return <span className="text-xs text-gray-400">Simple</span>;
       return (
         <div className="flex flex-wrap gap-1">
           {bulk}
           {gstBadge}
           {fastBadge}
+          {pickupBadge}
         </div>
       );
     }
@@ -847,6 +915,7 @@ function Page() {
         {bulk}
         {gstBadge}
         {fastBadge}
+        {pickupBadge}
       </div>
     );
   };
@@ -1137,6 +1206,12 @@ function Page() {
                         {p.fastestDelivery && (
                           <Badge className="bg-orange-100 text-orange-800">
                             ⚡ Fastest delivery
+                          </Badge>
+                        )}
+                        {/* [PICKUP] */}
+                        {p.pickupAddress?.pincode && (
+                          <Badge className="bg-sky-100 text-sky-800">
+                            📍 Pickup {p.pickupAddress.pincode}
                           </Badge>
                         )}
                         {p.isMadeForProduct && (
