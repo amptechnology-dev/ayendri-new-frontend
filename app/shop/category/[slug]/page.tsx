@@ -7,8 +7,8 @@ import { useShop } from "../../shop-data";
 import WishlistButton from "../../components/WishlistButton";
 import PageArt from "../../components/PageArt";
 // Adjust these two to your real routes
-const CATEGORY_BASE = "/category";
-const PRODUCT_BASE = "/product";
+const CATEGORY_BASE = "/shop/category";
+const PRODUCT_BASE = "/shop/product";
 
 // Tries the usual field names so the tile picks up your product image
 const imgOf = (p: any): string | undefined =>
@@ -24,7 +24,7 @@ function Tile({ p }: { p: any }) {
   const price = priceOf(p);
   return (
     <div className="group relative w-[130px] shrink-0 text-center sm:w-[147px]">
-    <Link href={`${PRODUCT_BASE}/${p.slug}`} className="block">
+    <Link href={`${PRODUCT_BASE}/${encodeURIComponent(p.slug)}`} className="block">
       <div className="relative aspect-square overflow-hidden rounded-2xl border border-[#f1dfb6] bg-gradient-to-br from-[#fff4dc] to-[#f6d9a8] shadow-sm transition group-hover:-translate-y-1 group-hover:shadow-lg">
         {img && (
           // eslint-disable-next-line @next/next/no-img-element
