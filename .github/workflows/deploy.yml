@@ -51,6 +51,7 @@ jobs:
             NEXT_PUBLIC_FIREBASE_SENDER_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_SENDER_ID }}
             NEXT_PUBLIC_FIREBASE_APP_ID=${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
             NEXT_PUBLIC_FIREBASE_VAPID_KEY=${{ secrets.NEXT_PUBLIC_FIREBASE_VAPID_KEY }}
+            NEXT_PUBLIC_STORE_ID=${{ secrets.NEXT_PUBLIC_STORE_ID }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
