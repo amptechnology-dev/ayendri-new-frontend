@@ -60,7 +60,7 @@ export default function AccountMenu() {
             <>
               <b className="block text-base">Welcome to Ayendri</b>
               <p className="mt-1 text-xs text-[#9a7a7a]">Log in or create an account to track orders and check out faster.</p>
-              <Link href={`/shop/login?next=${next}`} className="mt-4 grid h-11 place-items-center rounded-xl bg-[#7a1118] text-sm font-bold text-white">Log In</Link>
+              <Link href={`/shop/login?next=${next}`} className="mt-4 grid h-11 place-items-center rounded-xl bg-[#7a1118] text-sm font-bold !text-white">Log In</Link>
               <Link href={`/shop/register?next=${next}`} className="mt-2 grid h-11 place-items-center rounded-xl border border-[#7a1118] text-sm font-bold text-[#7a1118]">Create Account</Link>
             </>
           )}

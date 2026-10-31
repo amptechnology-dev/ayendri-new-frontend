@@ -105,8 +105,8 @@ export default function Category() {
                 href={`${CATEGORY_BASE}/${c.slug}`}
                 className={`rounded-full border px-4 py-1.5 text-sm font-bold transition ${
                   c.slug === slug
-                    ? "border-[#f6c453] bg-[#f6c453] text-[#5a0612]"
-                    : "border-white/30 bg-white/10 text-white hover:bg-white/20"
+                    ? "border-[#f6c453] bg-[#f6c453] !text-[#5a0612]"
+                    : "border-white/30 bg-white/10 !text-white hover:bg-white/20"
                 }`}
               >
                 {c.name}

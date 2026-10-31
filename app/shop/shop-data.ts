@@ -6,15 +6,19 @@ import {
   type Category,
 } from "./data";
 import * as A from "./api";
+import { fetchPincode } from "./cart-api";
+import { useAuth } from "./auth";
 type ShopState = {
   products: Product[];
   categories: Category[];
   banners: A.Banner[];
   offerBanners: A.Banner[];
   storeMongoId: string;
+  store: any;
   loading: boolean;
   loaded: boolean;
   load: () => Promise<void>;
+  reload: () => Promise<void>;
 };
 const forStore = (mongoId: string) => (b: any) => {
   const raw = b.storeId ?? b.store;
@@ -27,16 +31,24 @@ export const useShop = create<ShopState>((set, get) => ({
   banners: [],
   offerBanners: [],
   storeMongoId: "",
+  store: null,
   loading: false,
   loaded: false,
+  reload: async () => {
+    set({ loading: false, loaded: false });
+    await get().load();
+  },
   load: async () => {
     if (get().loading || get().loaded) return;
     set({ loading: true });
     try {
       const pin =
-        typeof window !== "undefined"
-          ? (localStorage.getItem("ayendri-pincode") ?? "")
-          : "";
+        (typeof window !== "undefined"
+          ? localStorage.getItem("ayendri-pincode")
+          : "") ||
+        (await fetchPincode()) ||
+        "";
+      console.log("[shop] pincode used:", pin || "(none)");
       console.log("[shop] API:", A.API);
       console.log("[shop] Store ID:", A.STORE_ID);
       const [pr, ca, ba] = await Promise.allSettled([
@@ -54,6 +66,7 @@ export const useShop = create<ShopState>((set, get) => ({
         set({
           products: mapped,
           storeMongoId: String(response.store?._id ?? response.store?.id ?? ""),
+          store: response.store ?? null,
         });
       } else {
         console.error("[shop] Product request failed:", pr.reason);
@@ -106,3 +119,12 @@ export const useShop = create<ShopState>((set, get) => ({
     }
   },
 }));
+
+// when the user logs in (or the saved token is restored), refetch with their pincode
+if (typeof window !== "undefined") {
+  useAuth.subscribe((state, prev) => {
+    if (state.token && state.token !== prev.token) {
+      useShop.getState().reload();
+    }
+  });
+}

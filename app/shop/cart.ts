@@ -34,6 +34,15 @@ type Line = {
   qty: number;
 };
 
+// size / color / booking date chosen on the product page, keyed by product id
+const pendingSelection: Record<string, Record<string, unknown>> = {};
+export const setCartSelection = (
+  slug: string,
+  data: Record<string, unknown>,
+) => {
+  pendingSelection[slug] = data;
+};
+
 type CartState = {
   // Existing cart state
   lines: Line[];
@@ -85,7 +94,11 @@ export const useCart = create<CartState>()(
         }
         try {
           await cartCall(() =>
-            shopApi.post("/api/cart/add", { productId: slug, quantity: qty }),
+            shopApi.post("/api/cart/add", {
+              productId: slug,
+              quantity: qty,
+              ...(pendingSelection[slug] ?? {}),
+            }),
           );
           await get().hydrate();
         } catch (e: any) {

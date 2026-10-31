@@ -34,7 +34,31 @@ export const fetchProducts = (pin?: string) =>
 
 export const fetchCategories = () => get(`/product/store/${sid}/categories`);
 
+export const fetchAvailability = (productId: string) =>
+  get(`/product/store/${sid}/products/${encodeURIComponent(productId)}/availability`);
+
 export const fetchBanners = () => get("/banner/banners");
+
+export async function deliveryCheck(body: {
+  pincode: string;
+  productId: string;
+  variantId?: string;
+  quantity: number;
+  itemsTotal: number;
+}) {
+  try {
+    // TODO: copy the exact path + method from the app's api.deliveryCheck
+    const { data } = await axiosInstance.post(
+      "/api/delivery/check", // TODO
+      { storeUniqueId: STORE_ID, ...body },
+      noCreds,
+    );
+    return data;
+  } catch (err) {
+    const status = axios.isAxiosError(err) ? (err.response?.status ?? "network") : "error";
+    throw new Error(`deliveryCheck → ${status}`);
+  }
+}
 
 export const fetchOfferBanners = (mongoId: string) =>
   get("/banner/public/offer-banners", { storeId: mongoId });

@@ -16,11 +16,11 @@ import HeaderArt from "./HeaderArt";
 const HINTS = ["Shri Yantra", "Ganesh idol", "Karungali mala", "Rudraksha", "Tulsi mala", "Pyrite frame", "Puja booking"];
 
 // TODO: put your real store details here
-const STORE = {
-  label: "Our Store",
-  place: "Dunlop, Kolkata",
-  href: "/store", // or a Google Maps link, e.g. "https://maps.google.com/?q=Ayendri+Dunlop+Kolkata"
-};
+// const STORE = {
+//   label: "Our Store",
+//   place: "Dunlop, Kolkata",
+//   href: "/store", // or a Google Maps link, e.g. "https://maps.google.com/?q=Ayendri+Dunlop+Kolkata"
+// };
 
 /* ---------- shared button styles (high contrast on the maroon header) ---------- */
 
@@ -268,7 +268,7 @@ export default function ShopHeader() {
         </form>
 
         <div className="ml-auto flex items-center gap-3">
-          <Link
+          {/* <Link
             href={STORE.href}
             className={`${GLASS_PILL} hidden px-4 py-2 text-sm font-semibold lg:flex`}
             aria-label={`${STORE.label}: ${STORE.place}`}
@@ -278,7 +278,7 @@ export default function ShopHeader() {
               <span className="block text-[10px] font-semibold uppercase tracking-wider text-white/80">{STORE.label}</span>
               <span className="block max-w-[160px] truncate">{STORE.place}</span>
             </span>
-          </Link>
+          </Link> */}
 
           <Link href="/shop/notifications" className={ICON_BTN} aria-label="Notifications">
             <Bell size={20} />

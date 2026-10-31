@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
-import { use, useState } from "react";
+import { use, useEffect, useState } from "react";
+import { imgUrl, fetchAvailability } from "../../api";
 import Link from "next/link";
 import {
   Star,
@@ -24,13 +25,13 @@ import {
   Package,
   Sparkles,
 } from "lucide-react";
-import { inr, off } from "../../data";
+import { inr } from "../../data";
 import { useShop } from "../../shop-data";
-import { useCart } from "../../cart";
+import { useCart, setCartSelection } from "../../cart";
 import AddToCart from "./AddToCart";
 import ProductCard from "../../components/ProductCard";
 import FastestBadge from "../../components/FastestBadge";
-import { deliveryEtaText, isFastestDelivery } from "../../delivery-text";
+
 import {
   formatBookingDate,
   getMinBookingDate,
@@ -140,6 +141,7 @@ function SpecIcon({ label }: { label: string }) {
 export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const products = useShop((s) => s.products);
+  const store = useShop((s) => s.store);
   const addToCart = useCart((s) => s.add);
   const p = products.find((x) => x.slug === slug);
 
@@ -150,7 +152,54 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   const [copied, setCopied] = useState(false);
   const [tab, setTab] = useState<TabId>("description");
   const [expanded, setExpanded] = useState(false);
+  const [colorIdx, setColorIdx] = useState(0);
+  const [sizeIdx, setSizeIdx] = useState(0);
+  const [avail, setAvail] = useState<any>(null);
 
+  const serviceId: string | null =
+    String((p as any)?.raw?.productType ?? "").toUpperCase() === "SERVICE"
+      ? ((p as any)?.raw?._id ?? null)
+      : null;
+
+  useEffect(() => {
+    if (!serviceId) {
+      setAvail(null);
+      return;
+    }
+    let active = true;
+    fetchAvailability(serviceId)
+      .then((r: any) => {
+        if (active && r?.success) setAvail(r);
+      })
+      .catch(() => {
+        if (active) setAvail(null);
+      });
+    return () => {
+      active = false;
+    };
+  }, [serviceId]);
+
+  // tell the cart which size/color/booking date is selected (cart.add reads this)
+  useEffect(() => {
+    const r = (p as any)?.raw;
+    if (!p || !r) return;
+    const cv = Array.isArray(r.variants)
+      ? (r.variants[colorIdx] ?? r.variants[0])
+      : undefined;
+    const sv = cv?.sizeVariants?.[sizeIdx] ?? cv?.sizeVariants?.[0];
+    const sel: Record<string, unknown> = {
+      variantId: sv?._id ?? cv?._id,
+      colorVariantId: cv?._id,
+      color: cv?.color,
+      size: sv?.size,
+      weight: sv?.weight,
+      bookingDate: bookingDate || undefined,
+    };
+    Object.keys(sel).forEach((k) => {
+      if (sel[k] === undefined) delete sel[k];
+    });
+    setCartSelection(p.slug, sel);
+  }, [p, colorIdx, sizeIdx, bookingDate]);
   if (!products.length) {
     return (
       <p className="py-24 text-center text-sm text-[#9a7a7a]">
@@ -168,16 +217,94 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
 
   const raw = (p as any).raw;
   const isService = String(raw?.productType ?? "").toUpperCase() === "SERVICE";
-  const isFastest = raw ? Boolean(isFastestDelivery(raw.delivery, raw)) : false;
-  // fastest -> earliest date, otherwise -> latest date
-  const eta = deliveryEtaText(raw?.delivery, isFastest);
+  const needsBooking = isService || Boolean(raw?.isMadeForProduct);
 
+  // ---- daily booking limit (SERVICE only, from the availability API) ----
+  const bookingLimit = avail?.limited ? Number(avail.dailyBookingLimit) || 0 : 0;
+  const availDays: any[] = Array.isArray(avail?.days) ? avail.days : [];
+  const dateFull = Boolean(availDays.find((d) => d.date === bookingDate)?.full);
+
+  // ---- variants: color -> size ----
+  const colorVariants: any[] = Array.isArray(raw?.variants) ? raw.variants : [];
+  const color: any = colorVariants[colorIdx] ?? colorVariants[0];
+  const sizeVariants: any[] = color?.sizeVariants ?? [];
+  const size: any = sizeVariants[sizeIdx] ?? sizeVariants[0];
+  const vsrc: any = size ?? color ?? null; // size > color > product
+  const sizeLabel = (s: any) =>
+    [s.size, s.weight ? `(${s.weight})` : ""].filter(Boolean).join(" ") ||
+    s.height ||
+    "One size";
+
+  // ---- price + tiers ----
+  const priceOnRequest = Boolean(raw?.priceOnRequest);
+  const price = Number(vsrc?.offerPrice ?? p.price) || 0;
+  const mrp = Number(vsrc?.mrp ?? p.mrp) || price;
+  const pct = mrp > price ? Math.round(((mrp - price) / mrp) * 100) : 0;
+  const tiers: any[] =
+    [vsrc?.priceTiers, color?.priceTiers, raw?.priceTiers].find(
+      (t: any) => Array.isArray(t) && t.length,
+    ) ?? [];
+  const showTiers = Boolean(raw?.hasTierPricing) && tiers.length > 0;
+
+  // ---- stock ----
+  const stock: number | undefined =
+    raw?.hasStockManagement && typeof vsrc?.currentStock === "number"
+      ? vsrc.currentStock
+      : undefined;
+  const outOfStock = stock !== undefined && stock <= 0;
+  const lowStock =
+    stock !== undefined &&
+    stock > 0 &&
+    stock <= (Number(vsrc?.lowStockThreshold) || 5);
+
+  // ---- GST + packaging ----
+  const gstSrc: any = [size?.effectiveGst, color?.effectiveGst, raw?.gst].find(
+    (g: any) => g && (g.cgst != null || g.sgst != null || g.igst != null),
+  );
+  const gstParts = [
+    gstSrc?.cgst != null && `CGST ${gstSrc.cgst}%`,
+    gstSrc?.sgst != null && `SGST ${gstSrc.sgst}%`,
+    gstSrc?.igst != null && `IGST ${gstSrc.igst}%`,
+  ]
+    .filter(Boolean)
+    .join(" + ");
+  const pack: any = size?.packagingDetails ?? color?.packagingDetails ?? null;
+
+  // ---- delivery ----
+  const dlv: any = raw?.delivery;
+  const isFastest = Boolean(dlv?.fastest ?? raw?.fastestDelivery);
+  const notDeliverable = dlv?.deliverable === false;
+  const fmtDate = (iso?: string) =>
+    iso
+      ? new Date(iso).toLocaleDateString("en-IN", {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+          timeZone: "UTC",
+        })
+      : "";
+  // fastest -> earliest date, otherwise -> latest date
+  const eta =
+    dlv && !notDeliverable
+      ? fmtDate(
+          isFastest
+            ? (dlv.estimatedMinDate ?? dlv.estimatedMaxDate)
+            : (dlv.estimatedMaxDate ?? dlv.estimatedMinDate),
+        )
+      : "";
+  const shipCharge = Number(dlv?.shippingCharge ?? 0);
+  const shipFree = Boolean(dlv?.isFree) || shipCharge === 0;
+  const freeAbove =
+    dlv?.freeDeliveryRules?.[String(raw?.productType ?? "PRODUCT").toUpperCase()] ??
+    dlv?.freeDeliveryAbove;
   const parsedDate = parseApiDate(bookingDate);
-  const dateValid = isValidBookingDate(parsedDate);
+  const dateValid = isValidBookingDate(parsedDate) && !dateFull;
   const minDate = toApiDate(getMinBookingDate());
 
-  const images: string[] = (p as any).images?.length
-    ? (p as any).images
+  const rawImgs: string[] =
+    (color?.images?.length ? color.images : raw?.images) ?? [];
+  const images: string[] = rawImgs.length
+    ? rawImgs.map((u: string) => imgUrl(u))
     : [p.image];
   const mainImg = images[Math.min(imgIdx, images.length - 1)];
 
@@ -186,14 +313,30 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
 
   const days = (n?: number | null) => (n ? `${n} days` : "Eligible");
   const benefits = [
-    raw?.isReturnable && { I: Undo2, t: "Return", s: days(raw.returnDays) },
-    raw?.isReplaceable && {
+    {
+      I: Undo2,
+      t: "Return",
+      s: raw?.isReturnable ? days(raw.returnDays) : "Not available",
+    },
+    {
       I: Repeat,
       t: "Replacement",
-      s: days(raw.replaceDays),
+      s: raw?.isReplaceable ? days(raw.replaceDays) : "Not available",
     },
-    raw?.isRefundable && { I: Banknote, t: "Refund", s: days(raw.refundDays) },
-    { I: Truck, t: "Free delivery", s: "Within 20 km" },
+    {
+      I: Banknote,
+      t: "Refund",
+      s: raw?.isRefundable ? days(raw.refundDays) : "Not available",
+    },
+    ...(dlv
+      ? [
+          {
+            I: Truck,
+            t: shipFree ? "Free delivery" : "Shipping",
+            s: shipFree ? String(dlv.label ?? "") : `₹${shipCharge}`,
+          },
+        ]
+      : []),
   ].filter(Boolean) as { I: any; t: string; s: string }[];
 
   const delivery = [
@@ -206,6 +349,15 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
       ),
       fast: false,
     },
+    ...(notDeliverable
+      ? [
+          {
+            I: MapPin,
+            t: <b className="text-red-600">Not deliverable to your pincode</b>,
+            fast: false,
+          },
+        ]
+      : []),
     ...(eta
       ? [
           {
@@ -213,18 +365,39 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
             t: (
               <>
                 Delivery by <b className="text-green-700">{eta}</b>
+                {dlv?.label ? (
+                  <span className="text-[#9a7a7a]"> · {String(dlv.label)}</span>
+                ) : null}
               </>
             ),
             fast: isFastest,
           },
         ]
       : []),
-    { I: Tag, t: <>Free delivery · Within 20 km</>, fast: false },
+    ...(dlv && !notDeliverable
+      ? [
+          {
+            I: Tag,
+            t: shipFree ? (
+              <b className="text-green-700">Free delivery</b>
+            ) : (
+              <>
+                Shipping <b>{inr(shipCharge)}</b>
+                {freeAbove ? <> · Free above {inr(freeAbove)}</> : null}
+              </>
+            ),
+            fast: false,
+          },
+        ]
+      : []),
+    ...(dlv?.shippingNote
+      ? [{ I: Truck, t: <>{String(dlv.shippingNote)}</>, fast: false }]
+      : []),
     {
       I: Store,
       t: (
         <>
-          Sold by <b className="text-green-700">Ayendri</b>
+          Sold by <b className="text-green-700">{store?.storeName ?? "Ayendri"}</b>
         </>
       ),
       fast: false,
@@ -234,10 +407,35 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   // ---- Description section data ----
   const details: [string, string][] = (
     [
-      ["Category", String(p.category ?? "")],
+      [
+        "Category",
+        String(raw?.category?.name ?? (p as any).categoryName ?? ""),
+      ],
       ["Unit", String(raw?.unit ?? "")],
       ["Product code", String(raw?.productCode ?? "")],
-      ["Sold by", "Ayendri"],
+      ["Type", raw?.productType === "SERVICE" ? "Service" : "Product"],
+      ["Color", String(color?.color ?? "")],
+      ["Size", String(size?.size ?? "")],
+      ["Weight", String(size?.weight ?? "")],
+      ["Height", String(size?.height ?? "")],
+      [
+        "GST",
+        gstParts
+          ? `${gstParts}${raw?.gstInclusive ? " (incl.)" : " (extra)"}`
+          : "",
+      ],
+      ["Stock", stock !== undefined ? String(stock) : ""],
+      [
+        "Package (L×B×H cm)",
+        pack?.length ? `${pack.length}×${pack.breadth}×${pack.height}` : "",
+      ],
+      ["Package weight", pack?.weight ? String(pack.weight) : ""],
+      [
+        "Expected delivery days",
+        pack?.expectedDeliveryDays ? `${pack.expectedDeliveryDays} days` : "",
+      ],
+      ["Courier", String(dlv?.courierName ?? "")],
+      ["Sold by", String(store?.storeName ?? "Ayendri")],
     ] as [string, string][]
   ).filter(([, v]) => v);
 
@@ -346,7 +544,7 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
         </div>
 
         {/* ---------- Details ---------- */}
-        <div>
+        <div className="min-w-0">
           <h1 className="text-2xl font-black leading-tight text-[#4a0710] sm:text-3xl">
             {p.name}
           </h1>
@@ -378,30 +576,144 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
           )}
 
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <span className="text-4xl font-black text-[#7a1118]">
-              {inr(p.price)}
-            </span>
-            {p.mrp > p.price && (
+            {priceOnRequest || price <= 0 ? (
+              <span className="text-2xl font-black text-[#7a1118]">
+                Order to know Price
+              </span>
+            ) : (
               <>
-                <span className="text-[#9a8080]">
-                  MRP <s>{inr(p.mrp)}</s>
+                <span className="text-4xl font-black text-[#7a1118]">
+                  {inr(price)}
                 </span>
-                <span className="rounded-lg bg-[#1a1a1a] px-3 py-1.5 text-xs font-bold text-white">
-                  {off(p)}% OFF
-                </span>
+                {raw?.unit && (
+                  <span className="text-sm text-[#9a7a7a]">
+                    / {String(raw.unit)}
+                  </span>
+                )}
+                {mrp > price && (
+                  <>
+                    <span className="text-[#9a8080]">
+                      MRP <s>{inr(mrp)}</s>
+                    </span>
+                    <span className="rounded-lg bg-[#1a1a1a] px-3 py-1.5 text-xs font-bold text-white">
+                      {pct}% OFF
+                    </span>
+                  </>
+                )}
               </>
             )}
           </div>
-          {raw?.gstInclusive && (
+          {raw?.gstInclusive ? (
             <p className="mt-1 text-xs text-[#9a7a7a]">
-              (Inclusive of all taxes)
+              (Inclusive of all taxes{gstParts ? ` · ${gstParts}` : ""})
+            </p>
+          ) : gstParts ? (
+            <p className="mt-1 text-xs text-[#9a7a7a]">+ {gstParts} extra</p>
+          ) : null}
+
+          {showTiers && (
+            <div className="mt-4">
+              <div className="text-sm font-bold text-[#4a0710]">
+                Buy more, pay less
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {tiers.map((t: any, i: number) => (
+                  <span
+                    key={i}
+                    className="rounded-xl border border-[#e4cfae] bg-white px-3 py-1.5 text-xs"
+                  >
+                    {t.minQty}
+                    {t.maxQty ? `-${t.maxQty}` : "+"} {String(raw?.unit ?? "pcs")}:{" "}
+                    <b>{inr(t.price)}</b>
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {colorVariants.length > 0 && (
+            <div className="mt-5 space-y-4">
+              {colorVariants.some((v: any) => v.color) && (
+                <div>
+                  <div className="text-sm font-bold text-[#4a0710]">
+                    Color: <span className="font-normal">{color?.color}</span>
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {colorVariants.map((v: any, i: number) => (
+                      <button
+                        key={v._id ?? i}
+                        onClick={() => {
+                          setColorIdx(i);
+                          setSizeIdx(0);
+                          setImgIdx(0);
+                        }}
+                        title={v.color}
+                        className={`h-16 w-16 overflow-hidden rounded-xl border-2 bg-[#fff1da] text-xs ${
+                          i === colorIdx
+                            ? "border-[#a3161c]"
+                            : "border-transparent"
+                        }`}
+                      >
+                        {v.images?.[0] ? (
+                          <img
+                            src={imgUrl(v.images[0])}
+                            alt={v.color ?? ""}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          v.color
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {sizeVariants.length > 0 && (
+                <div>
+                  <div className="text-sm font-bold text-[#4a0710]">Size</div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {sizeVariants.map((s: any, i: number) => {
+                      const out =
+                        raw?.hasStockManagement &&
+                        typeof s.currentStock === "number" &&
+                        s.currentStock <= 0;
+                      return (
+                        <button
+                          key={s._id ?? i}
+                          disabled={out}
+                          onClick={() => setSizeIdx(i)}
+                          className={`rounded-xl border-2 px-4 py-2 text-sm font-semibold ${
+                            i === sizeIdx
+                              ? "border-[#a3161c] bg-[#fdecec] text-[#a3161c]"
+                              : "border-[#e4cfae] bg-white text-[#4a0710]"
+                          } ${out ? "opacity-40" : ""}`}
+                        >
+                          {sizeLabel(s)}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {outOfStock && (
+            <p className="mt-3 text-sm font-bold text-red-600">Out of stock</p>
+          )}
+          {lowStock && (
+            <p className="mt-3 text-sm font-bold text-[#b26a00]">
+              Only {stock} left. Order soon!
             </p>
           )}
 
           {benefits.length > 0 && (
             <div className="mt-5 grid grid-cols-2 gap-y-4 rounded-2xl border border-[#f0dcc0] bg-white p-4 text-center text-xs font-semibold sm:grid-cols-4 sm:gap-y-0 sm:divide-x sm:divide-[#f0dcc0]">
               {benefits.map(({ I, t, s }) => (
-                <div key={t} className="px-2">
+                <div
+                  key={t}
+                  className={`px-2 ${s === "Not available" ? "opacity-50" : ""}`}
+                >
                   <span className="mx-auto mb-2 grid h-11 w-11 place-items-center rounded-full bg-[#fdecec] text-[#a3161c]">
                     <I size={20} />
                   </span>
@@ -414,7 +726,7 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
             </div>
           )}
 
-          {isService && (
+          {needsBooking && (
             <div className="mt-5 rounded-2xl border border-[#f0dcc0] bg-[#fff4dc] p-4">
               <div className="flex items-start gap-2 text-xs font-medium leading-relaxed text-[#4a0710]">
                 <Hammer size={16} className="mt-0.5 shrink-0 text-[#b26a00]" />
@@ -433,12 +745,84 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
                   }`}
                 />
               </label>
+              {isService && bookingLimit > 0 && availDays.length > 0 && (
+                <div className="mt-3 min-w-0">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-[#4a0710]">
+                      Choose a date
+                    </span>
+                    <span className="text-[#9a7a7a]">
+                      {bookingLimit} bookings / day · swipe →
+                    </span>
+                  </div>
+                  <div className="-mx-1 mt-2 flex snap-x gap-2 overflow-x-auto px-1 pb-2">
+                    {availDays
+                      .filter((d) => d.date >= minDate)
+                      .map((d) => {
+                        const dt = new Date(`${d.date}T00:00:00Z`);
+                        const sel = bookingDate === d.date;
+                        const low =
+                          !d.full &&
+                          d.remaining <=
+                            Math.max(2, Math.ceil(bookingLimit * 0.2));
+                        const part = (o: Intl.DateTimeFormatOptions) =>
+                          dt.toLocaleDateString("en-IN", {
+                            ...o,
+                            timeZone: "UTC",
+                          });
+                        return (
+                          <button
+                            key={d.date}
+                            type="button"
+                            disabled={d.full}
+                            onClick={() => setBookingDate(d.date)}
+                            className={`flex w-[68px] shrink-0 snap-start flex-col items-center rounded-2xl border-2 px-2 py-2 transition ${
+                              sel
+                                ? "border-[#a3161c] bg-[#a3161c] text-white shadow-md"
+                                : d.full
+                                  ? "border-[#eee] bg-[#f5f5f5] text-[#b5b5b5]"
+                                  : "border-[#e4cfae] bg-white text-[#4a0710] hover:border-[#a3161c]"
+                            }`}
+                          >
+                            <span className="text-[10px] font-semibold uppercase opacity-80">
+                              {part({ weekday: "short" })}
+                            </span>
+                            <span className="text-xl font-black leading-tight">
+                              {part({ day: "numeric" })}
+                            </span>
+                            <span className="text-[10px] font-semibold uppercase opacity-80">
+                              {part({ month: "short" })}
+                            </span>
+                            <span
+                              className={`mt-1 text-[10px] font-bold ${
+                                sel
+                                  ? "text-white"
+                                  : d.full
+                                    ? "text-red-400"
+                                    : low
+                                      ? "text-[#b26a00]"
+                                      : "text-green-700"
+                              }`}
+                            >
+                              {d.full ? "Full" : `${d.remaining} left`}
+                            </span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+              {dateFull && (
+                <p className="mt-2 text-xs font-semibold text-red-600">
+                  This date is fully booked. Please choose another date.
+                </p>
+              )}
               {bookingDate && dateValid && (
                 <p className="mt-2 text-xs text-[#6b4a4a]">
                   Booking for {formatBookingDate(parsedDate)}
                 </p>
               )}
-              {bookingDate && !dateValid && (
+              {bookingDate && !dateValid && !dateFull && (
                 <p className="mt-2 text-xs font-semibold text-red-600">
                   Same-day booking isn&apos;t available. Please pick a later
                   date.
@@ -449,7 +833,7 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
 
           <AddToCart
             slug={p.slug}
-            madeFor={isService}
+            madeFor={needsBooking}
             bookingDate={dateValid ? bookingDate : ""}
           />
 
@@ -750,16 +1134,16 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
         <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4">
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black text-[#4a0710]">
-              {inr(p.price)}
+              {priceOnRequest || price <= 0 ? "Order to know Price" : inr(price)}
             </span>
-            {p.mrp > p.price && (
-              <s className="text-sm text-[#9a8080]">{inr(p.mrp)}</s>
+            {!priceOnRequest && mrp > price && (
+              <s className="text-sm text-[#9a8080]">{inr(mrp)}</s>
             )}
           </div>
           <AddToCart
             compact
             slug={p.slug}
-            madeFor={isService}
+            madeFor={needsBooking}
             bookingDate={dateValid ? bookingDate : ""}
           />
         </div>
