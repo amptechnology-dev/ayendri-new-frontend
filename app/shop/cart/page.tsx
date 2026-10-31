@@ -58,7 +58,7 @@ export default function Cart() {
       <div className="py-24 text-center">
         <h1 className="text-2xl font-black text-[#4a0710]">Your cart is empty</h1>
         <p className="mt-2 text-sm text-[#9a7a7a]">Start adding some items!</p>
-        <Link href="/shop" className="shop-gold-btn mt-6 inline-block rounded-full px-8 py-3">Continue shopping</Link>
+        <Link href="/" className="shop-gold-btn mt-6 inline-block rounded-full px-8 py-3">Continue shopping</Link>
       </div>
     );
 

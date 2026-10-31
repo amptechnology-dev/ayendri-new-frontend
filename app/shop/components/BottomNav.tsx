@@ -13,7 +13,7 @@ const MAG_RADIUS = 110; // px, how far the cursor "lens" reaches
 const MAG_STRENGTH = 0.22; // extra icon scale at the cursor
 
 const items = [
-  { href: "/shop", label: "Home", Icon: Home, color: "#d9803a", match: (p: string) => p === "/shop" },
+  { href: "/", label: "Home", Icon: Home, color: "#d9803a", match: (p: string) => p === "/shop" },
   { href: "/shop/category/all", label: "Categories", Icon: LayoutGrid, color: "#2f8f82", match: (p: string) => p.startsWith("/shop/category") },
   { href: "/shop/orders", label: "Orders", Icon: ClipboardCheck, color: "#7b5fc0", match: (p: string) => p.startsWith("/shop/orders") },
 ];

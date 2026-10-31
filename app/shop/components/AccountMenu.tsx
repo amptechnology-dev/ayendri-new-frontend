@@ -50,7 +50,7 @@ export default function AccountMenu() {
               <Link href="/shop/profile" className="mt-2 flex items-center gap-2 rounded-lg px-2 py-2.5 text-sm font-semibold hover:bg-[#f6efe6]"><UserRound size={16} /> My Profile</Link>
               <Link href="/shop/orders" className="flex items-center gap-2 rounded-lg px-2 py-2.5 text-sm font-semibold hover:bg-[#f6efe6]"><ClipboardList size={16} /> My Orders</Link>
               <button
-                onClick={() => { signOut(); setOpen(false); router.replace("/shop"); }}
+                onClick={() => { signOut(); setOpen(false); router.replace("/"); }}
                 className="flex w-full items-center gap-2 rounded-lg px-2 py-2.5 text-sm font-semibold text-[#a3161c] hover:bg-[#f6efe6]"
               >
                 <LogOut size={16} /> Log out

@@ -97,6 +97,7 @@ type ProductRow = {
   category?: { _id?: string; name?: string };
   fastestDelivery?: boolean;
   productType?: "PRODUCT" | "SERVICE"; // [CHANGE]
+    dailyBookingLimit?: number | null;
   pickupAddress?: PickupAddressInfo | null; // [PICKUP] [CHANGE]
 };
 
@@ -501,6 +502,16 @@ function PreviewBody({
         ? `${product.pickupAddress.city || ""} - ${product.pickupAddress.pincode}`
         : "Store default",
     },
+        ...(product.productType === "SERVICE"
+      ? [
+          {
+            label: "Daily limit",
+            value: product.dailyBookingLimit
+              ? `${product.dailyBookingLimit} bookings / day`
+              : "No limit",
+          },
+        ]
+      : []),
     { label: "Stock", value: <StockBadge p={product} /> },
     { label: "Status", value: <StatusBadges p={product} /> },
     { label: "Created", value: formatDate(product.createdAt || "") },

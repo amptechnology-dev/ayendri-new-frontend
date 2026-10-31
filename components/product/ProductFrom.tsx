@@ -1639,12 +1639,14 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   const [productType, setProductType] = useState<ProductType>("PRODUCT");
   const [fastestDelivery, setFastestDelivery] = useState(false);
   const [policy, setPolicy] = useState<PolicyState>(DEFAULT_POLICY);
+  const [dailyBookingLimit, setDailyBookingLimit] = useState<number | null>(
+    null,
+  );
 
   // [PICKUP] product er nijosho pickup address (off thakle store default)
   const [customPickup, setCustomPickup] = useState(false);
   const [pickup, setPickup] = useState<PickupAddress>(EMPTY_PICKUP);
 
-  // [CHANGE] SERVICE e gele pickup address reset hobe na (service er-o pickup address thake)
   const handleTypeChange = (t: ProductType) => {
     setProductType(t);
     if (t === "SERVICE") {
@@ -1657,6 +1659,8 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
         replaceDays: null,
         refundDays: null,
       }));
+    } else {
+      setDailyBookingLimit(null);
     }
   };
 
@@ -2118,6 +2122,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       setValue("hsnCode" as any, (product.hsnCode || "") as any);
 
       setProductType(product.productType === "SERVICE" ? "SERVICE" : "PRODUCT");
+      setDailyBookingLimit(product.dailyBookingLimit ?? null);
       setFastestDelivery(product.fastestDelivery === true);
       setPolicy({
         isReturnable: product.isReturnable === true,
@@ -2374,6 +2379,13 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       if (pickupErr) return pickupErr;
     }
 
+    if (productType === "SERVICE" && !isNil(dailyBookingLimit)) {
+      const n = Number(dailyBookingLimit);
+      if (!Number.isInteger(n) || n < 1 || n > 10000) {
+        return "Daily booking limit must be a whole number between 1 and 10000";
+      }
+    }
+
     if (stockEnabled) {
       const rows: any[] = !hasVariants
         ? [values]
@@ -2490,7 +2502,12 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
         "fastestDelivery",
         String(productType !== "SERVICE" && fastestDelivery),
       );
-
+      formData.append(
+        "dailyBookingLimit",
+        productType === "SERVICE" && !isNil(dailyBookingLimit)
+          ? String(dailyBookingLimit)
+          : "",
+      );
       // [PICKUP] [CHANGE] PRODUCT ar SERVICE duitar-i. Faka string = backend e purono pickup muche jabe
       formData.append(
         "pickupAddress",
@@ -2900,6 +2917,34 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
           onTypeChange={handleTypeChange}
           onPolicyChange={(patch) => setPolicy((p) => ({ ...p, ...patch }))}
         />
+
+                {/* [BOOKING LIMIT] shudhu SERVICE e */}
+        {productType === "SERVICE" && (
+          <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-2.5 space-y-1.5">
+            <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+              <i className="pi pi-calendar-plus text-blue-600"></i>
+              Daily booking limit
+            </p>
+            <p className="text-xs text-gray-500">
+              Maximum number of bookings you can take for this service on one
+              day. When the limit is reached, customers must choose another
+              date. Leave empty for no limit.
+            </p>
+            <div className="sm:w-1/2">
+              <InputNumber
+                value={dailyBookingLimit}
+                onValueChange={(e) => setDailyBookingLimit(e.value ?? null)}
+                min={1}
+                max={10000}
+                useGrouping={false}
+                placeholder="No limit"
+                suffix=" bookings / day"
+                className="w-full"
+                inputClassName="w-full p-inputtext-sm"
+              />
+            </div>
+          </div>
+        )}
 
         {productType !== "SERVICE" && (
           <div className="flex items-center justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50/50 p-2.5">
