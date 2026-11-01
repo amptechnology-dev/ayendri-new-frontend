@@ -661,7 +661,9 @@ function CourierDetailsCard({ order }: { order: OrderRow }) {
               {d.courierSelectedBy === "STORE" ? "Store (manual)" : "Auto"}
             </InfoTile>
             <InfoTile label="Rate based on">
-              {d.chargeableWeightKg != null ? `${d.chargeableWeightKg} kg` : "-"}
+              {d.chargeableWeightKg != null
+                ? `${d.chargeableWeightKg} kg`
+                : "-"}
             </InfoTile>
             <InfoTile label="Estimate source">
               {d.source === "SHIPROCKET" ? "Live courier rate" : "Store backup"}
@@ -2099,7 +2101,9 @@ function OrderDetailsPage() {
           <div className="lg:col-span-5 space-y-4 min-w-0 self-start">
             <PriceSummary order={order} />
 
-            {order.deliveryEnabled !== false && <ShippingCostCard order={order} />}
+            {order.deliveryEnabled !== false && (
+              <ShippingCostCard order={order} />
+            )}
 
             {!order.paymentOff && <PaymentCard order={order} />}
 
@@ -2210,6 +2214,15 @@ function OrderDetailsPage() {
                         : ""}
                     </p>
                   </div>
+                )}
+
+                {(deliveryInfo as any).fastestDelivery && (
+                  <InfoTile label="Speed">
+                    Fastest delivery
+                    {(deliveryInfo as any).fastestFeeApplied
+                      ? " (fixed fee)"
+                      : ""}
+                  </InfoTile>
                 )}
               </SectionCard>
             )}

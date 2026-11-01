@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCart, bill } from "../cart";
 import { useAuth, errMsg, shopApi } from "../auth";
 import { inr } from "../data";
@@ -115,6 +115,16 @@ function extractCartDetails(payload: any) {
   };
 }
 
+// delivery charge + ETA er short label
+const etaText = (o: any) =>
+  `${inr(Number(o?.shippingCharge ?? 0))}${o?.etaLabel ? ` • ${o.etaLabel}` : ""}`;
+
+// [FASTEST] ok:false store group gulor message ekshathe (duplicate bad dewa hoy)
+const badMessage = (list: any[]) =>
+  [...new Set(list.map((s) => s?.message || "Some items are not available"))].join(
+    " ",
+  );
+
 export default function Checkout() {
   const cart = useCart();
   const { token, user } = useAuth();
@@ -127,6 +137,14 @@ export default function Checkout() {
   const [saved, setSaved] = useState<SavedAddress[]>([]);
   const [selectedId, setSelectedId] = useState("new");
   const [redirecting, setRedirecting] = useState(false);
+
+  // [FASTEST] user er choice + server theke asha preview
+  const [fastest, setFastest] = useState(false);
+  const [preview, setPreview] = useState<any>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(""); // pura preview fail
+  const [unavailableMsg, setUnavailableMsg] = useState(""); // kichu item unavailable (preview tobuo thake)
+  const previewReqRef = useRef(0);
 
   useEffect(() => setMounted(true), []);
 
@@ -154,6 +172,86 @@ export default function Checkout() {
       cancelled = true;
     };
   }, [token]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // [FASTEST] pincode / state / payment / toggle bodlale preview abar ane
+  const pin = address.pincode.trim();
+  const stateName = address.state.trim();
+  const cartCount = cart.items.length;
+
+  useEffect(() => {
+    if (!token || cartCount === 0) return;
+
+    if (!/^\d{6}$/.test(pin) || !stateName) {
+      previewReqRef.current += 1; // purono response ignore
+      setPreview(null);
+      setPreviewError("");
+      setUnavailableMsg("");
+      setPreviewLoading(false);
+      return;
+    }
+
+    const reqId = ++previewReqRef.current;
+    setPreviewLoading(true);
+    setPreviewError("");
+
+    const timer = setTimeout(async () => {
+      try {
+        const cartResponse = await shopApi.get("/api/cart/");
+        const { cartId, storeIds } = extractCartDetails(cartResponse.data);
+        if (!cartId || !storeIds.length) throw new Error("Cart could not be loaded.");
+
+        const res = await shopApi.post("/order/checkout-preview", {
+          cartId,
+          storeIds,
+          paymentMethod: cart.payment,
+          fastestDelivery: fastest,
+          deliveryAddress: {
+            pincode: pin,
+            state: stateName,
+            country: address.country,
+          },
+        });
+        if (reqId !== previewReqRef.current) return;
+
+        const data = unwrapResponse(res.data);
+        const groups: any[] = Array.isArray(data?.stores) ? data.stores : [];
+        const bad = groups.filter((s) => s.ok === false);
+        const good = groups.filter((s) => s.ok !== false);
+
+        if (data?.success === false || (groups.length > 0 && good.length === 0)) {
+          // [FASTEST] ekta group-o ok na hole-i tokhon pura preview fail
+          setPreview(null);
+          setUnavailableMsg("");
+          setPreviewError(
+            bad.length
+              ? badMessage(bad)
+              : data?.message || "Could not calculate delivery charge.",
+          );
+        } else {
+          // [FASTEST] kichu group bad holeo baki data diye preview rakho,
+          // jate toggle ar bill thik thake. Bad item er jonno shudhu warning.
+          setPreview(data);
+          setUnavailableMsg(bad.length ? badMessage(bad) : "");
+        }
+      } catch (e) {
+        if (reqId !== previewReqRef.current) return;
+        setPreview(null);
+        setUnavailableMsg("");
+        setPreviewError(errMsg(e, "Could not calculate delivery charge."));
+      } finally {
+        if (reqId === previewReqRef.current) setPreviewLoading(false);
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [token, cartCount, pin, stateName, address.country, cart.payment, fastest]);
+
+  // [FASTEST] preview ashar por jodi fastest available na hoy, toggle off kore dao
+  useEffect(() => {
+    if (preview && preview.fastestAvailable !== true && fastest) {
+      setFastest(false);
+    }
+  }, [preview, fastest]);
 
   const rows = cart.items.map((item) => {
     const price =
@@ -218,6 +316,24 @@ export default function Checkout() {
     cart.discount,
   );
 
+  // [FASTEST] bill er value server theke (preview thakle), nahole local
+  const hasPreview = !!preview && !previewError;
+  const itemsAmount = hasPreview ? Number(preview.itemsTotal ?? 0) : subtotal.total;
+  const shippingAmount = hasPreview ? Number(preview.totalShipping ?? 0) : null;
+  const payableTotal = hasPreview ? Number(preview.grandTotal ?? 0) : subtotal.total;
+
+  // [FASTEST] shudhu ok store group gulo (same storeId onek bar ashte pare)
+  const previewStores: any[] =
+    hasPreview && Array.isArray(preview.stores)
+      ? preview.stores.filter((s: any) => s.ok !== false)
+      : [];
+  const fastestStores = previewStores.filter((s) => s.fastestOption?.available);
+  const showFastest =
+    hasPreview && preview.fastestAvailable === true && fastestStores.length > 0;
+
+  // order place kora jabe kina
+  const cannotOrder = busy || previewLoading || !!previewError || !!unavailableMsg;
+
   async function submitOrder() {
     if (!token || !user) {
       router.push("/shop/login?next=/shop/checkout");
@@ -274,10 +390,12 @@ export default function Checkout() {
         country: address.country,
       };
 
+      // last check: same fastest value diye preview
       const previewResponse = await shopApi.post("/order/checkout-preview", {
         cartId,
         storeIds,
         paymentMethod: cart.payment,
+        fastestDelivery: fastest,
         deliveryAddress: {
           pincode: deliveryAddress.pincode,
           state: deliveryAddress.state,
@@ -285,21 +403,18 @@ export default function Checkout() {
         },
       });
 
-      const preview = unwrapResponse(previewResponse.data);
+      const finalPreview = unwrapResponse(previewResponse.data);
 
-      if (preview.success === false) {
+      if (finalPreview.success === false) {
         throw new Error("Checkout validation failed.");
       }
 
       if (
-        Array.isArray(preview.stores) &&
-        preview.stores.some((store: any) => store.ok === false)
+        Array.isArray(finalPreview.stores) &&
+        finalPreview.stores.some((store: any) => store.ok === false)
       ) {
         throw new Error(
-          preview.stores
-            .filter((store: any) => store.ok === false)
-            .map((store: any) => store.message || "Delivery unavailable.")
-            .join(" "),
+          badMessage(finalPreview.stores.filter((store: any) => store.ok === false)),
         );
       }
 
@@ -309,6 +424,7 @@ export default function Checkout() {
         deliveryAddress,
         note: cart.remarks.trim() || undefined,
         paymentMethod: cart.payment,
+        fastestDelivery: fastest, // [FASTEST] preview er sathe hubohu same
       });
 
       const orderPayload = unwrapResponse(orderResponse.data);
@@ -499,6 +615,62 @@ export default function Checkout() {
         ))}
       </section>
 
+      {/* [FASTEST] preview er fastestAvailable true hole-i dekhabe */}
+      {showFastest && (
+        <section className="shop-card space-y-3 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <h2 className="font-extrabold">⚡ Fastest delivery</h2>
+              <p className="text-xs text-[#9a7a7a]">
+                Get your order delivered with the fastest courier available.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={fastest}
+              aria-label="Fastest delivery"
+              onClick={() => setFastest((v) => !v)}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                fastest ? "bg-[#e0622d]" : "bg-[#d9cbbd]"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${
+                  fastest ? "left-[22px]" : "left-0.5"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="space-y-2">
+            {fastestStores.map((s, i) => {
+              const opt = s.fastestOption;
+              return (
+                <div
+                  key={`${s.storeId}-${i}`}
+                  className="rounded-xl border border-[#e8cfa8] p-3 text-xs"
+                >
+                  {previewStores.length > 1 && (
+                    <p className="mb-1 font-bold text-[#4a0710]">
+                      {s.storeName || "Store"}
+                      {s.totalItems ? ` · ${s.totalItems} item(s)` : ""}
+                    </p>
+                  )}
+                  <p className={fastest ? "text-[#9a7a7a]" : "font-bold text-[#4a0710]"}>
+                    Normal: {etaText(opt.normal)}
+                  </p>
+                  <p className={fastest ? "font-bold text-[#4a0710]" : "text-[#9a7a7a]"}>
+                    Fastest: {etaText(opt.fastest)}
+                    {opt.fastest?.fixedFeeApplied ? " (fastest delivery fee)" : ""}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
       <section className="shop-card p-5">
         <h2 className="mb-2 font-extrabold">Remarks</h2>
         <textarea
@@ -513,16 +685,37 @@ export default function Checkout() {
         <h2 className="font-extrabold">Bill details</h2>
         <div className="flex justify-between">
           <span>Subtotal</span>
-          <span>{inr(subtotal.sub)}</span>
+          <span>{inr(itemsAmount)}</span>
         </div>
         <div className="flex justify-between">
-          <span>Delivery</span>
-          <span className="text-green-700">Free</span>
+          <span>Delivery{fastest && showFastest ? " (fastest)" : ""}</span>
+          {previewLoading && !hasPreview ? (
+            <span className="text-[#9a7a7a]">Calculating…</span>
+          ) : shippingAmount === null ? (
+            <span className="text-[#9a7a7a]">Enter address to see charge</span>
+          ) : shippingAmount === 0 ? (
+            <span className="text-green-700">Free</span>
+          ) : (
+            <span className={previewLoading ? "text-[#9a7a7a]" : ""}>
+              {inr(shippingAmount)}
+            </span>
+          )}
         </div>
         <div className="flex justify-between text-base font-black">
           <span>Total</span>
-          <span>{inr(subtotal.total)}</span>
+          <span>{inr(payableTotal)}</span>
         </div>
+        {!!previewError && (
+          <p className="rounded-xl bg-red-50 p-2 text-xs text-red-700">
+            {previewError}
+          </p>
+        )}
+        {!!unavailableMsg && !previewError && (
+          <p className="rounded-xl bg-amber-50 p-2 text-xs text-amber-800">
+            {unavailableMsg} Please remove the unavailable item(s) from your cart
+            to place the order.
+          </p>
+        )}
       </section>
 
       <section className="shop-card p-5">
@@ -545,10 +738,10 @@ export default function Checkout() {
 
       <button
         onClick={submitOrder}
-        disabled={busy}
+        disabled={cannotOrder}
         className="shop-gold-btn w-full rounded-full py-4 font-bold disabled:opacity-50"
       >
-        {busy ? "Processing..." : `Place Order · ${inr(subtotal.total)}`}
+        {busy ? "Processing..." : `Place Order · ${inr(payableTotal)}`}
       </button>
 
       {successModal}

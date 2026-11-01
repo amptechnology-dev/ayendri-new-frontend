@@ -27,6 +27,9 @@ export type DeliverySettings = {
   // [NEW] product / service alada rule
   productChargeRules?: ChargeRule[];
   serviceChargeRules?: ChargeRule[];
+
+  fastestChargeProduct?: number | null;
+  fastestChargeService?: number | null;
   nationalMinDays: number;
   nationalMaxDays: number;
   nationalFallbackCharge?: number;
@@ -49,6 +52,8 @@ export type SaveDeliveryPayload = {
   // [NEW]
   productChargeRules?: ChargeRule[];
   serviceChargeRules?: ChargeRule[];
+  fastestChargeProduct?: number | null;
+  fastestChargeService?: number | null;
   nationalMinDays?: number;
   nationalMaxDays?: number;
   nationalFallbackCharge?: number;
@@ -77,6 +82,9 @@ export type DeliveryCheckResult = {
   productType?: ProductType; // [NEW]
   delivery: DeliveryInfo | null;
   isFree?: boolean; // [NEW]
+  fastest?: boolean;
+  fastestAvailable?: boolean;
+  fastestCharges?: { PRODUCT: number | null; SERVICE: number | null } | null;
   freeDeliveryAbove?: number | null; // [NEW] ei product type er free threshold
   freeDeliveryRules?: { PRODUCT: number | null; SERVICE: number | null } | null; // [NEW]
   payment?: {

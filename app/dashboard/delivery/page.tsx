@@ -1,6 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { toast, ToastContainer } from "react-toastify";
 import axiosInstance from "@/service/axios.service";
 import { Button } from "primereact/button";
@@ -65,6 +71,8 @@ type FormState = {
   slabs: SlabForm[];
   productRules: RuleForm[]; // [NEW] product order er jonno order value rule
   serviceRules: RuleForm[]; // [NEW] service order er jonno order value rule
+  fastestChargeProduct: number | null;
+  fastestChargeService: number | null;
   nationalMinDays: number | null;
   nationalMaxDays: number | null;
   nationalFallbackCharge: number | null;
@@ -111,6 +119,8 @@ const makeDefaultForm = (): FormState => ({
   slabs: [newSlab(20)],
   productRules: [],
   serviceRules: [],
+  fastestChargeProduct: null,
+  fastestChargeService: null,
   nationalMinDays: 4,
   nationalMaxDays: 7,
   nationalFallbackCharge: 0,
@@ -433,7 +443,9 @@ function DeliveryPage() {
   const [testValue, setTestValue] = useState<number | null>(null);
   const [testType, setTestType] = useState<ProductType>("PRODUCT"); // [NEW]
   const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<DeliveryCheckResult | null>(null);
+  const [testResult, setTestResult] = useState<DeliveryCheckResult | null>(
+    null,
+  );
 
   const selectedStore = useMemo(
     () => stores.find((s) => s._id === storeId) || null,
@@ -525,6 +537,8 @@ function DeliveryPage() {
         serviceRules: toRules(
           hasNewRules ? s.serviceChargeRules : s.chargeRules,
         ),
+        fastestChargeProduct: s.fastestChargeProduct ?? null,
+        fastestChargeService: s.fastestChargeService ?? null,
         nationalMinDays: s.nationalMinDays ?? 4,
         nationalMaxDays: s.nationalMaxDays ?? 7,
         nationalFallbackCharge: s.nationalFallbackCharge ?? 0,
@@ -620,7 +634,8 @@ function DeliveryPage() {
       const candidate =
         lastKm !== null ? Math.min(lastKm + 5, p.radiusKm ?? 500) : null;
       // last slab e radius er soman hole same distance hoye jabe, tai blank rakhi
-      const next = candidate !== null && candidate > (lastKm ?? 0) ? candidate : null;
+      const next =
+        candidate !== null && candidate > (lastKm ?? 0) ? candidate : null;
       return { ...p, slabs: [...p.slabs, newSlab(next)] };
     });
   };
@@ -707,6 +722,18 @@ function DeliveryPage() {
       return;
     }
 
+    const badFee = (v: number | null) => v !== null && (v < 0 || v > 100000);
+    if (
+      form.outside &&
+      (badFee(form.fastestChargeProduct) || badFee(form.fastestChargeService))
+    ) {
+      setErrors({
+        fastestChargeProduct: "Enter an amount between 0 and 100000",
+      });
+      toast.error("Please fix the highlighted fields");
+      return;
+    }
+
     const d = parsed.data;
     const local = d.deliveryType !== "NATIONAL";
     const national = d.deliveryType !== "LOCAL";
@@ -719,9 +746,13 @@ function DeliveryPage() {
       handlingUnit: d.handlingUnit,
       productChargeRules: d.productChargeRules,
       serviceChargeRules: d.serviceChargeRules,
-      ...(local
-        ? { radiusKm: d.radiusKm, localSlabs: d.localSlabs }
+      ...(national
+        ? {
+            fastestChargeProduct: form.fastestChargeProduct,
+            fastestChargeService: form.fastestChargeService,
+          }
         : {}),
+      ...(local ? { radiusKm: d.radiusKm, localSlabs: d.localSlabs } : {}),
       ...(national
         ? {
             nationalMinDays: d.nationalMinDays,
@@ -732,7 +763,8 @@ function DeliveryPage() {
               ? {
                   internationalMinDays: d.internationalMinDays,
                   internationalMaxDays: d.internationalMaxDays,
-                  internationalFallbackCharge: d.internationalFallbackCharge ?? 0,
+                  internationalFallbackCharge:
+                    d.internationalFallbackCharge ?? 0,
                 }
               : {}),
           }
@@ -804,7 +836,9 @@ function DeliveryPage() {
     const pin = testPin.trim();
     if (testIsIndia ? !PINCODE_REGEX.test(pin) : pin.length < 3) {
       toast.error(
-        testIsIndia ? "Enter a valid 6 digit pincode" : "Enter a valid postal code",
+        testIsIndia
+          ? "Enter a valid 6 digit pincode"
+          : "Enter a valid postal code",
       );
       return;
     }
@@ -1050,7 +1084,9 @@ function DeliveryPage() {
                     </label>
                     <InputNumber
                       value={form.radiusKm}
-                      onValueChange={(e) => setField("radiusKm", e.value ?? null)}
+                      onValueChange={(e) =>
+                        setField("radiusKm", e.value ?? null)
+                      }
                       min={1}
                       max={500}
                       suffix=" km"
@@ -1107,10 +1143,14 @@ function DeliveryPage() {
                               useGrouping={false}
                               className="w-full"
                               inputClassName={`w-full p-inputtext-sm ${
-                                errors[`localSlabs.${i}.upToKm`] ? "p-invalid" : ""
+                                errors[`localSlabs.${i}.upToKm`]
+                                  ? "p-invalid"
+                                  : ""
                               }`}
                             />
-                            <FieldError msg={errors[`localSlabs.${i}.upToKm`]} />
+                            <FieldError
+                              msg={errors[`localSlabs.${i}.upToKm`]}
+                            />
                           </div>
 
                           <div className="sm:col-span-3">
@@ -1160,7 +1200,8 @@ function DeliveryPage() {
                     <p className="text-[11px] text-gray-400 mt-2">
                       Example: up to 5 km = ₹30 in 45 minutes, up to 15 km = ₹60
                       in 3 hours. A customer farther than the last slab (but
-                      inside your radius) gets the last slab&apos;s charge and time.
+                      inside your radius) gets the last slab&apos;s charge and
+                      time.
                     </p>
                   </div>
                 </div>
@@ -1193,11 +1234,58 @@ function DeliveryPage() {
 
               <p className="text-[11px] text-gray-400 -mt-1">
                 These rules apply to your own delivery and courier delivery. If
-                you give free or cheaper courier delivery, the extra courier cost
-                is taken from your payout. International orders always pay the
-                courier rate. If a cart has both products and services, delivery
-                is free only when both types meet their rule.
+                you give free or cheaper courier delivery, the extra courier
+                cost is taken from your payout. International orders always pay
+                the courier rate. If a cart has both products and services,
+                delivery is free only when both types meet their rule.
               </p>
+
+              {/* Fastest delivery fixed fee */}
+              {form.outside && (
+                <div className="border border-orange-200 bg-orange-50/40 rounded-lg p-3">
+                  <p className="text-sm font-semibold text-gray-700 mb-1">
+                    <i className="pi pi-bolt text-orange-500 mr-1.5"></i>
+                    Fastest delivery fee (when delivery is free)
+                  </p>
+                  <p className="text-xs text-gray-500 mb-3">
+                    A customer can choose fastest delivery while ordering. If
+                    the delivery is free for that order, the customer pays this
+                    fixed fee instead of the courier rate. If an order has both
+                    products and services, both fees are added. If the delivery
+                    is not free, the customer pays the fastest courier rate.
+                    Leave a field empty to charge the fastest courier rate.
+                  </p>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700 block mb-1">
+                        For PRODUCTS
+                      </label>
+                      <MoneyInput
+                        value={form.fastestChargeProduct}
+                        onChange={(v) => setField("fastestChargeProduct", v)}
+                        error={errors.fastestChargeProduct}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-sm font-semibold text-gray-700 block mb-1">
+                        For SERVICES
+                      </label>
+                      <MoneyInput
+                        value={form.fastestChargeService}
+                        onChange={(v) => setField("fastestChargeService", v)}
+                        error={errors.fastestChargeService}
+                      />
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-gray-500 mt-2">
+                    Example: free delivery above ₹500 for products and ₹300 for
+                    services, fee ₹150 each. A customer who orders both and
+                    chooses fastest delivery pays ₹300.
+                  </p>
+                </div>
+              )}
 
               {/* National */}
               {/* {form.outside && (
@@ -1400,7 +1488,9 @@ function DeliveryPage() {
                   {form.outside && form.allowInternational && (
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <p className="text-gray-700 font-medium">Other countries</p>
+                        <p className="text-gray-700 font-medium">
+                          Other countries
+                        </p>
                         <p className="text-xs text-gray-400">
                           Courier • {intlLabel}
                         </p>
@@ -1518,14 +1608,19 @@ function DeliveryPage() {
                               </p>
                               <p>
                                 Shipping:{" "}
-                                <b>{inr(testResult.delivery.shippingCharge ?? 0)}</b>
+                                <b>
+                                  {inr(testResult.delivery.shippingCharge ?? 0)}
+                                </b>
                                 {testResult.delivery.baseShippingCharge !==
                                   undefined &&
-                                  testResult.delivery.baseShippingCharge !== null &&
+                                  testResult.delivery.baseShippingCharge !==
+                                    null &&
                                   testResult.delivery.baseShippingCharge !==
                                     testResult.delivery.shippingCharge && (
                                     <span className="line-through text-green-600 ml-1.5">
-                                      {inr(testResult.delivery.baseShippingCharge)}
+                                      {inr(
+                                        testResult.delivery.baseShippingCharge,
+                                      )}
                                     </span>
                                   )}
                               </p>
@@ -1544,10 +1639,12 @@ function DeliveryPage() {
                                 )}
                               <p>
                                 Expected by{" "}
-                                {(testResult.delivery.maxMinutes ?? 99999) < 1440
+                                {(testResult.delivery.maxMinutes ?? 99999) <
+                                1440
                                   ? formatEstimateAt(
                                       testResult.delivery.estimatedMaxAt,
-                                    ) || formatEstimateRange(testResult.delivery)
+                                    ) ||
+                                    formatEstimateRange(testResult.delivery)
                                   : formatEstimateRange(testResult.delivery)}
                               </p>
                             </>
@@ -1570,9 +1667,18 @@ function DeliveryPage() {
 
               <div className="border border-gray-200 bg-gray-50 rounded-lg p-3 text-xs text-gray-600 space-y-1">
                 <p className="font-semibold text-gray-700">How it works</p>
-                <p>• The delivery charge is shown to the customer and added to the order total at payment.</p>
-                <p>• Inside your radius the matching distance slab is used. Outside it, the courier rate is used (if enabled).</p>
-                <p>• Product and service orders have their own order value rules, which can lower or remove the charge for bigger orders.</p>
+                <p>
+                  • The delivery charge is shown to the customer and added to
+                  the order total at payment.
+                </p>
+                <p>
+                  • Inside your radius the matching distance slab is used.
+                  Outside it, the courier rate is used (if enabled).
+                </p>
+                <p>
+                  • Product and service orders have their own order value rules,
+                  which can lower or remove the charge for bigger orders.
+                </p>
               </div>
             </div>
           </div>
