@@ -6,6 +6,11 @@ export type Product = {
   deliveryTime?: string;
   isMadeForProduct?: boolean;
   raw?: any;
+  topReview?: {
+    rating: number;
+    comment?: string;
+    user?: { name?: string } | null;
+  } | null;
 };
 export type Category = { slug: string; name: string; sub: string[]; image?: string };
 

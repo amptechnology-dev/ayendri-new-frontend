@@ -4,7 +4,6 @@ import { use, useEffect, useState } from "react";
 import { imgUrl, fetchAvailability } from "../../api";
 import Link from "next/link";
 import {
-  Star,
   Undo2,
   Repeat,
   Banknote,
@@ -15,8 +14,6 @@ import {
   Store,
   MessageCircle,
   Hammer,
-  ChevronLeft,
-  ChevronRight,
   Copy,
   Check,
   ArrowRight,
@@ -31,6 +28,9 @@ import { useCart, setCartSelection } from "../../cart";
 import AddToCart from "./AddToCart";
 import ProductCard from "../../components/ProductCard";
 import FastestBadge from "../../components/FastestBadge";
+import { StarsDisplay } from "../../components/Stars";
+import ReviewSection from "../../components/ReviewSection";
+import { useAuth } from "../../auth";
 
 import {
   formatBookingDate,
@@ -143,12 +143,12 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   const products = useShop((s) => s.products);
   const store = useShop((s) => s.store);
   const addToCart = useCart((s) => s.add);
+  const userId = useAuth((s) => s.user?.id ?? null);
   const p = products.find((x) => x.slug === slug);
 
   // hooks must stay above the early returns
   const [bookingDate, setBookingDate] = useState(""); // "YYYY-MM-DD"
   const [imgIdx, setImgIdx] = useState(0);
-  const [revIdx, setRevIdx] = useState(0);
   const [copied, setCopied] = useState(false);
   const [tab, setTab] = useState<TabId>("description");
   const [expanded, setExpanded] = useState(false);
@@ -220,7 +220,9 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   const needsBooking = isService || Boolean(raw?.isMadeForProduct);
 
   // ---- daily booking limit (SERVICE only, from the availability API) ----
-  const bookingLimit = avail?.limited ? Number(avail.dailyBookingLimit) || 0 : 0;
+  const bookingLimit = avail?.limited
+    ? Number(avail.dailyBookingLimit) || 0
+    : 0;
   const availDays: any[] = Array.isArray(avail?.days) ? avail.days : [];
   const dateFull = Boolean(availDays.find((d) => d.date === bookingDate)?.full);
 
@@ -295,8 +297,9 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   const shipCharge = Number(dlv?.shippingCharge ?? 0);
   const shipFree = Boolean(dlv?.isFree) || shipCharge === 0;
   const freeAbove =
-    dlv?.freeDeliveryRules?.[String(raw?.productType ?? "PRODUCT").toUpperCase()] ??
-    dlv?.freeDeliveryAbove;
+    dlv?.freeDeliveryRules?.[
+      String(raw?.productType ?? "PRODUCT").toUpperCase()
+    ] ?? dlv?.freeDeliveryAbove;
   const parsedDate = parseApiDate(bookingDate);
   const dateValid = isValidBookingDate(parsedDate) && !dateFull;
   const minDate = toApiDate(getMinBookingDate());
@@ -307,9 +310,6 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
     ? rawImgs.map((u: string) => imgUrl(u))
     : [p.image];
   const mainImg = images[Math.min(imgIdx, images.length - 1)];
-
-  const reviews: any[] = Array.isArray(raw?.reviews) ? raw.reviews : [];
-  const rv = reviews.length ? reviews[revIdx % reviews.length] : null;
 
   const days = (n?: number | null) => (n ? `${n} days` : "Eligible");
   const benefits = [
@@ -397,7 +397,8 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
       I: Store,
       t: (
         <>
-          Sold by <b className="text-green-700">{store?.storeName ?? "Ayendri"}</b>
+          Sold by{" "}
+          <b className="text-green-700">{store?.storeName ?? "Ayendri"}</b>
         </>
       ),
       fast: false,
@@ -550,23 +551,11 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
           </h1>
 
           <div className="mt-2 flex items-center gap-2 text-sm">
-            <span className="flex">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <Star
-                  key={n}
-                  size={15}
-                  className={
-                    n <= Math.round(Number(p.rating) || 0)
-                      ? "fill-[#f2b632] text-[#f2b632]"
-                      : "text-[#e4cfae]"
-                  }
-                />
-              ))}
-            </span>
-            <b>{p.rating}</b>
-            <span className="text-[#6b4a4a] underline">
+            <StarsDisplay value={Number(p.rating) || 0} size={16} />
+            <b>{(Number(p.rating) || 0).toFixed(1)}</b>
+            <a href="#reviews" className="text-[#6b4a4a] underline">
               {p.reviews} ratings
-            </span>
+            </a>
           </div>
 
           {isFastest && (
@@ -623,8 +612,8 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
                     className="rounded-xl border border-[#e4cfae] bg-white px-3 py-1.5 text-xs"
                   >
                     {t.minQty}
-                    {t.maxQty ? `-${t.maxQty}` : "+"} {String(raw?.unit ?? "pcs")}:{" "}
-                    <b>{inr(t.price)}</b>
+                    {t.maxQty ? `-${t.maxQty}` : "+"}{" "}
+                    {String(raw?.unit ?? "pcs")}: <b>{inr(t.price)}</b>
                   </span>
                 ))}
               </div>
@@ -837,57 +826,6 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
             bookingDate={dateValid ? bookingDate : ""}
           />
 
-          {rv && (
-            <div className="mt-6 rounded-2xl border border-[#f0dcc0] bg-gradient-to-b from-[#fff4dc] to-white p-4">
-              <div className="flex items-center gap-3">
-                <span className="grid h-10 w-10 place-items-center rounded-full bg-[#7a1118] font-bold text-white">
-                  {String(rv.user?.name ?? rv.name ?? "C")
-                    .charAt(0)
-                    .toUpperCase()}
-                </span>
-                <div>
-                  <div className="text-sm font-bold">
-                    {rv.user?.name ?? rv.name ?? "Customer"}
-                  </div>
-                  <div className="flex">
-                    {[1, 2, 3, 4, 5].map((n) => (
-                      <Star
-                        key={n}
-                        size={12}
-                        className={
-                          n <= Number(rv.rating)
-                            ? "fill-[#f2b632] text-[#f2b632]"
-                            : "text-[#e4cfae]"
-                        }
-                      />
-                    ))}
-                  </div>
-                </div>
-              </div>
-              <p className="mt-3 text-sm leading-relaxed text-[#5a3a3a]">
-                {rv.comment ?? rv.review ?? ""}
-              </p>
-              {reviews.length > 1 && (
-                <div className="mt-3 flex justify-end gap-2">
-                  <button
-                    aria-label="Previous review"
-                    onClick={() =>
-                      setRevIdx((revIdx - 1 + reviews.length) % reviews.length)
-                    }
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                  <button
-                    aria-label="Next review"
-                    onClick={() => setRevIdx((revIdx + 1) % reviews.length)}
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-                </div>
-              )}
-            </div>
-          )}
-
           <h2 className="mt-6 font-extrabold text-[#4a0710]">
             Offers for you:
           </h2>
@@ -1036,6 +974,15 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
         )}
       </section>
 
+      {/* ---------- Ratings & Reviews ---------- */}
+      <div id="reviews" className="mt-12 scroll-mt-24">
+        <ReviewSection
+          productId={p.slug}
+          storeName={store?.storeName}
+          currentUserId={userId}
+        />
+      </div>
+
       {/* ---------- Pair it with ---------- */}
       {pairWith.length > 0 && (
         <section className="mt-12">
@@ -1134,7 +1081,9 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
         <div className="mx-auto flex max-w-[1200px] items-center justify-between gap-4">
           <div className="flex items-baseline gap-2">
             <span className="text-2xl font-black text-[#4a0710]">
-              {priceOnRequest || price <= 0 ? "Order to know Price" : inr(price)}
+              {priceOnRequest || price <= 0
+                ? "Order to know Price"
+                : inr(price)}
             </span>
             {!priceOnRequest && mrp > price && (
               <s className="text-sm text-[#9a8080]">{inr(mrp)}</s>

@@ -83,12 +83,19 @@ export default function NotificationsPage() {
     }
   };
 
-  const open = async (n: AppNotification) => {
+    const open = async (n: AppNotification) => {
     if (token && !n.isRead) {
       setItems((prev) => prev.map((x) => (x._id === n._id ? { ...x, isRead: true } : x)));
       setUnread((u) => Math.max(0, u - 1));
       markRead(token, [n._id], storeMongoId || undefined).catch(() => undefined);
     }
+
+    // [REVIEW] seller reply -> product page er reviews section
+    if (n.type === "REVIEW_REPLY" && n.productId) {
+      router.push(`/shop/product/${encodeURIComponent(String(n.productId))}#reviews`);
+      return;
+    }
+
     const orderId = notificationOrderId(n);
     if (orderId) router.push(`/shop/orders/${encodeURIComponent(orderId)}`);
   };

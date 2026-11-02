@@ -2,10 +2,11 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { useState } from "react";
-import { Star, Plus, Check } from "lucide-react";
+import { Plus, Check } from "lucide-react";
 import { Product, inr, off } from "../data";
 import { useCart } from "../cart";
 import WishlistButton from "./WishlistButton";
+import { StarsDisplay } from "./Stars";
 
 export default function ProductCard({ p }: { p: Product }) {
   const add = useCart((s) => s.add);
@@ -16,6 +17,10 @@ export default function ProductCard({ p }: { p: Product }) {
     setDone(true);
     setTimeout(() => setDone(false), 1200);
   };
+
+  const rating = Number(p.rating) || 0;
+  const count = Number(p.reviews) || 0;
+  const top = p.topReview;
 
   return (
     <div className="group flex w-full flex-col">
@@ -30,7 +35,6 @@ export default function ProductCard({ p }: { p: Product }) {
           />
         </Link>
 
-        
         <WishlistButton productId={p.slug} className="absolute right-3 top-3 z-10 h-9 w-9" />
         <span className="absolute left-0 top-3 rounded-r-full bg-[#a3161c] px-3 py-1 text-[11px] font-bold text-white shadow">Sale</span>
         <button
@@ -41,8 +45,6 @@ export default function ProductCard({ p }: { p: Product }) {
           {done ? <Check size={18} /> : <Plus size={18} />}
         </button>
       </div>
-
-
 
       <span className="mt-3 w-fit rounded-md border border-[#e8cfa8] bg-white px-2 py-0.5 text-[11px] font-semibold text-[#6b4a4a]">
         {p.tag ?? p.category}
@@ -58,10 +60,30 @@ export default function ProductCard({ p }: { p: Product }) {
       >
         {p.name}
       </Link>
-      <div className="mt-1 flex items-center gap-1 text-xs font-semibold text-[#2a0a0d]">
-        <Star size={12} className="fill-green-600 text-green-600" /> {p.rating}
-        <span className="font-normal text-[#9a8080]">({p.reviews.toLocaleString("en-IN")})</span>
+
+      {/* rating (half star shoho) */}
+      <div className="mt-1 flex items-center gap-1.5 text-xs">
+        {count > 0 ? (
+          <>
+            <StarsDisplay value={rating} size={12} />
+            <b className="text-[#2a0a0d]">{rating.toFixed(1)}</b>
+            <span className="text-[#9a8080]">({count.toLocaleString("en-IN")})</span>
+          </>
+        ) : (
+          <span className="text-[#9a8080]">No reviews yet</span>
+        )}
       </div>
+
+      {/* sobcheye beshi rating er review */}
+      {top?.comment && (
+        <p className="mt-1.5 line-clamp-2 text-[11px] italic leading-snug text-[#6b4a4a]">
+          “{top.comment}”
+          <span className="not-italic text-[#9a8080]">
+            {" "}
+            — {top.user?.name ?? "Customer"}
+          </span>
+        </p>
+      )}
     </div>
   );
 }

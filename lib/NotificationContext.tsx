@@ -5,6 +5,7 @@ import React, {
   useEffect,
   useState,
   useCallback,
+  useMemo,
   useRef,
 } from "react";
 import axiosInstance from "@/service/axios.service";
@@ -18,14 +19,18 @@ export interface NotificationItem {
   _id: string;
   title: string;
   body: string;
-  orderId: string;
+  orderId?: string; // review notification e orderId thakbe na
+  type?: string; // NEW_ORDER, ORDER_CANCELLED, NEW_REVIEW ...
+  productId?: string | null; // [REVIEW]
+  reviewId?: string | null; // [REVIEW]
   isRead: boolean;
   createdAt: string;
 }
 
 interface NotificationContextValue {
   notifications: NotificationItem[];
-  unreadCount: number;
+  unreadCount: number; // bell er jonno: shob notification
+  orderUnreadCount: number; // sidebar Orders badge: review chhara
   loading: boolean;
   refresh: () => Promise<void>;
   markAllRead: () => Promise<void>;
@@ -37,6 +42,9 @@ interface NotificationContextValue {
 const NotificationContext = createContext<NotificationContextValue | null>(
   null,
 );
+
+// review type er notification Orders badge e gona hobe na
+const REVIEW_TYPES = ["NEW_REVIEW", "REVIEW_REPLY"];
 
 export const NotificationProvider: React.FC<{
   enabled: boolean;
@@ -78,14 +86,31 @@ export const NotificationProvider: React.FC<{
           await axiosInstance.post("/api/notifications/fcm-token", { token });
         }
         await listenForegroundMessages((payload) => {
-          toast.info(payload.notification?.body || "New order received");
+          const title = payload.notification?.title;
+          const body = payload.notification?.body;
+          toast.info(
+            title && body ? `${title}: ${body}` : body || title || "New notification",
+          );
           refresh();
+          // review notification hole sidebar er Reviews badge o refresh hobe
+          if (payload.data?.type === "NEW_REVIEW") {
+            window.dispatchEvent(new Event("storeReviewsChanged"));
+          }
         });
       } catch (err) {
         console.error("FCM setup failed:", err);
       }
     })();
   }, [enabled, refresh]);
+
+  // Orders badge: shudhu order related unread notification (loaded list theke)
+  const orderUnreadCount = useMemo(
+    () =>
+      notifications.filter(
+        (n) => !n.isRead && !REVIEW_TYPES.includes(n.type || ""),
+      ).length,
+    [notifications],
+  );
 
   const markAllRead = useCallback(async () => {
     if (unreadCount === 0) return;
@@ -157,6 +182,7 @@ export const NotificationProvider: React.FC<{
       value={{
         notifications,
         unreadCount,
+        orderUnreadCount,
         loading,
         refresh,
         markAllRead,
@@ -176,6 +202,7 @@ export const useNotifications = () => {
     return {
       notifications: [],
       unreadCount: 0,
+      orderUnreadCount: 0,
       loading: false,
       refresh: async () => {},
       markAllRead: async () => {},

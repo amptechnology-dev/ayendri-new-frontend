@@ -2,6 +2,7 @@ import axios from "axios";
 import axiosInstance from "@/service/axios.service";
 import type { Product, Category } from "./data";
 import { API } from "./config";
+import { shopApi, errMsg } from "./auth";
 
 export { API };
 export const STORE_ID = process.env.NEXT_PUBLIC_STORE_ID ?? "";
@@ -112,8 +113,10 @@ export const mapProduct = (p: any): Product => {
     mrp: rawMrp >= price ? rawMrp : price,
     image:
       imgUrl(p.images?.[0] ?? variantImg) || "/img/photos/product-puja.jpg",
+    // [REVIEW] half star rating (4.5 etc.) + total count + sobcheye beshi rating er review
     rating: Number(p.averageRating ?? p.rating) || 0,
     reviews: Number(p.totalReviews ?? p.reviewCount) || 0,
+    topReview: p.maxReview ?? null,
     description: p.description ?? "",
     createdAt: p.createdAt,
     delivery: p.delivery ?? undefined,
@@ -123,6 +126,67 @@ export const mapProduct = (p: any): Product => {
     raw: p,
   };
 };
+
+// ===================== [REVIEW] =====================
+export type ReviewSort = "newest" | "top" | "lowest";
+
+export async function fetchReviews(
+  productId: string,
+  sort: ReviewSort = "newest",
+  page = 1,
+  limit = 6,
+) {
+  try {
+    const { data } = await shopApi.get(
+      `/api/product/${encodeURIComponent(productId)}/reviews`,
+      { params: { sort, page, limit } },
+    );
+    return data;
+  } catch (err) {
+    throw new Error(errMsg(err, "Failed to load reviews"));
+  }
+}
+
+export async function saveReview(
+  productId: string,
+  v: {
+    rating: number;
+    comment: string;
+    image?: File | null;
+    removeImage?: boolean;
+  },
+  reviewId?: string,
+) {
+  const fd = new FormData();
+  fd.append("rating", String(v.rating));
+  fd.append("comment", v.comment);
+  if (v.image) fd.append("image0", v.image);
+  if (v.removeImage) fd.append("removeImage", "true");
+
+  const base = `/api/product/${encodeURIComponent(productId)}/reviews`;
+  try {
+    const { data } = await shopApi.request({
+      url: reviewId ? `${base}/${encodeURIComponent(reviewId)}` : base,
+      method: reviewId ? "put" : "post",
+      data: fd,
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return data;
+  } catch (err) {
+    throw new Error(errMsg(err, "Failed to save review"));
+  }
+}
+
+export async function removeReview(productId: string, reviewId: string) {
+  try {
+    const { data } = await shopApi.delete(
+      `/api/product/${encodeURIComponent(productId)}/reviews/${encodeURIComponent(reviewId)}`,
+    );
+    return data;
+  } catch (err) {
+    throw new Error(errMsg(err, "Failed to delete review"));
+  }
+}
 
 // Authenticated order APIs (token interceptor theke automatic jabe)
 

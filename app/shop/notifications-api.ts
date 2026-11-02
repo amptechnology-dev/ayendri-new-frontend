@@ -9,6 +9,8 @@ const noCreds = { withCredentials: false } as const;
 export type AppNotification = {
   _id: string;
   type: string;
+  productId?: string | null;
+  reviewId?: string | null;
   title: string;
   body: string;
   storeId?: string | { _id?: string; id?: string } | null;

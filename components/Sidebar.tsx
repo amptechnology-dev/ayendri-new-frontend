@@ -45,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const { unreadCount } = useNotifications();
+  const { orderUnreadCount } = useNotifications();
 
   // [STOCK] kono store er stock management on thakle-i Stock menu dekhabe
   const [stockEnabled, setStockEnabled] = useState(false);
@@ -54,6 +54,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
 
   // [REQUESTS] STORE er pending return / replace / refund request (badge er jonno)
   const [pendingRequests, setPendingRequests] = useState(0);
+  const [pendingReviews, setPendingReviews] = useState(0);
 
   const isActive = (href?: string) => {
     if (!href) return false;
@@ -126,6 +127,32 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
     return () => {
       cancelled = true;
       window.removeEventListener("storeRequestsChanged", loadPendingRequests);
+    };
+  }, [role, pathname]);
+
+  // [REVIEWS] reply baki review count. Page change hole, reply dile, ar 60s por por refresh
+  useEffect(() => {
+    if (role !== "STORE") return;
+    let cancelled = false;
+
+    const loadPendingReviews = async () => {
+      try {
+        const res = await axiosInstance.get("/api/product/my-store-reviews", {
+          params: { filter: "unreplied", limit: 1 },
+        });
+        if (!cancelled) setPendingReviews(res.data?.unreplied ?? 0);
+      } catch {
+        if (!cancelled) setPendingReviews(0);
+      }
+    };
+
+    loadPendingReviews();
+    window.addEventListener("storeReviewsChanged", loadPendingReviews);
+    const timer = setInterval(loadPendingReviews, 60000);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("storeReviewsChanged", loadPendingReviews);
+      clearInterval(timer);
     };
   }, [role, pathname]);
 
@@ -268,6 +295,11 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                 label: "Returns & Refunds",
                 icon: "pi-replay",
                 href: "/dashboard/requests",
+              },
+              {
+                label: "Reviews",
+                icon: "pi-star",
+                href: "/dashboard/reviews",
               },
               // delivery off hole Delivery + Shipping Cost dutoi hide hobe
               ...(deliveryEnabled
@@ -497,16 +529,16 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
             {sec.items.map((item) => {
               const active = isActive(item.href);
 
-              // [REQUESTS] Orders = notun notification, Returns & Refunds = pending request
-              // (duto-i sudhu STORE e dekhabe)
               const badgeCount =
                 role !== "STORE"
                   ? 0
                   : item.label === "Orders"
-                    ? unreadCount
+                    ? orderUnreadCount
                     : item.label === "Returns & Refunds"
                       ? pendingRequests
-                      : 0;
+                      : item.label === "Reviews"
+                        ? pendingReviews
+                        : 0;
               const showBadge = badgeCount > 0;
 
               return (

@@ -19,7 +19,10 @@ const timeAgo = (dateStr: string) => {
   if (hr < 24) return `${hr}h ago`;
   const day = Math.floor(hr / 24);
   if (day < 7) return `${day}d ago`;
-  return new Date(dateStr).toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+  return new Date(dateStr).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+  });
 };
 
 const NotificationBell: React.FC<NotificationBellProps> = ({ enabled }) => {
@@ -39,6 +42,11 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ enabled }) => {
   const handleItemClick = async (n: (typeof notifications)[number]) => {
     overlayRef.current?.hide();
     if (!n.isRead) await markOneRead(n._id);
+    if (n.type === "NEW_REVIEW") {
+      router.push("/dashboard/reviews");
+      window.dispatchEvent(new Event("storeReviewsChanged"));
+      return;
+    }
     if (n.orderId) router.push(`/dashboard/orders/${n.orderId}`);
   };
 
@@ -78,7 +86,10 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ enabled }) => {
           cursor: "pointer",
         }}
       >
-        <i className="pi pi-bell" style={{ fontSize: 17, color: "var(--brand-primary-dark)" }} />
+        <i
+          className="pi pi-bell"
+          style={{ fontSize: 17, color: "var(--brand-primary-dark)" }}
+        />
         {unreadCount > 0 && (
           <span
             style={{
@@ -105,20 +116,69 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ enabled }) => {
         )}
       </button>
 
-      <OverlayPanel ref={overlayRef} className="amp-notif-panel" style={{ width: 360, borderRadius: 16, overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "1px solid var(--border)" }}>
+      <OverlayPanel
+        ref={overlayRef}
+        className="amp-notif-panel"
+        style={{ width: 360, borderRadius: 16, overflow: "hidden" }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "14px 16px",
+            borderBottom: "1px solid var(--border)",
+          }}
+        >
           <div>
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--brand-primary-dark)" }}>Notifications</h3>
-            {unreadCount > 0 && <p style={{ margin: 0, fontSize: 11.5, color: "var(--muted)" }}>{unreadCount} unread</p>}
+            <h3
+              style={{
+                margin: 0,
+                fontSize: 15,
+                fontWeight: 700,
+                color: "var(--brand-primary-dark)",
+              }}
+            >
+              Notifications
+            </h3>
+            {unreadCount > 0 && (
+              <p style={{ margin: 0, fontSize: 11.5, color: "var(--muted)" }}>
+                {unreadCount} unread
+              </p>
+            )}
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             {unreadCount > 0 && (
-              <button onClick={markAllRead} disabled={loading} style={{ fontSize: 12, fontWeight: 600, color: "var(--brand-blue)", background: "none", border: "none", cursor: loading ? "default" : "pointer", opacity: loading ? 0.6 : 1 }}>
+              <button
+                onClick={markAllRead}
+                disabled={loading}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "var(--brand-blue)",
+                  background: "none",
+                  border: "none",
+                  cursor: loading ? "default" : "pointer",
+                  opacity: loading ? 0.6 : 1,
+                }}
+              >
                 Mark all read
               </button>
             )}
             {notifications.length > 0 && (
-              <button onClick={openClearAllModal} disabled={loading} style={{ fontSize: 12, fontWeight: 600, color: "#e53935", background: "none", border: "none", cursor: loading ? "default" : "pointer", opacity: loading ? 0.6 : 1 }}>
+              <button
+                onClick={openClearAllModal}
+                disabled={loading}
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: "#e53935",
+                  background: "none",
+                  border: "none",
+                  cursor: loading ? "default" : "pointer",
+                  opacity: loading ? 0.6 : 1,
+                }}
+              >
                 Clear all
               </button>
             )}
@@ -127,9 +187,27 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ enabled }) => {
 
         <div style={{ maxHeight: 360, overflowY: "auto" }}>
           {notifications.length === 0 ? (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 20px", textAlign: "center" }}>
-              <i className="pi pi-bell-slash" style={{ fontSize: 28, color: "var(--muted)", marginBottom: 10 }} />
-              <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>No notifications yet</p>
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "40px 20px",
+                textAlign: "center",
+              }}
+            >
+              <i
+                className="pi pi-bell-slash"
+                style={{
+                  fontSize: 28,
+                  color: "var(--muted)",
+                  marginBottom: 10,
+                }}
+              />
+              <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                No notifications yet
+              </p>
             </div>
           ) : (
             notifications.map((n) => (
@@ -137,27 +215,113 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ enabled }) => {
                 key={n._id}
                 onClick={() => handleItemClick(n)}
                 className="amp-notif-item"
-                style={{ display: "flex", gap: 10, padding: "12px 16px", cursor: "pointer", background: n.isRead ? "transparent" : "rgba(33, 150, 211, 0.06)", borderBottom: "1px solid var(--border)" }}
+                style={{
+                  display: "flex",
+                  gap: 10,
+                  padding: "12px 16px",
+                  cursor: "pointer",
+                  background: n.isRead
+                    ? "transparent"
+                    : "rgba(33, 150, 211, 0.06)",
+                  borderBottom: "1px solid var(--border)",
+                }}
               >
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: n.isRead ? "var(--surface-soft)" : "rgba(33, 150, 211, 0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <i className="pi pi-shopping-cart" style={{ fontSize: 14, color: n.isRead ? "var(--muted)" : "var(--brand-blue)" }} />
+                <div
+                  style={{
+                    width: 36,
+                    height: 36,
+                    borderRadius: "50%",
+                    background: n.isRead
+                      ? "var(--surface-soft)"
+                      : "rgba(33, 150, 211, 0.15)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                  }}
+                >
+                  <i
+                    className={`pi ${n.type === "NEW_REVIEW" ? "pi-star" : "pi-shopping-cart"}`}
+                    style={{
+                      fontSize: 14,
+                      color: n.isRead ? "var(--muted)" : "var(--brand-blue)",
+                    }}
+                  />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: n.isRead ? 500 : 700, color: "var(--foreground)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</p>
-                    {!n.isRead && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--brand-blue)", flexShrink: 0 }} />}
+                  <div
+                    style={{ display: "flex", alignItems: "center", gap: 6 }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 13,
+                        fontWeight: n.isRead ? 500 : 700,
+                        color: "var(--foreground)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                    >
+                      {n.title}
+                    </p>
+                    {!n.isRead && (
+                      <span
+                        style={{
+                          width: 7,
+                          height: 7,
+                          borderRadius: "50%",
+                          background: "var(--brand-blue)",
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
                   </div>
-                  <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.body}</p>
-                  <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--muted)" }}>{timeAgo(n.createdAt)}</p>
+                  <p
+                    style={{
+                      margin: "2px 0 0",
+                      fontSize: 12.5,
+                      color: "var(--muted)",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    {n.body}
+                  </p>
+                  <p
+                    style={{
+                      margin: "4px 0 0",
+                      fontSize: 11,
+                      color: "var(--muted)",
+                    }}
+                  >
+                    {timeAgo(n.createdAt)}
+                  </p>
                 </div>
                 <button
                   onClick={(e) => handleDelete(e, n._id)}
                   aria-label="Delete notification"
                   title="Delete"
                   className="amp-notif-delete"
-                  style={{ alignSelf: "center", flexShrink: 0, width: 28, height: 28, borderRadius: "50%", border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                  style={{
+                    alignSelf: "center",
+                    flexShrink: 0,
+                    width: 28,
+                    height: 28,
+                    borderRadius: "50%",
+                    border: "none",
+                    background: "transparent",
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
                 >
-                  <i className="pi pi-trash" style={{ fontSize: 13, color: "var(--muted)" }} />
+                  <i
+                    className="pi pi-trash"
+                    style={{ fontSize: 13, color: "var(--muted)" }}
+                  />
                 </button>
               </div>
             ))
@@ -165,8 +329,27 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ enabled }) => {
         </div>
 
         {notifications.length > 0 && (
-          <div style={{ padding: "10px 16px", textAlign: "center", borderTop: "1px solid var(--border)" }}>
-            <button onClick={() => { overlayRef.current?.hide(); router.push("/dashboard/orders"); }} style={{ fontSize: 12.5, fontWeight: 600, color: "var(--brand-blue)", background: "none", border: "none", cursor: "pointer" }}>
+          <div
+            style={{
+              padding: "10px 16px",
+              textAlign: "center",
+              borderTop: "1px solid var(--border)",
+            }}
+          >
+            <button
+              onClick={() => {
+                overlayRef.current?.hide();
+                router.push("/dashboard/orders");
+              }}
+              style={{
+                fontSize: 12.5,
+                fontWeight: 600,
+                color: "var(--brand-blue)",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
               View all orders
             </button>
           </div>
@@ -201,13 +384,31 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ enabled }) => {
               margin: "0 auto 16px",
             }}
           >
-            <i className="pi pi-trash" style={{ fontSize: 26, color: "#e53935" }} />
+            <i
+              className="pi pi-trash"
+              style={{ fontSize: 26, color: "#e53935" }}
+            />
           </div>
-          <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "var(--brand-primary-dark)" }}>
+          <h3
+            style={{
+              margin: 0,
+              fontSize: 18,
+              fontWeight: 700,
+              color: "var(--brand-primary-dark)",
+            }}
+          >
             Clear all notifications?
           </h3>
-          <p style={{ margin: "8px 0 0", fontSize: 13.5, lineHeight: 1.5, color: "var(--muted)" }}>
-            Your all notifications will be permanently deleted. This action cannot be undone.
+          <p
+            style={{
+              margin: "8px 0 0",
+              fontSize: 13.5,
+              lineHeight: 1.5,
+              color: "var(--muted)",
+            }}
+          >
+            Your all notifications will be permanently deleted. This action
+            cannot be undone.
           </p>
         </div>
 
@@ -234,18 +435,31 @@ const NotificationBell: React.FC<NotificationBellProps> = ({ enabled }) => {
       </Dialog>
 
       <style jsx global>{`
-        .amp-notif-panel .p-overlaypanel-content { padding: 0 !important; }
-        .amp-notif-item:hover { background: var(--surface-soft) !important; }
-        .amp-notif-delete:hover { background: rgba(229, 57, 53, 0.12) !important; }
-        .amp-notif-delete:hover i { color: #e53935 !important; }
+        .amp-notif-panel .p-overlaypanel-content {
+          padding: 0 !important;
+        }
+        .amp-notif-item:hover {
+          background: var(--surface-soft) !important;
+        }
+        .amp-notif-delete:hover {
+          background: rgba(229, 57, 53, 0.12) !important;
+        }
+        .amp-notif-delete:hover i {
+          color: #e53935 !important;
+        }
         .amp-confirm-dialog.p-dialog {
           border-radius: 20px !important;
           overflow: hidden;
           border: 1px solid var(--border);
           box-shadow: 0 24px 60px rgba(15, 28, 53, 0.25) !important;
         }
-        .amp-confirm-dialog .p-dialog-content { border-radius: 20px !important; }
-        .amp-confirm-btn { font-weight: 600 !important; padding: 10px 14px !important; }
+        .amp-confirm-dialog .p-dialog-content {
+          border-radius: 20px !important;
+        }
+        .amp-confirm-btn {
+          font-weight: 600 !important;
+          padding: 10px 14px !important;
+        }
       `}</style>
     </div>
   );

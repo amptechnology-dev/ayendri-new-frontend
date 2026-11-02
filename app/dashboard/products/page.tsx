@@ -93,11 +93,13 @@ type ProductRow = {
   isActive: boolean;
   isVerified: boolean;
   createdAt?: string;
+  averageRating?: number;
+  totalReviews?: number;
   store?: { _id?: string; storeName?: string; storeUniqueId?: string };
   category?: { _id?: string; name?: string };
   fastestDelivery?: boolean;
   productType?: "PRODUCT" | "SERVICE"; // [CHANGE]
-    dailyBookingLimit?: number | null;
+  dailyBookingLimit?: number | null;
   pickupAddress?: PickupAddressInfo | null; // [PICKUP] [CHANGE]
 };
 
@@ -502,7 +504,7 @@ function PreviewBody({
         ? `${product.pickupAddress.city || ""} - ${product.pickupAddress.pincode}`
         : "Store default",
     },
-        ...(product.productType === "SERVICE"
+    ...(product.productType === "SERVICE"
       ? [
           {
             label: "Daily limit",
@@ -1189,6 +1191,15 @@ function Page() {
                       </div>
 
                       <PriceBlock p={p} />
+
+                      {(p.totalReviews ?? 0) > 0 && (
+                        <p className="text-xs text-gray-600">
+                          <span className="text-amber-400">★</span>{" "}
+                          <b>{(p.averageRating ?? 0).toFixed(1)}</b> ·{" "}
+                          {p.totalReviews} review
+                          {p.totalReviews === 1 ? "" : "s"}
+                        </p>
+                      )}
 
                       <div className="flex flex-wrap gap-1">
                         {colors > 0 && (
