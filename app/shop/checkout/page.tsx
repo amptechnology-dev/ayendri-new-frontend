@@ -379,6 +379,31 @@ export default function Checkout() {
         );
       }
 
+      // the backend takes ONE booking date per checkout
+      const bookingDates = [
+        ...new Set(
+          cart.items
+            .map((i) => (i.bookingDate ? String(i.bookingDate).slice(0, 10) : ""))
+            .filter(Boolean),
+        ),
+      ];
+      if (bookingDates.length > 1) {
+        throw new Error(
+          "Your service items are booked for different dates. Please use the same booking date for all of them in your cart.",
+        );
+      }
+      const missing = cart.items.find(
+        (i) =>
+          String(i.product?.productType ?? "").toUpperCase() === "SERVICE" &&
+          !i.bookingDate,
+      );
+      if (missing) {
+        throw new Error(
+          `Please choose a booking date for "${missing.product.title}". Remove it from the cart and add it again.`,
+        );
+      }
+      const bookingDate = bookingDates[0];
+
       const deliveryAddress = {
         fullName: address.fullName.trim(),
         phone: address.phone.trim(),
@@ -423,6 +448,7 @@ export default function Checkout() {
         storeIds,
         deliveryAddress,
         note: cart.remarks.trim() || undefined,
+        bookingDate, // undefined when the cart has no booking item
         paymentMethod: cart.payment,
         fastestDelivery: fastest, // [FASTEST] preview er sathe hubohu same
       });
@@ -496,7 +522,12 @@ export default function Checkout() {
       submitPayUPayment(payment.paymentUrl, payment.payuParams);
     } catch (e: unknown) {
       setRedirecting(false);
-      setError(errMsg(e, "Unable to place order. Please try again."));
+      const failed = (e as any)?.response?.data?.failedStores;
+      setError(
+        Array.isArray(failed) && failed.length
+          ? badMessage(failed)
+          : errMsg(e, "Unable to place order. Please try again."),
+      );
     } finally {
       if (!leaving) setBusy(false);
     }

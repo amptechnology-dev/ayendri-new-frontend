@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { ImagePlus, Pencil, Trash2, Store as StoreIcon, X } from "lucide-react";
 import { StarsDisplay, StarInput } from "./Stars";
 import { imgUrl, fetchReviews, saveReview, removeReview } from "../api";
@@ -51,7 +52,7 @@ export default function ReviewSection({
   // form
   const formRef = useRef<HTMLDivElement>(null);
   const [showForm, setShowForm] = useState(false);
-  const [guestMsg, setGuestMsg] = useState(false);
+  
   const [editing, setEditing] = useState<Review | null>(null);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
@@ -99,23 +100,7 @@ export default function ReviewSection({
     setErr("");
   };
 
-  const openNew = () => {
-    if (!currentUserId) {
-      setGuestMsg(true);
-      return;
-    }
-    setGuestMsg(false);
-    resetForm();
-    setShowForm(true);
-    setTimeout(
-      () =>
-        formRef.current?.scrollIntoView({
-          behavior: "smooth",
-          block: "center",
-        }),
-      50,
-    );
-  };
+  
 
   const openEdit = (r: Review) => {
     resetForm();
@@ -197,19 +182,9 @@ export default function ReviewSection({
         <h2 className="text-2xl font-black text-[#4a0710]">
           Ratings &amp; Reviews
         </h2>
-        <button
-          onClick={openNew}
-          className="rounded-full bg-[#8b1a2b] px-5 py-2 text-sm font-bold text-white shadow hover:bg-[#7a1118]"
-        >
-          Write a review
-        </button>
       </div>
 
-      {guestMsg && (
-        <p className="mt-3 text-sm font-semibold text-red-600">
-          Please sign in to write a review.
-        </p>
-      )}
+
 
       {/* ---------- Summary ---------- */}
       <div className="mt-5 grid gap-6 sm:grid-cols-[200px_1fr]">

@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ClipboardList, LogOut, User, UserRound } from "lucide-react";
 import { useAuth } from "../auth";
 
-export default function AccountMenu() {
+export default function AccountMenu({ scrolled = false }: { scrolled?: boolean }) {
   const { user, token, hydrate, signOut } = useAuth();
   const router = useRouter();
   const path = usePathname();
@@ -29,9 +29,12 @@ export default function AccountMenu() {
         onClick={() => setOpen((o) => !o)}
         aria-label="Account"
         aria-expanded={open}
-        className="relative grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[#f6c453]/70 bg-white/15 text-white shadow-[0_2px_10px_rgba(0,0,0,.35)] backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:border-[#fff1c2] hover:bg-[#f2b632] hover:text-[#4a0710] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fff1c2]"
+        className="account-btn relative grid h-10 w-10 shrink-0 sm:h-11 sm:w-11 place-items-center rounded-full border border-[#f6c453]/70 bg-white/15 text-white shadow-[0_2px_10px_rgba(0,0,0,.35)] backdrop-blur transition duration-200 hover:-translate-y-0.5 hover:border-[#fff1c2] hover:bg-[#f2b632] hover:text-[#4a0710] active:scale-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fff1c2]"
       >
-        <User size={20} />
+        <User
+          size={20}
+          style={scrolled ? { color: "#7a1118", stroke: "#7a1118" } : undefined}
+        />
       </button>
 
       {open && (

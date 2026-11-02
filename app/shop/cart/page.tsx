@@ -2,7 +2,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronDown, Info, Minus, Plus, Trash2, Zap } from "lucide-react";
+import { ChevronDown, Info, Minus, Plus, Trash2, Zap, CalendarDays } from "lucide-react";
 import { useAuth } from "../auth";
 import { useCart } from "../cart";
 import { inr } from "../data";
@@ -10,6 +10,10 @@ import {
   buildBill, deliveryDateText, hasTiers, imageUrl, isFastestDelivery, policyNotes, tierPriceFor,
   type Item, type Product,
 } from "../cart-api";
+import { fetchAvailability } from "../api";
+import {
+  formatBookingDate, getMinBookingDate, isValidBookingDate, parseApiDate, toApiDate,
+} from "../booking-date";
 
 const unitPrice = (i: Item) =>
   tierPriceFor(i.product, i.quantity || 1) ?? (typeof i.product.price === "number" ? i.product.price : 0);
@@ -23,7 +27,7 @@ export default function Cart() {
   const router = useRouter();
   const token = useAuth((s) => s.token);
   const ready = useAuth((s) => s.ready);
-  const { items, products, loading, changeQuantity, removeItem, addItem, applyPromo, promo, discount } = useCart();
+  const { items, products, loading, changeQuantity, changeBookingDate, removeItem, addItem, applyPromo, promo, discount } = useCart();
 
   const [mounted, setMounted] = useState(false);
   const [code, setCode] = useState("");
@@ -80,6 +84,11 @@ export default function Cart() {
   const add = (p: Product) => addItem(p).catch((e) => alert(e.message));
 
   const checkout = async () => {
+    const stale = items.find((i) => i.bookingDate && !isValidBookingDate(parseApiDate(i.bookingDate)));
+    if (stale) {
+      alert("A booking date in your cart is no longer valid. Please change it before ordering.");
+      return;
+    }
     const bad = items.filter((i) => i.isAvailable === false);
     if (bad.length) {
       if (!window.confirm("Some items in your cart are no longer available. Remove them and continue to checkout?")) return;
@@ -148,6 +157,9 @@ export default function Cart() {
                   </div>
                 )}
                 {!na && dlv?.deliverable === false && <div className="mt-1 text-xs text-[#e53935]">Not deliverable to your pincode</div>}
+                                {!!item.bookingDate && !na && (
+                  <BookingDate item={item} onChange={(d) => changeBookingDate(item, d)} />
+                )}
                 <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
                   <span className="font-extrabold text-[#7a1118]">
                     {unitPrice(item) > 0 ? inr(unitPrice(item)) : "Order to know Price"}
@@ -238,7 +250,84 @@ export default function Cart() {
     </div>
   );
 }
+function BookingDate({ item, onChange }: { item: Item; onChange: (d: string) => Promise<void> }) {
+  const [edit, setEdit] = useState(false);
+  const [val, setVal] = useState("");
+  const [days, setDays] = useState<any[]>([]);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
 
+  const parsed = parseApiDate(item.bookingDate);
+  const expired = !isValidBookingDate(parsed);
+
+  useEffect(() => {
+    if (!edit) return;
+    let active = true;
+    fetchAvailability(item.id)
+      .then((r: any) => { if (active && r?.success && Array.isArray(r.days)) setDays(r.days); })
+      .catch(() => { if (active) setDays([]); });
+    return () => { active = false; };
+  }, [edit, item.id]);
+
+  const full = Boolean(days.find((d) => d.date === val)?.full);
+  const valid = Boolean(val) && isValidBookingDate(parseApiDate(val)) && !full;
+
+  const save = async () => {
+    if (!valid) return;
+    setBusy(true);
+    setErr("");
+    try {
+      await onChange(val);
+      setEdit(false);
+    } catch (e: any) {
+      setErr(e?.message ?? "Could not change the date");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="mt-1.5 text-xs">
+      <div className="flex flex-wrap items-center gap-2">
+        <CalendarDays size={13} className={expired ? "text-red-600" : "text-[#b26a00]"} />
+        <span className={expired ? "font-semibold text-red-600" : "text-[#4a0710]"}>
+          Booking: <b>{formatBookingDate(parsed) || "—"}</b>
+        </span>
+        {!edit && (
+          <button
+            onClick={() => { setVal(parsed ? toApiDate(parsed) : ""); setErr(""); setEdit(true); }}
+            className="font-bold text-[#a3161c] underline"
+          >
+            Change
+          </button>
+        )}
+      </div>
+      {expired && !edit && <p className="mt-0.5 text-red-600">This date has passed. Please change it.</p>}
+      {edit && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <input
+            type="date"
+            value={val}
+            min={toApiDate(getMinBookingDate())}
+            onChange={(e) => setVal(e.target.value)}
+            className="rounded-lg border border-[#e4cfae] px-2 py-1 text-xs outline-none focus:border-[#a3161c]"
+          />
+          <button
+            disabled={!valid || busy}
+            onClick={save}
+            className="rounded-full bg-[#a3161c] px-3 py-1 font-bold text-white disabled:opacity-40"
+          >
+            {busy ? "Saving…" : "Save"}
+          </button>
+          <button onClick={() => setEdit(false)} className="font-semibold text-[#6b4a4a]">Cancel</button>
+          {full && <span className="w-full font-semibold text-red-600">This date is fully booked.</span>}
+          {val && !valid && !full && <span className="w-full font-semibold text-red-600">Pick tomorrow or a later date.</span>}
+          {err && <span className="w-full font-semibold text-red-600">{err}</span>}
+        </div>
+      )}
+    </div>
+  );
+}
 const Row = ({ l, v, green }: { l: string; v: string; green?: boolean }) => (
   <div className={`flex justify-between ${green ? "text-green-700" : ""}`}><span>{l}</span><span>{v}</span></div>
 );

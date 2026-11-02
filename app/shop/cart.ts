@@ -10,7 +10,7 @@ import {
   type Product,
   type Item,
 } from "./cart-api";
-
+import { useShop } from "./shop-data";
 import { shopApi, errMsg } from "./auth";
 
 const cartCall = async (run: () => Promise<unknown>) => {
@@ -43,6 +43,10 @@ export const setCartSelection = (
   pendingSelection[slug] = data;
 };
 
+export const mergeCartSelection = (slug: string, data: Record<string, unknown>) => {
+  pendingSelection[slug] = { ...(pendingSelection[slug] ?? {}), ...data };
+};
+
 type CartState = {
   // Existing cart state
   lines: Line[];
@@ -54,6 +58,7 @@ type CartState = {
 
   // State expected by page.tsx
   items: Item[];
+  bookingDates: Record<string, string>;
   products: Product[];
   loading: boolean;
 
@@ -70,6 +75,7 @@ type CartState = {
   reset: () => void;
   addItem: (product: Product) => Promise<void>;
   changeQuantity: (item: Item, delta: number) => Promise<void>;
+  changeBookingDate: (item: Item, bookingDate: string) => Promise<void>;
   removeItem: (item: Item) => Promise<void>;
 };
 
@@ -82,6 +88,7 @@ export const useCart = create<CartState>()(
       remarks: "",
       payment: "ONLINE",
       address: "HOME · Dunlop, Kolkata, West Bengal 700108",
+      bookingDates: {},
 
       items: [],
       products: [],
@@ -92,6 +99,16 @@ export const useCart = create<CartState>()(
           window.location.href = "/shop/login?next=/shop/cart";
           return;
         }
+
+        const sel = pendingSelection[slug];
+  const prod = useShop.getState().products.find((x) => x.slug === slug) as any;
+  const needs =
+    String(prod?.raw?.productType ?? "").toUpperCase() === "SERVICE" ||
+    Boolean(prod?.raw?.isMadeForProduct);
+  if (needs && !sel?.bookingDate) {
+    alert("Please choose a booking date first.");
+    return;
+  }
         try {
           await cartCall(() =>
             shopApi.post("/api/cart/add", {
@@ -100,11 +117,16 @@ export const useCart = create<CartState>()(
               ...(pendingSelection[slug] ?? {}),
             }),
           );
+          const bd = pendingSelection[slug]?.bookingDate;
+          if (typeof bd === "string" && bd) {
+            set((s) => ({ bookingDates: { ...s.bookingDates, [slug]: bd } }));
+          }
           await get().hydrate();
         } catch (e: any) {
           alert(e.message);
         }
       },
+      
 
       setQty: async (slug, qty) => {
         const item = get().items.find((i) => i.id === slug);
@@ -172,6 +194,7 @@ export const useCart = create<CartState>()(
           const serverItems = cartItemsFromResponse(cartResponse.data);
 
           const items: Item[] = serverItems.flatMap((serverItem: any) => {
+            console.log("CART ITEM RAW:", JSON.stringify(serverItem));
             const productId = cartProductId(serverItem);
 
             const product = products.find((p) => p._id === productId);
@@ -195,6 +218,7 @@ export const useCart = create<CartState>()(
                   serverItem.colorVariantId,
                   serverItem.size,
                   serverItem.weight,
+                  serverItem.bookingDate ? String(serverItem.bookingDate).slice(0, 10) : undefined,
                 ),
                 cartItemId:
                   serverItem._id ??
@@ -208,6 +232,8 @@ export const useCart = create<CartState>()(
                   serverItem.variant?.name ??
                   undefined,
                 isAvailable: serverItem.isAvailable ?? true,
+                bookingDate:
+                  serverItem.bookingDate ?? get().bookingDates[product._id] ?? undefined,
               },
             ];
           });
@@ -219,6 +245,11 @@ export const useCart = create<CartState>()(
               slug: item.id,
               qty: item.quantity,
             })),
+            bookingDates: Object.fromEntries(
+              Object.entries(get().bookingDates).filter(([id]) =>
+                items.some((i) => i.id === id),
+              ),
+            ),
             loading: false,
           });
         } catch (error) {
@@ -249,7 +280,15 @@ export const useCart = create<CartState>()(
         );
         await get().hydrate();
       },
-
+      // the backend takes the booking date at checkout, so it is kept in the browser until then
+      changeBookingDate: async (item, bookingDate) => {
+        set((s) => ({
+          bookingDates: { ...s.bookingDates, [item.id]: bookingDate },
+          items: s.items.map((i) =>
+            i.id === item.id ? { ...i, bookingDate } : i,
+          ),
+        }));
+      },
       removeItem: async (item) => {
         await cartCall(() =>
           shopApi.delete(
@@ -268,6 +307,7 @@ export const useCart = create<CartState>()(
         remarks: state.remarks,
         payment: state.payment,
         address: state.address,
+        bookingDates: state.bookingDates,
       }),
     },
   ),

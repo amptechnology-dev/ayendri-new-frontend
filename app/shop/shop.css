@@ -5,9 +5,14 @@
   background: var(--cream); color: var(--ink);
   font-family: var(--font-shop), system-ui, sans-serif;
   min-height: 100vh;
+  min-height: 100dvh;            /* fixes iOS Safari URL-bar jump */
+  overflow-x: clip;              /* no sideways scroll; unlike "hidden", sticky still works */
+  -webkit-text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
 }
 .shop-root a { color: inherit; text-decoration: none; }
 .shop-root button { font-family: inherit; cursor: pointer; }
+.shop-root a, .shop-root button { touch-action: manipulation; } /* removes 300ms tap delay */
 
 /* maroon hero backdrop with a faint mandala-dot pattern */
 .shop-hero-bg {
@@ -30,11 +35,21 @@
   background: rgba(255,255,255,.08); backdrop-filter: blur(6px);
 }
 .shop-card { background:#fff; border-radius:20px; box-shadow:0 10px 30px rgba(74,7,16,.08); transition:.25s; }
-.shop-card:hover { transform: translateY(-4px); box-shadow:0 18px 40px rgba(74,7,16,.16); }
-.shop-scroll { scrollbar-width: none; }
+
+/* hover effects only on devices that really hover (no "stuck" raised cards after a tap) */
+@media (hover: hover) {
+  .shop-card:hover { transform: translateY(-4px); box-shadow: 0 18px 40px rgba(74,7,16,.16); }
+  .shop-add:hover { transform: scale(1.1); }
+}
+
+.shop-scroll { scrollbar-width: none; -webkit-overflow-scrolling: touch; overscroll-behavior-x: contain; }
 .shop-scroll::-webkit-scrollbar { display: none; }
 
-
+/* iPhone Safari zooms the whole page when an input is under 16px */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+  select, textarea { font-size: 16px; }
+}
 
 /* ---------- header theme (scroll aware) ---------- */
 .shop-header { transition: background .45s ease, color .45s ease, box-shadow .45s ease; }
@@ -48,6 +63,15 @@
 .shop-header[data-scrolled="true"] .shop-search { background: #fff; color: var(--ink); border-color: #eadfce; box-shadow: 0 4px 14px rgba(74,7,16,.08); }
 .shop-header[data-scrolled="true"] .shop-donate { background: var(--maroon-2); color: #fff; border-color: transparent; }
 
+/* header: category pills row collapses on phones once the user scrolls */
+.shop-navrow { max-height: 72px; transition: max-height .3s ease, opacity .25s ease, padding .3s ease; }
+@media (max-width: 767px) {
+  .shop-header[data-scrolled="true"] .shop-navrow {
+    max-height: 0; min-height: 0; opacity: 0; padding-top: 0; padding-bottom: 0;
+    overflow: hidden; pointer-events: none;
+  }
+}
+
 /* ---------- animations ---------- */
 @keyframes shop-slide-up { from { opacity: 0; transform: translateY(70%); } to { opacity: 1; transform: none; } }
 .shop-ph { animation: shop-slide-up .45s ease both; }
@@ -60,12 +84,16 @@
 
 .shop-reveal { opacity: 0; transform: translateY(28px); transition: opacity .7s ease, transform .7s cubic-bezier(.2,.7,.2,1); }
 .shop-reveal.shop-in { opacity: 1; transform: none; }
+/* lighter reveal on phones */
+@media (max-width: 639px) {
+  .shop-reveal { transform: translateY(16px); transition-duration: .5s; }
+  .shop-reveal.shop-in { transform: none; }
+}
 
 .shop-slide { opacity: 0; transition: opacity .9s ease, transform 1.2s ease; transform: scale(1.03); pointer-events: none; }
 .shop-slide.on { opacity: 1; transform: none; pointer-events: auto; }
 
 .shop-add { transition: transform .2s ease, background .2s ease, color .2s ease; }
-.shop-add:hover { transform: scale(1.1); }
 .shop-add:active { transform: scale(.92); }
 
 @media (prefers-reduced-motion: reduce) {

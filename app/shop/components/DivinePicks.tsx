@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRef, useState } from "react";
 import { ChevronsRight, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { off, type Product } from "../data";
-import { useCart } from "../cart";
+import { useBookingAdd } from "./useBookingAdd";
 import { useShop } from "../shop-data";
 import WishlistButton from "./WishlistButton";
 
@@ -162,7 +162,7 @@ function Swiper({ images, alt, discount, productId }: { images: string[]; alt: s
 
 /* ───────── product row (swipe images, open product, add to cart) ───────── */
 function Row({ p }: { p: Product }) {
-  const add = useCart((s) => s.add);
+  const { add, modal } = useBookingAdd();
   const [done, setDone] = useState(false);
   const extra = (p as Product & { images?: string[] }).images;
   const imgs: string[] = extra && extra.length ? extra : [p.image];
@@ -179,11 +179,12 @@ function Row({ p }: { p: Product }) {
           {p.mrp > p.price && <s className="whitespace-nowrap text-[11px] text-[#9d8f86]">₹{fmt(p.mrp)}</s>}
         </div>
         <button
-          onClick={() => {
-            add(p.slug);
-            setDone(true);
-            setTimeout(() => setDone(false), 1200);
-          }}
+          onClick={() =>
+  add(p as any, 1, () => {
+    setDone(true);
+    setTimeout(() => setDone(false), 1200);
+  })
+}
           className={`mt-1.5 flex h-[30px] w-full items-center justify-center gap-1 rounded-lg border-2 text-[13px] font-bold tracking-[.03em] transition active:scale-95 ${
             done ? "border-[#1a6e35] bg-[#1a6e35] text-white" : "border-[#8e1a22] bg-white text-[#8e1a22] hover:bg-[#8e1a22] hover:text-white"
           }`}
@@ -191,6 +192,8 @@ function Row({ p }: { p: Product }) {
           {done ? <><Check size={14} /> ADDED</> : "ADD"}
         </button>
       </div>
+
+      {modal}
     </div>
   );
 }
@@ -338,6 +341,7 @@ export default function DivinePicks() {
             {low.map((p) => <Row key={p.slug} p={p} />)}
           </PickCard>
         </div>
+      
       </div>
     </section>
   );

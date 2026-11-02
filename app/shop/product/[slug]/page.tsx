@@ -31,7 +31,7 @@ import FastestBadge from "../../components/FastestBadge";
 import { StarsDisplay } from "../../components/Stars";
 import ReviewSection from "../../components/ReviewSection";
 import { useAuth } from "../../auth";
-
+import { useBookingAdd } from "../../components/useBookingAdd";
 import {
   formatBookingDate,
   getMinBookingDate,
@@ -144,7 +144,9 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   const store = useShop((s) => s.store);
   const addToCart = useCart((s) => s.add);
   const userId = useAuth((s) => s.user?.id ?? null);
+  const { add: addWithBooking, modal: bookingModal } = useBookingAdd();   // <- here
   const p = products.find((x) => x.slug === slug);
+  
 
   // hooks must stay above the early returns
   const [bookingDate, setBookingDate] = useState(""); // "YYYY-MM-DD"
@@ -1015,11 +1017,11 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
                     {inr(x.price)}
                   </span>
                   <button
-                    onClick={() => addToCart(x.slug, 1)}
-                    className="rounded-full border border-[#a3161c] px-4 py-1 text-xs font-extrabold text-[#a3161c]"
-                  >
-                    ADD
-                  </button>
+  onClick={() => addToCart(x.slug, 1)}      // <- old
+  className="rounded-full border border-[#a3161c] px-4 py-1 text-xs font-extrabold text-[#a3161c]"
+>
+  ADD
+</button>
                 </div>
               </div>
             ))}

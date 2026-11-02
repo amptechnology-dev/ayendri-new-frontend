@@ -4,7 +4,6 @@ import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { Home, LayoutGrid, ClipboardCheck, User } from "lucide-react";
 
-const ITEM_W = 84; // px, width of each tab
 const ITEM_H = 56; // px, height of each tab
 const PAD = 8; // px, nav inner padding
 const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)"; // iOS-like overshoot
@@ -13,7 +12,7 @@ const MAG_RADIUS = 110; // px, how far the cursor "lens" reaches
 const MAG_STRENGTH = 0.22; // extra icon scale at the cursor
 
 const items = [
-  { href: "/", label: "Home", Icon: Home, color: "#d9803a", match: (p: string) => p === "/shop" },
+  { href: "/shop", label: "Home", Icon: Home, color: "#d9803a", match: (p: string) => p === "/shop" },
   { href: "/shop/category/all", label: "Categories", Icon: LayoutGrid, color: "#2f8f82", match: (p: string) => p.startsWith("/shop/category") },
   { href: "/shop/orders", label: "Orders", Icon: ClipboardCheck, color: "#7b5fc0", match: (p: string) => p.startsWith("/shop/orders") },
 ];
@@ -27,6 +26,15 @@ export default function BottomNav() {
   const path = usePathname() ?? "";
   const activeIdx = items.findIndex((i) => i.match(path));
   const profileActive = path.startsWith("/shop/profile");
+
+  // ---------- tab width: narrower on small phones so nav + profile bubble fit ----------
+  const [itemW, setItemW] = useState(84);
+  useEffect(() => {
+    const fit = () => setItemW(window.innerWidth < 400 ? 70 : 84);
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
 
   // ---------- hide on scroll down, show on scroll up ----------
   const [hidden, setHidden] = useState(false);
@@ -50,6 +58,24 @@ export default function BottomNav() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // ---------- hide while the on-screen keyboard is open ----------
+  const [typing, setTyping] = useState(false);
+  useEffect(() => {
+    const isField = (t: EventTarget | null) =>
+      t instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName);
+    const onIn = (e: FocusEvent) => {
+      if (isField(e.target)) setTyping(true);
+    };
+    const onOut = () => setTyping(false);
+    document.addEventListener("focusin", onIn);
+    document.addEventListener("focusout", onOut);
+    return () => {
+      document.removeEventListener("focusin", onIn);
+      document.removeEventListener("focusout", onOut);
+    };
+  }, []);
+  const gone = hidden || typing;
 
   // ---------- squash & stretch the glass blob while it travels ----------
   const prev = useRef(activeIdx);
@@ -91,25 +117,29 @@ export default function BottomNav() {
   // dock-style magnification: icons near the cursor grow, falling off with distance
   const mag = (i: number) => {
     if (tabsX === null) return 1;
-    const d = Math.abs(tabsX - (i + 0.5) * ITEM_W);
+    const d = Math.abs(tabsX - (i + 0.5) * itemW);
     return 1 + MAG_STRENGTH * Math.max(0, 1 - d / MAG_RADIUS);
   };
 
   const tint = activeIdx >= 0 ? items[activeIdx].color : "#ffffff";
-  const hideShift = "translateY(calc(100% + 40px))";
 
   return (
-    <>
+    <div
+      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex items-center justify-center gap-3 px-3"
+      style={{
+        paddingBottom: "max(12px, env(safe-area-inset-bottom))",
+        transform: gone ? "translateY(calc(100% + 24px))" : "translateY(0)",
+        opacity: gone ? 0 : 1,
+        transition: `transform ${gone ? 380 : 560}ms ${gone ? SMOOTH : SPRING}, opacity 300ms ease`,
+      }}
+    >
       <nav
         ref={navRef}
         onPointerMove={onNavMove}
         onPointerLeave={onNavLeave}
-        className="fixed bottom-4 left-1/2 z-50 rounded-[30px] border border-white/60 bg-white/35 backdrop-blur-2xl backdrop-saturate-150"
+        className="pointer-events-auto relative rounded-[30px] border border-white/60 bg-white/35 backdrop-blur-2xl backdrop-saturate-150"
         style={{
           padding: PAD,
-          transform: `translateX(-50%) ${hidden ? hideShift : "translateY(0)"}`,
-          opacity: hidden ? 0 : 1,
-          transition: `transform ${hidden ? 380 : 560}ms ${hidden ? SMOOTH : SPRING}, opacity 300ms ease`,
           boxShadow:
             "0 14px 40px rgba(74,7,16,.20), inset 0 1.5px 0 rgba(255,255,255,.85), inset 0 -1px 0 rgba(255,255,255,.25)",
         }}
@@ -127,16 +157,16 @@ export default function BottomNav() {
           }}
         />
 
-        <div ref={tabsRef} className="relative flex" style={{ width: ITEM_W * items.length, height: ITEM_H }}>
+        <div ref={tabsRef} className="relative flex" style={{ width: itemW * items.length, height: ITEM_H }}>
           {/* liquid glass indicator */}
           <span
             aria-hidden
             className="pointer-events-none absolute left-0 top-0 rounded-[22px] border border-white/70 backdrop-blur-md"
             style={{
-              width: ITEM_W,
+              width: itemW,
               height: ITEM_H,
               opacity: activeIdx >= 0 ? 1 : 0,
-              transform: `translateX(${Math.max(activeIdx, 0) * ITEM_W}px) scale(${moving ? "1.14, 0.93" : "1, 1"})`,
+              transform: `translateX(${Math.max(activeIdx, 0) * itemW}px) scale(${moving ? "1.14, 0.93" : "1, 1"})`,
               transition: `transform 520ms ${SPRING}, background 400ms ease, opacity 200ms ease`,
               background: `linear-gradient(160deg, ${tint}38 0%, ${tint}1a 55%, rgba(255,255,255,.35) 100%)`,
               boxShadow: `0 4px 12px rgba(28,18,20,.12), inset 0 1.5px 0 rgba(255,255,255,.9), inset 0 -4px 10px ${tint}1a`,
@@ -153,7 +183,7 @@ export default function BottomNav() {
                 aria-current={active ? "page" : undefined}
                 className="relative z-10 flex flex-col items-center justify-center gap-1 rounded-2xl text-[11px] active:scale-90"
                 style={{
-                  width: ITEM_W,
+                  width: itemW,
                   height: ITEM_H,
                   color: active ? INK : "#4a3a3c",
                   fontWeight: active ? 700 : 600,
@@ -164,7 +194,6 @@ export default function BottomNav() {
                   style={{
                     transform: `translateY(${active ? -1 : 0}px) scale(${(active ? 1.18 : 1) * m})`,
                     transition: `transform ${tabsX === null ? 450 : 140}ms ${tabsX === null ? SPRING : "ease-out"}`,
-
                   }}
                 >
                   <Icon
@@ -189,17 +218,16 @@ export default function BottomNav() {
         aria-label="Profile"
         onPointerMove={onProfMove}
         onPointerLeave={() => setProfPt(null)}
-        className="fixed bottom-5 right-5 z-50 grid h-14 w-14 place-items-center overflow-hidden rounded-full border border-white/70 backdrop-blur-2xl backdrop-saturate-150 active:scale-90"
+        className="pointer-events-auto relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-full border border-white/70 backdrop-blur-2xl backdrop-saturate-150 active:scale-90"
         style={{
           background: profileActive
             ? `linear-gradient(160deg, ${PROFILE_COLOR}59, ${PROFILE_COLOR}26 60%, rgba(255,255,255,.4))`
             : "rgba(255,255,255,.4)",
           boxShadow: profileActive
-            ? `0 6px 16px rgba(28,18,20,.14), inset 0 1.5px 0 rgba(255,255,255,.9)`
+            ? "0 6px 16px rgba(28,18,20,.14), inset 0 1.5px 0 rgba(255,255,255,.9)"
             : "0 10px 28px rgba(74,7,16,.18), inset 0 1.5px 0 rgba(255,255,255,.85)",
-          transform: `${hidden ? hideShift : "translateY(0)"} scale(${profPt ? 1.1 : profileActive ? 1.08 : 1})`,
-          opacity: hidden ? 0 : 1,
-          transition: `transform ${hidden ? 380 : 560}ms ${hidden ? SMOOTH : SPRING}, opacity 300ms ease, background 300ms ease, box-shadow 300ms ease`,
+          transform: `scale(${profPt ? 1.1 : profileActive ? 1.08 : 1})`,
+          transition: `transform 560ms ${SPRING}, background 300ms ease, box-shadow 300ms ease`,
         }}
       >
         <span
@@ -222,6 +250,6 @@ export default function BottomNav() {
           style={{ transition: "fill 300ms ease, stroke 300ms ease" }}
         />
       </Link>
-    </>
+    </div>
   );
 }

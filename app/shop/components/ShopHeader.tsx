@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import Image from "next/image";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, Mic, Bell, Heart, ShoppingCart, Truck, ChevronDown, ChevronRight, Flame, Landmark, MapPin } from "lucide-react";
 import { useCart } from "../cart";
@@ -25,8 +25,11 @@ const HINTS = ["Shri Yantra", "Ganesh idol", "Karungali mala", "Rudraksha", "Tul
 /* ---------- shared button styles (high contrast on the maroon header) ---------- */
 
 // round icon buttons: bell, wishlist, cart
+// smaller on very small phones; the ::after layer keeps the tap area bigger than the circle
 const ICON_BTN =
-  "relative grid h-11 w-11 shrink-0 place-items-center rounded-full border border-[#f6c453]/70 bg-white/15 text-white " +
+  "relative grid h-9 w-9 min-[380px]:h-10 min-[380px]:w-10 sm:h-11 sm:w-11 shrink-0 place-items-center rounded-full " +
+  "after:absolute after:-inset-1 after:content-[''] " +
+  "border border-[#f6c453]/70 bg-white/15 text-white " +
   "shadow-[0_2px_10px_rgba(0,0,0,.35)] backdrop-blur transition duration-200 " +
   "hover:-translate-y-0.5 hover:border-[#fff1c2] hover:bg-[#f2b632] hover:text-[#4a0710] active:scale-95 " +
   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fff1c2]";
@@ -69,6 +72,19 @@ export default function ShopHeader() {
   const [open, setOpen] = useState<string | null>(null);
   const [subIdx, setSubIdx] = useState(0);
   const [bump, setBump] = useState(false);
+
+  // dynamic search suggestions: every product name, with category names mixed in
+  const hints = useMemo(() => {
+    const cats = categories.map((c) => c.name).filter(Boolean);
+    const prods = Array.from(new Set(products.map((p) => p.name).filter(Boolean)));
+    const out: string[] = [];
+    prods.forEach((name, i) => {
+      out.push(name);
+      if (cats.length && i % 3 === 2) out.push(cats[Math.floor(i / 3) % cats.length]);
+    });
+    if (out.length) return out;
+    return cats.length ? cats : HINTS;
+  }, [products, categories]);
 
   // mega menu closes shortly after the cursor leaves BOTH the category pills and the menu
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -114,9 +130,9 @@ export default function ShopHeader() {
 
   // rotating placeholder
   useEffect(() => {
-    const t = setInterval(() => setHint((h) => (h + 1) % HINTS.length), 2600);
+    const t = setInterval(() => setHint((h) => (h + 1) % hints.length), 2600);
     return () => clearInterval(t);
-  }, []);
+  }, [hints.length]);
 
   // cart badge bump
   useEffect(() => {
@@ -217,32 +233,41 @@ export default function ShopHeader() {
         </Link>
       </div>
 
-      <div className="mx-auto flex max-w-[1400px] items-center gap-4 px-5 py-2">
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:px-5 md:flex-nowrap md:gap-4">
         <Link href="/shop" className="flex items-center gap-2">
-          <Image src="/img/photos/ayendri-logo.png" alt="AYENDRI" width={44} height={44} />
-          <div className="leading-tight">
-            <div className="text-xl font-extrabold tracking-[.18em]">AYENDRI</div>
-            <div className="text-[10px] opacity-80">Sacred · Vedic · Lifestyle</div>
+          <Image src="/img/photos/ayendri-logo.png" alt="AYENDRI" width={44} height={44} className="h-9 w-9 sm:h-11 sm:w-11" />
+          {/* brand text hides on very small phones so the icons never wrap */}
+          <div className="leading-tight max-[339px]:hidden">
+            <div className="text-base font-extrabold tracking-[.12em] sm:text-xl sm:tracking-[.18em]">AYENDRI</div>
+            <div className="hidden text-[10px] opacity-80 sm:block">Sacred · Vedic · Lifestyle</div>
           </div>
         </Link>
 
         {/* search with rotating placeholder */}
         <form
           onSubmit={(e) => { e.preventDefault(); router.push(`/shop/search?q=${encodeURIComponent(val)}`); }}
-          className="shop-search relative mx-auto flex h-12 w-full max-w-[580px] items-center gap-3 rounded-full border border-white/50 bg-white/20 px-5 shadow-[0_2px_10px_rgba(0,0,0,.25)] backdrop-blur transition focus-within:border-[#f6c453] focus-within:bg-white/25"
+          className="shop-search relative order-last flex h-12 w-full basis-full items-center gap-3 rounded-full border border-white/50 bg-white/20 px-4 md:order-none md:mx-auto md:max-w-[580px] md:basis-auto md:px-5 shadow-[0_2px_10px_rgba(0,0,0,.25)] backdrop-blur transition focus-within:border-[#f6c453] focus-within:bg-white/25"
+          style={scrolled ? { background: "#ffffff", borderColor: "#e8cfa8" } : undefined}
         >
-          <Search size={20} className="shrink-0 text-white" />
+          <Search size={20} className="shrink-0 text-white" style={scrolled ? { color: "#7a1118" } : undefined} />
           <div className="relative flex-1 overflow-hidden">
             <input
               value={val}
               onChange={(e) => setVal(e.target.value)}
               onFocus={() => !val && router.push("/shop/search")}
-              className="relative z-10 h-12 w-full bg-transparent text-sm text-white outline-none"
+              className="relative z-10 h-12 w-full bg-transparent text-base text-white outline-none md:text-sm"
+              style={scrolled ? { color: "#4a0710", caretColor: "#4a0710" } : undefined}
               aria-label="Search"
             />
             {!val && (
-              <span key={hint} className="shop-ph pointer-events-none absolute inset-0 flex items-center text-sm text-white/90">
-                {listening ? "Listening…" : <>Search “{HINTS[hint]}”</>}
+              <span
+                key={hint}
+                className="shop-ph pointer-events-none absolute inset-0 flex items-center text-base text-white/90 md:text-sm"
+                style={scrolled ? { color: "#6b4a4a" } : undefined}
+              >
+                <span className="truncate">
+                  {listening ? "Listening…" : <>Search “{hints[hint % hints.length]}”</>}
+                </span>
               </span>
             )}
           </div>
@@ -267,7 +292,7 @@ export default function ShopHeader() {
           )}
         </form>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto flex items-center gap-1.5 sm:gap-3">
           {/* <Link
             href={STORE.href}
             className={`${GLASS_PILL} hidden px-4 py-2 text-sm font-semibold lg:flex`}
@@ -280,29 +305,27 @@ export default function ShopHeader() {
             </span>
           </Link> */}
 
-          <Link href="/shop/notifications" className={ICON_BTN} aria-label="Notifications">
-            <Bell size={20} />
-            {mounted && unread > 0 && (
-              <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full bg-[#e0262d] ring-2 ring-[#fff1c2]" />
-            )}
-          </Link>
-
           <Link href="/shop/wishlist" className={ICON_BTN} aria-label="Wishlist">
             <Heart size={20} />
             {mounted && wishCount > 0 && <span className={BADGE}>{wishCount}</span>}
           </Link>
 
-          <AccountMenu />
+          <Link href="/shop/notifications" className={ICON_BTN} aria-label="Notifications">
+            <Bell size={20} />
+            {mounted && unread > 0 && <span className={BADGE}>{unread > 9 ? "9+" : unread}</span>}
+          </Link>
 
           <Link href="/shop/cart" className={ICON_BTN} aria-label="Cart">
             <ShoppingCart size={20} />
             <span className={`${bump ? "shop-bump" : ""} ${BADGE}`}>{mounted ? count : 0}</span>
           </Link>
+
+          <AccountMenu scrolled={scrolled} />
         </div>
       </div>
 
-      {/* nav row */}
-      <nav className="shop-scroll mx-auto flex min-h-[52px] max-w-[1400px] items-center gap-3 overflow-x-auto px-5 pb-3 pt-2 text-sm font-semibold">
+      {/* nav row (collapses on phones once the page is scrolled) */}
+      <nav className="shop-navrow shop-scroll mx-auto flex min-h-[52px] max-w-[1400px] snap-x items-center gap-3 overflow-x-auto px-3 pb-3 pt-2 text-sm font-semibold sm:px-5">
         <Link href="/shop/category/idols" onMouseEnter={() => setOpen(null)} className={GOLD_PILL}>
           <span className={TAG}>Sale</span>
           <Flame size={16} /> Diwali Offers
@@ -327,8 +350,16 @@ export default function ShopHeader() {
           <Link
             key={c.slug}
             href={`/shop/category/${c.slug}`}
-            onMouseEnter={() => { cancelClose(); setOpen(c.slug); setSubIdx(0); }}
-            onMouseLeave={scheduleClose}
+            // only a real mouse opens the mega menu; touch taps go straight to the category
+            onPointerEnter={(e) => {
+              if (e.pointerType !== "mouse") return;
+              cancelClose();
+              setOpen(c.slug);
+              setSubIdx(0);
+            }}
+            onPointerLeave={(e) => {
+              if (e.pointerType === "mouse") scheduleClose();
+            }}
             className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,.25)] transition duration-200 active:scale-95 ${
               open === c.slug
                 ? "border-[#fff1c2] bg-[#fffaf3] text-[#4a0710]"
@@ -346,15 +377,14 @@ export default function ShopHeader() {
         ))}
       </nav>
 
-      {/* mega menu: sub-categories on the left, products on the right */}
-            {/* mega menu: sub-categories on the left, products on the right */}
+      {/* mega menu: sub-categories on the left, products on the right (large screens only) */}
       {active && (
         <div
           onMouseEnter={cancelClose}
           onMouseLeave={scheduleClose}
-          className="shop-mega absolute inset-x-0 top-full z-50 hidden border-t-4 border-[#f2b632] bg-[#fffaf3] text-[#2a0a0d] shadow-2xl md:block"
+          className="shop-mega absolute inset-x-0 top-full z-50 hidden border-t-4 border-[#f2b632] bg-[#fffaf3] text-[#2a0a0d] shadow-2xl lg:block"
         >
-          <div className="mx-auto grid max-w-[1300px] grid-cols-[280px_1fr] gap-8 px-8 py-6">
+          <div className="mx-auto grid max-w-[1300px] gap-8 px-8 py-6 lg:grid-cols-[240px_1fr] xl:grid-cols-[280px_1fr]">
             <div className="space-y-3">
               {subs.map((s, i) => (
                 <Link
@@ -375,7 +405,7 @@ export default function ShopHeader() {
 
             <div>
               {catProducts.length ? (
-                <div className="grid grid-cols-5 gap-x-5 gap-y-6">
+                <div className="grid grid-cols-4 gap-x-5 gap-y-6 xl:grid-cols-5">
                   {catProducts.map((p) => (
                     <Link key={p.slug} href={`/shop/product/${p.slug}`} className="group/p block">
                       <div className="relative aspect-square overflow-hidden rounded-2xl border border-[#e8d6bd] bg-[#f6efe6] shadow-sm transition duration-300 group-hover/p:-translate-y-1 group-hover/p:border-[#f2b632] group-hover/p:shadow-lg">

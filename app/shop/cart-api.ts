@@ -13,6 +13,7 @@ export type Product = Record<string, any> & { _id: string; title: string; price:
 export type Item = {
   id: string; lineId: string; cartItemId?: string; storeId?: string; storeName?: string;
   isAvailable?: boolean; quantity: number; product: Product; variantLabel?: string;
+ bookingDate?: string;
 };
 
 export const imageUrl = (img?: string) =>
@@ -110,8 +111,8 @@ export const cartProductId = (it: any): string | undefined => {
   return typeof v === "string" ? v : (v?._id ?? v?.id);
 };
 
-export const cartLineId = (pid: string, variantId?: string, colorVariantId?: string, size?: string, weight?: string | number) =>
-  `${pid}:${variantId ?? colorVariantId ?? ([size, weight].filter(Boolean).join(":") || "default")}`;
+export const cartLineId = (pid: string, variantId?: string, colorVariantId?: string, size?: string, weight?: string | number, bookingDate?: string) =>
+  `${pid}:${variantId ?? colorVariantId ?? ([size, weight].filter(Boolean).join(":") || "default")}${bookingDate ? ":" + bookingDate : ""}`;
 
 export const variantLabel = (p: any) =>
   [p.color && `Color: ${String(p.color).trim()}`, p.size && `Size: ${p.size}`, p.weight && `Weight: ${p.weight}`]

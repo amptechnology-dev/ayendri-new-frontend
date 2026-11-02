@@ -14,17 +14,30 @@ import {
   Search,
   ShoppingBag,
   SlidersHorizontal,
+  Star,
 } from "lucide-react";
-import { fetchMyOrders, fetchMyOrderRequests, imgUrl } from "../api";
+import {
+  fetchMyOrders,
+  fetchMyOrderRequests,
+  fetchReviews,
+  imgUrl,
+} from "../api";
 import { useAuth } from "../auth";
 import { useShop } from "../shop-data";
 import ProductCard from "../components/ProductCard";
 import FastestBadge from "../components/FastestBadge";
 import { actionError, cancelOrderItem } from "../order-actions";
 import { rawOrderItems } from "../order-items";
+import ReviewModal from "../components/ReviewModal";
+import { StarsDisplay } from "../components/Stars";
 
 type Decision = "APPROVED" | "REJECTED";
-type StatusGroup = "PROCESSING" | "APPROVED" | "DELIVERED" | "REJECTED" | "CANCELED";
+type StatusGroup =
+  | "PROCESSING"
+  | "APPROVED"
+  | "DELIVERED"
+  | "REJECTED"
+  | "CANCELED";
 type ReqType = "RETURN" | "REPLACE" | "REFUND";
 
 type Line = {
@@ -67,7 +80,20 @@ type OrderView = {
   steps: { label: string; date: string }[];
 };
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CANCEL_WINDOW_DAYS = 10;
 const money = (n: number) => `₹${n.toFixed(2)}`;
@@ -83,9 +109,18 @@ function fmtDate(value: unknown): string {
 }
 
 function historyDate(history: any[], status: string): string {
-  const entry = [...history].reverse().find((h) => String(h?.status).toUpperCase() === status);
+  const entry = [...history]
+    .reverse()
+    .find((h) => String(h?.status).toUpperCase() === status);
   if (!entry) return "";
-  return fmtDate(entry.date ?? entry.changedAt ?? entry.updatedAt ?? entry.createdAt ?? entry.timestamp ?? entry.at);
+  return fmtDate(
+    entry.date ??
+      entry.changedAt ??
+      entry.updatedAt ??
+      entry.createdAt ??
+      entry.timestamp ??
+      entry.at,
+  );
 }
 
 const STEP_FLOW = [
@@ -97,18 +132,25 @@ const STEP_FLOW = [
 
 function buildSteps(orderStatus: string, history: any[], placed: unknown) {
   const reached =
-    orderStatus === "APPROVED" ? 1 : STEP_FLOW.findIndex((s) => s.status === orderStatus);
+    orderStatus === "APPROVED"
+      ? 1
+      : STEP_FLOW.findIndex((s) => s.status === orderStatus);
   if (reached < 0) return [];
   return STEP_FLOW.slice(0, reached + 1).map((s) => ({
     label: s.label,
-    date: historyDate(history, s.status) || (s.status === "PENDING" ? fmtDate(placed) : ""),
+    date:
+      historyDate(history, s.status) ||
+      (s.status === "PENDING" ? fmtDate(placed) : ""),
   }));
 }
 
 function readDecision(obj?: any): { decision?: Decision; remarks?: string } {
   if (!obj) return {};
-  const raw = String(obj.approvalStatus ?? obj.decision ?? obj.status ?? "").toUpperCase();
-  const decision = raw === "APPROVED" || raw === "REJECTED" ? (raw as Decision) : undefined;
+  const raw = String(
+    obj.approvalStatus ?? obj.decision ?? obj.status ?? "",
+  ).toUpperCase();
+  const decision =
+    raw === "APPROVED" || raw === "REJECTED" ? (raw as Decision) : undefined;
   const remarks = textValue(obj.remarks ?? obj.remark, "");
   return { decision, remarks: remarks || undefined };
 }
@@ -117,28 +159,50 @@ function lineFromValue(value: any, catalog: any[]): Line | null {
   if (typeof value === "string") {
     const p = catalog.find((x) => x.slug === value);
     return p
-      ? { title: p.name, image: p.image, price: p.price, quantity: 1, productId: p.slug }
+      ? {
+          title: p.name,
+          image: p.image,
+          price: p.price,
+          quantity: 1,
+          productId: p.slug,
+        }
       : { title: "Product unavailable", quantity: 1, productId: value };
   }
   if (!value || typeof value !== "object") return null;
   const item = value;
   const pv = item.product ?? item.productDetails ?? item.productId;
-  const product: any = typeof pv === "string" ? catalog.find((x) => x.slug === pv) : pv;
+  const product: any =
+    typeof pv === "string" ? catalog.find((x) => x.slug === pv) : pv;
   const productId =
-    typeof pv === "string" ? pv : product?._id ?? product?.slug ?? (typeof item.productId === "string" ? item.productId : undefined);
-  const catalogRaw = productId ? catalog.find((x) => x.slug === String(productId))?.raw : undefined;
+    typeof pv === "string"
+      ? pv
+      : (product?._id ??
+        product?.slug ??
+        (typeof item.productId === "string" ? item.productId : undefined));
+  const catalogRaw = productId
+    ? catalog.find((x) => x.slug === String(productId))?.raw
+    : undefined;
   const rawProduct: any = product?.raw ?? catalogRaw ?? product ?? {};
-  const price = Number(item.offerPrice ?? item.price ?? item.productPrice ?? product?.price);
-  const mrp = Number(item.mrp ?? product?.originalPrice ?? product?.mrp ?? price);
+  const price = Number(
+    item.offerPrice ?? item.price ?? item.productPrice ?? product?.price,
+  );
+  const mrp = Number(
+    item.mrp ?? product?.originalPrice ?? product?.mrp ?? price,
+  );
   return {
-    title: textValue(item.title ?? item.name ?? product?.title ?? product?.name, product ? "Product" : "Product unavailable"),
+    title: textValue(
+      item.title ?? item.name ?? product?.title ?? product?.name,
+      product ? "Product" : "Product unavailable",
+    ),
     image: item.image ?? product?.image ?? product?.images?.[0],
     quantity: Number(item.quantity ?? item.qty ?? 1) || 1,
     price: Number.isFinite(price) ? price : undefined,
     mrp: Number.isFinite(mrp) ? mrp : undefined,
     productId: productId ? String(productId) : undefined,
     lineId: typeof item._id === "string" ? item._id : undefined,
-    cancelled: ["CANCELLED", "CANCELED"].includes(String(item.status ?? item.itemStatus ?? "").toUpperCase()),
+    cancelled: ["CANCELLED", "CANCELED"].includes(
+      String(item.status ?? item.itemStatus ?? "").toUpperCase(),
+    ),
     fastest: Boolean(rawProduct.fastestDelivery ?? item.fastestDelivery),
     madeFor: Boolean(rawProduct.isMadeForProduct ?? item.isMadeForProduct),
     productType: item.productType ?? rawProduct.productType,
@@ -154,26 +218,36 @@ function lineFromValue(value: any, catalog: any[]): Line | null {
 
 function toOrderView(record: any, index: number, catalog: any[]): OrderView {
   const items = rawOrderItems(record);
-  const rawLines = (items.length ? items : record.product ? [record.product] : [])
+  const rawLines = (
+    items.length ? items : record.product ? [record.product] : []
+  )
     .map((v: any) => lineFromValue(v, catalog))
     .filter((l: Line | null): l is Line => Boolean(l));
 
   const orderDecision = readDecision(record);
-  const orderStatus = String(record.status ?? record.orderStatus ?? "").toUpperCase();
-  const history: any[] = Array.isArray(record.statusHistory) ? record.statusHistory : [];
-  const confirmedNote = [...history].reverse().find((h) => String(h?.status).toUpperCase() === "CONFIRMED")?.note;
+  const orderStatus = String(
+    record.status ?? record.orderStatus ?? "",
+  ).toUpperCase();
+  const history: any[] = Array.isArray(record.statusHistory)
+    ? record.statusHistory
+    : [];
+  const confirmedNote = [...history]
+    .reverse()
+    .find((h) => String(h?.status).toUpperCase() === "CONFIRMED")?.note;
   const backendRemarks =
     orderStatus === "CANCELLED"
       ? textValue(record.cancelReason, "").trim()
       : ["CONFIRMED", "SHIPPED", "DELIVERED"].includes(orderStatus)
         ? textValue(confirmedNote, "").trim()
         : "";
-  const cancelledBy = typeof record.cancelledBy === "string" ? record.cancelledBy : undefined;
+  const cancelledBy =
+    typeof record.cancelledBy === "string" ? record.cancelledBy : undefined;
 
   const lines: Line[] = rawLines.map((l: Line) => ({
     ...l,
     decision: l.decision ?? orderDecision.decision,
-    remarks: l.remarks ?? orderDecision.remarks ?? (backendRemarks || undefined),
+    remarks:
+      l.remarks ?? orderDecision.remarks ?? (backendRemarks || undefined),
     cancelledBy,
   }));
 
@@ -187,7 +261,13 @@ function toOrderView(record: any, index: number, catalog: any[]): OrderView {
     : "RECENT ORDER";
 
   const totalValue =
-    [record.totalAmount, record.totalPrice, record.total, record.grandTotal, record.quote?.total]
+    [
+      record.totalAmount,
+      record.totalPrice,
+      record.total,
+      record.grandTotal,
+      record.quote?.total,
+    ]
       .map(Number)
       .find((n) => Number.isFinite(n) && n > 0) ??
     lines.reduce((sum, l) => sum + (l.price ?? 0) * l.quantity, 0);
@@ -197,9 +277,19 @@ function toOrderView(record: any, index: number, catalog: any[]): OrderView {
     return Number.isNaN(t) ? undefined : t;
   };
   const bm = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(record.bookingDate ?? ""));
-  const bookingDateMs = bm ? new Date(+bm[1], +bm[2] - 1, +bm[3]).getTime() : undefined;
-  const deliveredEntry = [...history].reverse().find((h) => String(h?.status).toUpperCase() === "DELIVERED");
-  const deliveredAtMs = ms(record.deliveredAt ?? record.deliveredDate ?? deliveredEntry?.date ?? deliveredEntry?.createdAt ?? deliveredEntry?.at);
+  const bookingDateMs = bm
+    ? new Date(+bm[1], +bm[2] - 1, +bm[3]).getTime()
+    : undefined;
+  const deliveredEntry = [...history]
+    .reverse()
+    .find((h) => String(h?.status).toUpperCase() === "DELIVERED");
+  const deliveredAtMs = ms(
+    record.deliveredAt ??
+      record.deliveredDate ??
+      deliveredEntry?.date ??
+      deliveredEntry?.createdAt ??
+      deliveredEntry?.at,
+  );
 
   // single-item orders: the quoted total is the item's price
   const pricedLines =
@@ -208,8 +298,14 @@ function toOrderView(record: any, index: number, catalog: any[]): OrderView {
       : lines;
 
   return {
-    id: textValue(record._id ?? record.orderId ?? record.orderNumber, `ORDER-${index + 1}`),
-    orderNumber: textValue(record.orderNumber ?? record.orderId ?? record._id, ""),
+    id: textValue(
+      record._id ?? record.orderId ?? record.orderNumber,
+      `ORDER-${index + 1}`,
+    ),
+    orderNumber: textValue(
+      record.orderNumber ?? record.orderId ?? record._id,
+      "",
+    ),
     date,
     createdAtMs: dateValue ? new Date(String(dateValue)).getTime() : undefined,
     status: orderStatus || "PROCESSING",
@@ -221,7 +317,11 @@ function toOrderView(record: any, index: number, catalog: any[]): OrderView {
     bookingDateMs,
     deliveredAtMs,
     estimatedDelivery: fmtDate(
-      record.expectedDelivery ?? record.expectedDeliveryDate ?? record.estimatedDelivery ?? record.estimatedDeliveryDate ?? record.deliveryDate,
+      record.expectedDelivery ??
+        record.expectedDeliveryDate ??
+        record.estimatedDelivery ??
+        record.estimatedDeliveryDate ??
+        record.deliveryDate,
     ),
     steps: buildSteps(orderStatus, history, dateValue),
   };
@@ -238,9 +338,11 @@ function unwrapOrders(payload: any): any[] {
 function statusGroup(status: string, cancelledBy?: string): StatusGroup {
   const s = status.toUpperCase();
   if (s === "DELIVERED") return "DELIVERED";
-  if (s === "APPROVED" || s === "CONFIRMED" || s === "SHIPPED") return "APPROVED";
+  if (s === "APPROVED" || s === "CONFIRMED" || s === "SHIPPED")
+    return "APPROVED";
   if (s === "REJECTED") return "REJECTED";
-  if (s === "CANCELLED" || s === "CANCELED") return cancelledBy === "STORE" ? "REJECTED" : "CANCELED";
+  if (s === "CANCELLED" || s === "CANCELED")
+    return cancelledBy === "STORE" ? "REJECTED" : "CANCELED";
   return "PROCESSING";
 }
 
@@ -266,7 +368,9 @@ const cancelWindowOpen = (o: { createdAtMs?: number }) => {
 };
 
 const isPaid = (o: OrderView) =>
-  ["PAID", "SUCCESS", "SUCCESSFUL", "COMPLETED", "CAPTURED"].includes((o.paymentStatus ?? "").toUpperCase());
+  ["PAID", "SUCCESS", "SUCCESSFUL", "COMPLETED", "CAPTURED"].includes(
+    (o.paymentStatus ?? "").toUpperCase(),
+  );
 
 // which of Return / Replace / Refund can still be requested for a delivered line
 function requestTypes(order: OrderView, line: Line): ReqType[] {
@@ -274,15 +378,23 @@ function requestTypes(order: OrderView, line: Line): ReqType[] {
   if (order.status !== "DELIVERED" || line.productType === "SERVICE") return [];
   const delivered = order.deliveredAtMs;
   const ok = (flag: boolean | undefined, days: number | null | undefined) =>
-    flag === true && (days == null || delivered === undefined || Date.now() - delivered <= Number(days) * DAY_MS);
+    flag === true &&
+    (days == null ||
+      delivered === undefined ||
+      Date.now() - delivered <= Number(days) * DAY_MS);
   const types: ReqType[] = [];
   if (ok(line.isReturnable, line.returnDays)) types.push("RETURN");
   if (ok(line.isReplaceable, line.replaceDays)) types.push("REPLACE");
-  if (isPaid(order) && ok(line.isRefundable, line.refundDays)) types.push("REFUND");
+  if (isPaid(order) && ok(line.isRefundable, line.refundDays))
+    types.push("REFUND");
   return types;
 }
 
-const LABEL: Record<ReqType, string> = { RETURN: "Return", REPLACE: "Replace", REFUND: "Refund" };
+const LABEL: Record<ReqType, string> = {
+  RETURN: "Return",
+  REPLACE: "Replace",
+  REFUND: "Refund",
+};
 
 /* ---------- account sidebar ---------- */
 
@@ -307,9 +419,13 @@ function AccountSidebar({
   menuOpen: boolean;
   setMenuOpen: (v: boolean) => void;
 }) {
-  const name = textValue(user?.name ?? user?.fullName ?? user?.firstName, "User");
+  const name = textValue(
+    user?.name ?? user?.fullName ?? user?.firstName,
+    "User",
+  );
   const phone = textValue(user?.phone ?? user?.mobile ?? user?.phoneNumber, "");
-  const activeLabel = TABS.find((t) => t.key === activeTab)?.label ?? "Select Any";
+  const activeLabel =
+    TABS.find((t) => t.key === activeTab)?.label ?? "Select Any";
 
   return (
     <aside className="overflow-hidden rounded-xl bg-white shadow-sm">
@@ -317,8 +433,14 @@ function AccountSidebar({
         <div className="rounded-xl border border-[#e5e7eb] p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-lg font-semibold text-[#1f2430]">Hey, {name}</p>
-              {phone && <p className="mt-1 truncate text-sm text-[#3c4150]">Logged with {phone}</p>}
+              <p className="text-lg font-semibold text-[#1f2430]">
+                Hey, {name}
+              </p>
+              {phone && (
+                <p className="mt-1 truncate text-sm text-[#3c4150]">
+                  Logged with {phone}
+                </p>
+              )}
             </div>
             <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#1a56db] text-xl font-bold text-white">
               {name.charAt(0).toUpperCase()}
@@ -327,14 +449,18 @@ function AccountSidebar({
         </div>
       </div>
 
-      <p className="px-6 pb-3 pt-8 text-lg font-semibold text-[#1f2430]">Account</p>
+      <p className="px-6 pb-3 pt-8 text-lg font-semibold text-[#1f2430]">
+        Account
+      </p>
 
       <nav>
         {/* Order ID: typing shows that order's products on the right */}
         <div className="flex items-center gap-4 border-t border-[#e5e7eb] bg-white px-6 py-5">
           <Search size={22} className="shrink-0 text-[#1f2430]" />
           <label className="min-w-0 flex-1">
-            <span className="block text-lg font-medium text-[#1f2430]">Order ID</span>
+            <span className="block text-lg font-medium text-[#1f2430]">
+              Order ID
+            </span>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -351,8 +477,12 @@ function AccountSidebar({
         >
           <ShoppingBag size={22} className="shrink-0 text-[#1f2430]" />
           <span className="min-w-0 flex-1">
-            <span className="block text-lg font-medium text-[#1f2430]">My Orders</span>
-            <span className="block text-sm text-[#3c4150]">Track your recent purchases</span>
+            <span className="block text-lg font-medium text-[#1f2430]">
+              My Orders
+            </span>
+            <span className="block text-sm text-[#3c4150]">
+              Track your recent purchases
+            </span>
           </span>
           <ChevronRight size={20} className="shrink-0 text-[#1f2430]" />
         </Link>
@@ -365,8 +495,12 @@ function AccountSidebar({
           >
             <SlidersHorizontal size={22} className="shrink-0 text-[#1f2430]" />
             <span className="min-w-0 flex-1">
-              <span className="block text-lg font-medium text-[#1f2430]">Order Status</span>
-              <span className="block text-sm text-[#3c4150]">{activeLabel}</span>
+              <span className="block text-lg font-medium text-[#1f2430]">
+                Order Status
+              </span>
+              <span className="block text-sm text-[#3c4150]">
+                {activeLabel}
+              </span>
             </span>
             {menuOpen ? (
               <ChevronUp size={20} className="shrink-0 text-[#1f2430]" />
@@ -384,7 +518,9 @@ function AccountSidebar({
                     setMenuOpen(false);
                   }}
                   className={`flex w-full items-center justify-between py-3 pl-[70px] pr-6 text-left text-sm hover:bg-[#f6f6f8] ${
-                    tab.key === activeTab ? "font-extrabold text-[#a3161c]" : "text-[#1f2430]"
+                    tab.key === activeTab
+                      ? "font-extrabold text-[#a3161c]"
+                      : "text-[#1f2430]"
                   }`}
                 >
                   {tab.label}
@@ -414,7 +550,12 @@ export default function OrdersPage() {
   const auth: any = useAuth();
   const { token, ready } = auth;
   const catalog = useShop((s) => s.products);
-
+  const [reviewTarget, setReviewTarget] = useState<{
+    productId: string;
+    title: string;
+  } | null>(null);
+  const [reviewNotice, setReviewNotice] = useState("");
+  const [myReviews, setMyReviews] = useState<Record<string, any>>({});
   const [records, setRecords] = useState<any[]>([]);
   const [requests, setRequests] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
@@ -435,7 +576,10 @@ export default function OrdersPage() {
     setLoading(true);
     setError("");
     try {
-      const [result, reqs] = await Promise.all([fetchMyOrders(), fetchMyOrderRequests().catch(() => [])]);
+      const [result, reqs] = await Promise.all([
+        fetchMyOrders(),
+        fetchMyOrderRequests().catch(() => []),
+      ]);
       setRecords(unwrapOrders(result));
       const map: Record<string, any[]> = {};
       (Array.isArray(reqs) ? reqs : []).forEach((r: any) => {
@@ -444,7 +588,10 @@ export default function OrdersPage() {
       });
       setRequests(map);
     } catch (e: any) {
-      setError(e?.response?.data?.message ?? "Unable to load your orders. Please try again.");
+      setError(
+        e?.response?.data?.message ??
+          "Unable to load your orders. Please try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -454,17 +601,74 @@ export default function OrdersPage() {
     if (ready) void load();
   }, [ready, load]);
 
-  const orders = useMemo(() => records.map((r, i) => toOrderView(r, i, catalog)), [records, catalog]);
+  const orders = useMemo(
+    () => records.map((r, i) => toOrderView(r, i, catalog)),
+    [records, catalog],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return orders
-      .filter((o) => !q || o.id.toLowerCase().includes(q) || o.orderNumber.toLowerCase().includes(q))
-      .map((o) => ({ ...o, lines: o.lines.filter((l) => lineGroup(o, l) === activeTab) }))
+      .filter(
+        (o) =>
+          !q ||
+          o.id.toLowerCase().includes(q) ||
+          o.orderNumber.toLowerCase().includes(q),
+      )
+      .map((o) => ({
+        ...o,
+        lines: o.lines.filter((l) => lineGroup(o, l) === activeTab),
+      }))
       .filter((o) => o.lines.length > 0);
   }, [orders, activeTab, query]);
 
-  const activeLabel = TABS.find((t) => t.key === activeTab)?.label ?? "Select Any";
+  const activeLabel =
+    TABS.find((t) => t.key === activeTab)?.label ?? "Select Any";
+
+  const myId = String(auth?.user?._id ?? auth?.user?.id ?? "");
+
+  const loadMyReviews = useCallback(
+    async (ids: string[]) => {
+      if (!myId || ids.length === 0) return;
+      const entries = await Promise.all(
+        ids.map(async (pid) => {
+          try {
+            const r = await fetchReviews(pid, "newest", 1, 50);
+            // newest first, so find() returns the latest review by this user
+            const mine = (r.reviews as any[]).find(
+              (x) => String(x.user?._id) === myId,
+            );
+            return [pid, mine ?? null] as const;
+          } catch {
+            return [pid, null] as const;
+          }
+        }),
+      );
+      setMyReviews((prev) => {
+        const next = { ...prev };
+        entries.forEach(([pid, rv]) => {
+          if (rv) next[pid] = rv;
+        });
+        return next;
+      });
+    },
+    [myId],
+  );
+
+  const deliveredKey = orders
+    .flatMap((o) =>
+      statusGroup(o.status, o.cancelledBy) === "DELIVERED"
+        ? o.lines
+            .filter((l) => l.productId && !l.cancelled)
+            .map((l) => l.productId as string)
+        : [],
+    )
+    .filter((v, i, a) => a.indexOf(v) === i)
+    .join(",");
+
+  useEffect(() => {
+    if (deliveredKey) void loadMyReviews(deliveredKey.split(","));
+  }, [deliveredKey, loadMyReviews]);
 
   const onCancelPress = (o: OrderView) => {
     if (!cancelWindowOpen(o)) return;
@@ -502,7 +706,11 @@ export default function OrdersPage() {
   };
 
   if (!ready) {
-    return <p className="py-20 text-center text-sm text-[#9a7a7a]">Loading your orders...</p>;
+    return (
+      <p className="py-20 text-center text-sm text-[#9a7a7a]">
+        Loading your orders...
+      </p>
+    );
   }
 
   return (
@@ -524,28 +732,53 @@ export default function OrdersPage() {
         <section className="min-h-[700px] rounded-xl bg-white p-5 shadow-sm md:p-6">
           <h1 className="text-2xl font-semibold text-[#1f2430]">My Orders</h1>
 
+          {reviewNotice && (
+            <div className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-green-50 p-3 text-sm text-green-800">
+              <span>{reviewNotice}</span>
+              <button onClick={() => setReviewNotice("")} className="font-bold">
+                ✕
+              </button>
+            </div>
+          )}
+
           {!token && (
             <div className="mt-6 flex overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f8f9fb]">
               <div className="grid w-28 shrink-0 place-items-center bg-[#e5e7eb] text-[#9aa0b4] sm:w-32">
                 <ShoppingBag size={36} />
               </div>
               <div className="p-5">
-                <h2 className="text-lg font-semibold text-[#1f2430]">Your orders live here</h2>
-                <p className="mt-2 text-sm text-[#3c4150]">Sign in to see orders created with your account.</p>
-                <Link href="/shop/login?next=/shop/orders" className="shop-gold-btn mt-4 inline-block rounded-full px-6 py-3">
+                <h2 className="text-lg font-semibold text-[#1f2430]">
+                  Your orders live here
+                </h2>
+                <p className="mt-2 text-sm text-[#3c4150]">
+                  Sign in to see orders created with your account.
+                </p>
+                <Link
+                  href="/shop/login?next=/shop/orders"
+                  className="shop-gold-btn mt-4 inline-block rounded-full px-6 py-3"
+                >
                   Sign in
                 </Link>
               </div>
             </div>
           )}
 
-          {token && loading && <p className="py-12 text-center text-sm text-[#9a7a7a]">Loading your orders...</p>}
+          {token && loading && (
+            <p className="py-12 text-center text-sm text-[#9a7a7a]">
+              Loading your orders...
+            </p>
+          )}
 
           {!!error && (
             <div className="mt-6 rounded-lg border border-[#e5e7eb] bg-[#f8f9fb] p-6">
-              <h2 className="text-lg font-semibold text-[#1f2430]">Orders could not load</h2>
+              <h2 className="text-lg font-semibold text-[#1f2430]">
+                Orders could not load
+              </h2>
               <p className="mt-2 text-sm text-[#3c4150]">{error}</p>
-              <button onClick={() => void load()} className="mt-4 rounded-full border border-[#a3161c] px-6 py-2 text-sm font-bold text-[#a3161c]">
+              <button
+                onClick={() => void load()}
+                className="mt-4 rounded-full border border-[#a3161c] px-6 py-2 text-sm font-bold text-[#a3161c]"
+              >
                 Try again
               </button>
             </div>
@@ -557,7 +790,9 @@ export default function OrdersPage() {
                 <ShoppingBag size={36} />
               </div>
               <div className="p-5">
-                <h2 className="text-lg font-semibold text-[#1f2430]">No {activeLabel.toLowerCase()} orders</h2>
+                <h2 className="text-lg font-semibold text-[#1f2430]">
+                  No {activeLabel.toLowerCase()} orders
+                </h2>
                 <p className="mt-2 text-sm text-[#3c4150]">
                   Orders in this category will appear here.{" "}
                   <Link href="/shop" className="text-[#1a56db] underline">
@@ -577,7 +812,10 @@ export default function OrdersPage() {
                 const windowOpen = cancelWindowOpen(order);
                 const canCancel = group === "PROCESSING" && windowOpen;
                 const lineRequests = (requests[order.id] ?? []).filter(
-                  (r) => !r.itemId || r.itemId === line.lineId || r.productId === line.productId,
+                  (r) =>
+                    !r.itemId ||
+                    r.itemId === line.lineId ||
+                    r.productId === line.productId,
                 );
                 const types = requestTypes(order, line);
                 const image = imgUrl(line.image ?? "");
@@ -588,12 +826,26 @@ export default function OrdersPage() {
                     key={`${order.id}-line-${idx}`}
                     className="overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f8f9fb]"
                   >
-                    <Link href={`/shop/orders/${encodeURIComponent(order.id)}`} className="flex items-stretch gap-4">
-                      <div className="relative w-28 shrink-0 self-stretch bg-[#e5e7eb] sm:w-32" style={{ minHeight: 112 }}>
+                    <Link
+                      href={`/shop/orders/${encodeURIComponent(order.id)}`}
+                      className="flex items-stretch gap-4"
+                    >
+                      <div
+                        className="relative w-28 shrink-0 self-stretch bg-[#e5e7eb] sm:w-32"
+                        style={{ minHeight: 112 }}
+                      >
                         {image ? (
-                          <Image src={image} alt={line.title} fill unoptimized className="object-contain p-2" />
+                          <Image
+                            src={image}
+                            alt={line.title}
+                            fill
+                            unoptimized
+                            className="object-contain p-2"
+                          />
                         ) : (
-                          <span className="grid h-full place-items-center text-xs text-[#9a7a7a]">—</span>
+                          <span className="grid h-full place-items-center text-xs text-[#9a7a7a]">
+                            —
+                          </span>
                         )}
                       </div>
 
@@ -603,86 +855,194 @@ export default function OrdersPage() {
                             {line.title}
                             {line.quantity > 1 ? ` × ${line.quantity}` : ""}
                           </p>
-                          <p className="truncate text-sm text-[#3c4150]">ID: {order.orderNumber || order.id}</p>
+                          <p className="truncate text-sm text-[#3c4150]">
+                            ID: {order.orderNumber || order.id}
+                          </p>
                           <p className="text-sm text-[#3c4150]">{order.date}</p>
-                          {line.fastest && (group === "PROCESSING" || group === "APPROVED") && (
-                            <div className="pt-1">
-                              <FastestBadge compact />
-                            </div>
-                          )}
+                          {line.fastest &&
+                            (group === "PROCESSING" ||
+                              group === "APPROVED") && (
+                              <div className="pt-1">
+                                <FastestBadge compact />
+                              </div>
+                            )}
                         </div>
 
                         <div className="flex flex-col items-end justify-between text-right">
                           <div className="space-y-0.5">
                             <p className="text-base font-semibold text-[#1f2430]">
-                              {(line.price ?? 0) > 0 ? money((line.price ?? 0) * line.quantity) : "Price pending"}
+                              {(line.price ?? 0) > 0
+                                ? money((line.price ?? 0) * line.quantity)
+                                : "Price pending"}
                             </p>
                             {(line.price ?? 0) > 0 && line.quantity > 1 && (
-                              <p className="text-[11px] text-[#7b8094]">{money(line.price ?? 0)} each</p>
-                            )}
-                            {line.mrp !== undefined && line.mrp > (line.price ?? 0) && (
-                              <p className="text-[11px] font-semibold text-[#9aa0b4] line-through">
-                                {money(line.mrp * line.quantity)}
+                              <p className="text-[11px] text-[#7b8094]">
+                                {money(line.price ?? 0)} each
                               </p>
                             )}
+                            {line.mrp !== undefined &&
+                              line.mrp > (line.price ?? 0) && (
+                                <p className="text-[11px] font-semibold text-[#9aa0b4] line-through">
+                                  {money(line.mrp * line.quantity)}
+                                </p>
+                              )}
                           </div>
-                          <span className="text-sm text-[#1a56db]">View details</span>
+                          <span className="text-sm text-[#1a56db]">
+                            View details
+                          </span>
                         </div>
                       </div>
                     </Link>
 
                     <div className="space-y-3 px-4 pb-4 empty:hidden">
-                      {(group === "APPROVED" || group === "REJECTED") && !!line.remarks && (
-                        <div className={`space-y-0.5 rounded-lg p-3 ${group === "APPROVED" ? "bg-[#e9f5ee]" : "bg-[#fbeae6]"}`}>
-                          <p className={`text-xs font-extrabold ${group === "APPROVED" ? "text-[#2e7d4f]" : "text-[#b84a36]"}`}>
-                            {group === "APPROVED" ? "Approved" : line.cancelledBy === "USER" ? "Cancelled by you" : "Rejected"}
-                          </p>
-                          <p className="text-xs">Remarks: {line.remarks}</p>
-                        </div>
-                      )}
+                      {(group === "APPROVED" || group === "REJECTED") &&
+                        !!line.remarks && (
+                          <div
+                            className={`space-y-0.5 rounded-lg p-3 ${group === "APPROVED" ? "bg-[#e9f5ee]" : "bg-[#fbeae6]"}`}
+                          >
+                            <p
+                              className={`text-xs font-extrabold ${group === "APPROVED" ? "text-[#2e7d4f]" : "text-[#b84a36]"}`}
+                            >
+                              {group === "APPROVED"
+                                ? "Approved"
+                                : line.cancelledBy === "USER"
+                                  ? "Cancelled by you"
+                                  : "Rejected"}
+                            </p>
+                            <p className="text-xs">Remarks: {line.remarks}</p>
+                          </div>
+                        )}
 
-                      {(group === "PROCESSING" || group === "APPROVED" || group === "DELIVERED") && steps.length > 0 && (
-                        <div className="rounded-lg bg-white p-3">
-                          {steps.map((step, i) => {
-                            const last = i === steps.length - 1;
-                            return (
-                              <div key={step.label} className="flex gap-2.5">
-                                <div className="flex w-3 flex-col items-center">
-                                  <span className={`mt-0.5 rounded-full ${last ? "h-3 w-3 bg-[#e0622d]" : "mt-1 h-2.5 w-2.5 bg-[#9aa0b4]"}`} />
-                                  {!last && <span className="my-0.5 w-0.5 flex-1 bg-[#c9cdda]" />}
-                                </div>
-                                <div className={`flex-1 ${last ? "" : "pb-2"}`}>
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className={`text-xs ${last ? "font-extrabold text-[#a3161c]" : "font-semibold text-[#7b8094]"}`}>
-                                      {step.label}
-                                    </span>
-                                    {!!step.date && <span className="text-[11px] font-semibold text-[#7b8094]">{step.date}</span>}
+                      {(group === "PROCESSING" ||
+                        group === "APPROVED" ||
+                        group === "DELIVERED") &&
+                        steps.length > 0 && (
+                          <div className="rounded-lg bg-white p-3">
+                            {steps.map((step, i) => {
+                              const last = i === steps.length - 1;
+                              return (
+                                <div key={step.label} className="flex gap-2.5">
+                                  <div className="flex w-3 flex-col items-center">
+                                    <span
+                                      className={`mt-0.5 rounded-full ${last ? "h-3 w-3 bg-[#e0622d]" : "mt-1 h-2.5 w-2.5 bg-[#9aa0b4]"}`}
+                                    />
+                                    {!last && (
+                                      <span className="my-0.5 w-0.5 flex-1 bg-[#c9cdda]" />
+                                    )}
                                   </div>
-                                  {last && step.label === "Shipped" && !!order.estimatedDelivery && (
-                                    <p className="mt-0.5 text-[11px]">Expected delivery: {order.estimatedDelivery}</p>
-                                  )}
+                                  <div
+                                    className={`flex-1 ${last ? "" : "pb-2"}`}
+                                  >
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span
+                                        className={`text-xs ${last ? "font-extrabold text-[#a3161c]" : "font-semibold text-[#7b8094]"}`}
+                                      >
+                                        {step.label}
+                                      </span>
+                                      {!!step.date && (
+                                        <span className="text-[11px] font-semibold text-[#7b8094]">
+                                          {step.date}
+                                        </span>
+                                      )}
+                                    </div>
+                                    {last &&
+                                      step.label === "Shipped" &&
+                                      !!order.estimatedDelivery && (
+                                        <p className="mt-0.5 text-[11px]">
+                                          Expected delivery:{" "}
+                                          {order.estimatedDelivery}
+                                        </p>
+                                      )}
+                                  </div>
                                 </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
+                              );
+                            })}
+                          </div>
+                        )}
 
                       {!!order.bookingDate && (
                         <div className="flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 text-xs">
                           <Calendar size={14} className="text-[#a3161c]" />
                           <span>
-                            Booking date: <b className="text-[#a3161c]">{order.bookingDate}</b>
+                            Booking date:{" "}
+                            <b className="text-[#a3161c]">
+                              {order.bookingDate}
+                            </b>
                           </span>
                         </div>
                       )}
 
                       {lineRequests.map((r, i) => (
-                        <p key={i} className="text-[11px] font-medium text-[#7b8094]">
-                          {String(r.type ?? "Request")[0] + String(r.type ?? "request").slice(1).toLowerCase()} request ·{" "}
+                        <p
+                          key={i}
+                          className="text-[11px] font-medium text-[#7b8094]"
+                        >
+                          {String(r.type ?? "Request")[0] +
+                            String(r.type ?? "request")
+                              .slice(1)
+                              .toLowerCase()}{" "}
+                          request ·{" "}
                           {String(r.status ?? "PENDING").toLowerCase()}
                         </p>
                       ))}
+
+                      {group === "DELIVERED" &&
+  !!line.productId &&
+  (() => {
+    const mine = myReviews[line.productId!];
+
+    if (mine) {
+      return (
+        <div className="rounded-xl border border-[#f0dcc0] bg-[#fff8e8] p-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-extrabold text-[#4a0710]">Your review</p>
+            <span className="text-[11px] text-[#9a7a7a]">{fmtDate(mine.createdAt)}</span>
+          </div>
+          <div className="mt-1 flex items-center gap-1.5">
+            <StarsDisplay value={mine.rating} size={14} />
+            <b className="text-xs text-[#4a0710]">{Number(mine.rating).toFixed(1)}</b>
+          </div>
+          {mine.comment && (
+            <p className="mt-1.5 whitespace-pre-line text-xs leading-snug text-[#3a2a2a]">
+              {mine.comment}
+            </p>
+          )}
+          {mine.image && (
+            <Image
+              src={imgUrl(mine.image)}
+              alt="Your review photo"
+              width={64}
+              height={64}
+              unoptimized
+              className="mt-2 h-16 w-16 rounded-lg object-cover"
+            />
+          )}
+          <Link
+            href={`/shop/product/${encodeURIComponent(line.productId!)}`}
+            className="mt-2 inline-block text-[11px] font-bold text-[#8b1a2b] underline"
+          >
+            Edit on product page
+          </Link>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-[#f0dcc0] bg-[#fff8e8] px-3 py-2.5">
+        <div className="min-w-0">
+          <p className="text-xs font-extrabold text-[#4a0710]">Loved it? Tell others</p>
+          <p className="text-[11px] text-[#6b4a4a]">Your review helps other devotees choose.</p>
+        </div>
+        <button
+          onClick={() => setReviewTarget({ productId: line.productId!, title: line.title })}
+          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#a3161c] px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-[#7a1118] active:scale-95"
+        >
+          <Star size={14} className="fill-[#f2b632] text-[#f2b632]" />
+          Write a review
+        </button>
+      </div>
+    );
+  })()}
 
                       {types.length > 0 && lineRequests.length === 0 && (
                         <Link
@@ -703,7 +1063,10 @@ export default function OrdersPage() {
                             <span />
                           )}
                           {canCancel && idx === 0 && (
-                            <button onClick={() => onCancelPress(order)} className="text-[11px] font-medium text-red-600 hover:underline">
+                            <button
+                              onClick={() => onCancelPress(order)}
+                              className="text-[11px] font-medium text-red-600 hover:underline"
+                            >
                               Cancel Order
                             </button>
                           )}
@@ -712,11 +1075,16 @@ export default function OrdersPage() {
 
                       {group === "PROCESSING" && !windowOpen && (
                         <p className="text-[11px] font-medium text-[#7b8094]">
-                          Orders can only be cancelled within {CANCEL_WINDOW_DAYS} days.
+                          Orders can only be cancelled within{" "}
+                          {CANCEL_WINDOW_DAYS} days.
                         </p>
                       )}
 
-                      {group === "CANCELED" && <p className="text-[11px] font-medium text-[#7b8094]">This order was canceled.</p>}
+                      {group === "CANCELED" && (
+                        <p className="text-[11px] font-medium text-[#7b8094]">
+                          This order was canceled.
+                        </p>
+                      )}
                     </div>
                   </article>
                 );
@@ -744,9 +1112,14 @@ export default function OrdersPage() {
           <div className="w-full max-w-sm rounded-2xl bg-white p-6">
             <h3 className="text-lg font-black">Cancel Order</h3>
             <p className="mt-2 text-sm text-[#5a3a3a]">
-              Cancel order #{cancelTarget.orderNumber || cancelTarget.id}? All items in it will be cancelled.
+              Cancel order #{cancelTarget.orderNumber || cancelTarget.id}? All
+              items in it will be cancelled.
             </p>
-            {cancelError && <p className="mt-3 text-sm font-semibold text-red-600">{cancelError}</p>}
+            {cancelError && (
+              <p className="mt-3 text-sm font-semibold text-red-600">
+                {cancelError}
+              </p>
+            )}
             <div className="mt-5 flex gap-3">
               <button
                 onClick={() => setCancelTarget(null)}
@@ -765,6 +1138,21 @@ export default function OrdersPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Review modal */}
+      {reviewTarget && (
+        <ReviewModal
+          productId={reviewTarget.productId}
+          productName={reviewTarget.title}
+          onClose={() => setReviewTarget(null)}
+          onDone={() => {
+            const pid = reviewTarget.productId;
+            setReviewTarget(null);
+            setReviewNotice("Thanks! Your review has been posted.");
+            void loadMyReviews([pid]);
+          }}
+        />
       )}
     </main>
   );
