@@ -1,257 +1,208 @@
-"use client";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { Home, LayoutGrid, ClipboardCheck, User } from "lucide-react";
+import { Cormorant_Garamond } from "next/font/google";
 
-const ITEM_H = 56; // px, height of each tab
-const PAD = 8; // px, nav inner padding
-const SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)"; // iOS-like overshoot
-const SMOOTH = "cubic-bezier(0.32, 0.72, 0, 1)"; // iOS-like ease for slide in/out
-const MAG_RADIUS = 110; // px, how far the cursor "lens" reaches
-const MAG_STRENGTH = 0.22; // extra icon scale at the cursor
+// Display serif for headings. Body text keeps the shop's own sans font.
+const serif = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["400", "500", "600"],
+  style: ["normal", "italic"],
+  display: "swap",
+});
 
-const items = [
-  { href: "/shop", label: "Home", Icon: Home, color: "#d9803a", match: (p: string) => p === "/shop" },
-  { href: "/shop/category/all", label: "Categories", Icon: LayoutGrid, color: "#2f8f82", match: (p: string) => p.startsWith("/shop/category") },
-  { href: "/shop/orders", label: "Orders", Icon: ClipboardCheck, color: "#7b5fc0", match: (p: string) => p.startsWith("/shop/orders") },
-];
+export const metadata: Metadata = {
+  title: "About AYENDRI",
+  description:
+    "Learn who is behind AYENDRI, how we source our Rudraksha, Karungali malas and idols, and what certified and energised means for you.",
+  alternates: { canonical: "/shop/about" },
+};
 
-const PROFILE_COLOR = "#c9576f";
-const INK = "#1c1214"; // near-black outline for all icons
+const h2Cls = `${serif.className} text-4xl font-medium leading-tight text-[#4a0710] md:text-5xl`;
+const h3Cls = `${serif.className} mt-5 text-2xl font-semibold text-[#4a0710]`;
+const pCls = "mt-5 text-[17px] leading-8 text-[#3a2a22]";
 
-type Pt = { x: number; y: number } | null;
-type TabsPt = { x: number; w: number } | null;
-
-export default function BottomNav() {
-  const path = usePathname() ?? "";
-  const activeIdx = items.findIndex((i) => i.match(path));
-  const profileActive = path.startsWith("/shop/profile");
-
-  // ---------- hide on scroll down, show on scroll up ----------
-  const [hidden, setHidden] = useState(false);
-  useEffect(() => {
-    let last = window.scrollY;
-    let ticking = false;
-    const onScroll = () => {
-      if (ticking) return;
-      ticking = true;
-      requestAnimationFrame(() => {
-        const y = window.scrollY;
-        const dy = y - last;
-        const atBottom = window.innerHeight + y >= document.documentElement.scrollHeight - 4;
-        if (y < 80 || atBottom) setHidden(false);
-        else if (dy > 6) setHidden(true);
-        else if (dy < -6) setHidden(false);
-        if (Math.abs(dy) > 6 || y < 80) last = y;
-        ticking = false;
-      });
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  // ---------- hide while the on-screen keyboard is open ----------
-  const [typing, setTyping] = useState(false);
-  useEffect(() => {
-    const isField = (t: EventTarget | null) =>
-      t instanceof HTMLElement && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName);
-    const onIn = (e: FocusEvent) => {
-      if (isField(e.target)) setTyping(true);
-    };
-    const onOut = () => setTyping(false);
-    document.addEventListener("focusin", onIn);
-    document.addEventListener("focusout", onOut);
-    return () => {
-      document.removeEventListener("focusin", onIn);
-      document.removeEventListener("focusout", onOut);
-    };
-  }, []);
-  const gone = hidden || typing;
-
-  // ---------- squash & stretch the glass blob while it travels ----------
-  const prev = useRef(activeIdx);
-  const [moving, setMoving] = useState(false);
-  useEffect(() => {
-    if (prev.current !== activeIdx) {
-      prev.current = activeIdx;
-      setMoving(true);
-      const t = setTimeout(() => setMoving(false), 380);
-      return () => clearTimeout(t);
-    }
-  }, [activeIdx]);
-
-  // ---------- cursor reactivity (mouse only) ----------
-  const navRef = useRef<HTMLElement>(null);
-  const tabsRef = useRef<HTMLDivElement>(null);
-  const profileRef = useRef<HTMLAnchorElement>(null);
-  const [navPt, setNavPt] = useState<Pt>(null); // relative to nav
-  const [tabs, setTabs] = useState<TabsPt>(null); // cursor x + row width, relative to tabs row
-  const [profPt, setProfPt] = useState<Pt>(null); // relative to profile bubble
-
-  const onNavMove = (e: React.PointerEvent) => {
-    if (e.pointerType === "touch") return;
-    const nr = navRef.current?.getBoundingClientRect();
-    const tr = tabsRef.current?.getBoundingClientRect();
-    if (nr) setNavPt({ x: e.clientX - nr.left, y: e.clientY - nr.top });
-    if (tr) setTabs({ x: e.clientX - tr.left, w: tr.width });
-  };
-  const onNavLeave = () => {
-    setNavPt(null);
-    setTabs(null);
-  };
-  const onProfMove = (e: React.PointerEvent) => {
-    if (e.pointerType === "touch") return;
-    const r = profileRef.current?.getBoundingClientRect();
-    if (r) setProfPt({ x: e.clientX - r.left, y: e.clientY - r.top });
-  };
-
-  // dock-style magnification: icons near the cursor grow, falling off with distance
-  const mag = (i: number) => {
-    if (!tabs) return 1;
-    const itemW = tabs.w / items.length;
-    const d = Math.abs(tabs.x - (i + 0.5) * itemW);
-    return 1 + MAG_STRENGTH * Math.max(0, 1 - d / MAG_RADIUS);
-  };
-
-  const tint = activeIdx >= 0 ? items[activeIdx].color : "#ffffff";
-
+/* Grey card that holds the place of a photo.
+   To use a real photo later, replace the whole <ImagePlaceholder ... /> with:
+   <Image src="/img/photos/your-file.jpg" alt="describe the photo" width={1200} height={900}
+          className="w-full rounded-md object-cover" /> (import Image from "next/image") */
+function ImagePlaceholder({ ratio, label }: { ratio: string; label: string }) {
   return (
     <div
-      // --prof = profile bubble size: 48px on small phones, 56px from 380px up
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex items-center justify-center gap-3 px-3 [--prof:48px] min-[380px]:[--prof:56px]"
-      style={{
-        paddingBottom: "max(12px, env(safe-area-inset-bottom))",
-        transform: gone ? "translateY(calc(100% + 24px))" : "translateY(0)",
-        opacity: gone ? 0 : 1,
-        transition: `transform ${gone ? 380 : 560}ms ${gone ? SMOOTH : SPRING}, opacity 300ms ease`,
-      }}
+      role="img"
+      aria-label={label}
+      className={`${ratio} flex w-full items-center justify-center rounded-md bg-gray-200 text-sm text-gray-500 ring-1 ring-[#e8d6bd]`}
     >
-      <nav
-        ref={navRef}
-        onPointerMove={onNavMove}
-        onPointerLeave={onNavLeave}
-        className="pointer-events-auto relative rounded-[30px] border border-white/60 bg-white/35 backdrop-blur-2xl backdrop-saturate-150 [-webkit-tap-highlight-color:transparent]"
-        style={{
-          padding: PAD,
-          boxShadow:
-            "0 14px 40px rgba(74,7,16,.20), inset 0 1.5px 0 rgba(255,255,255,.85), inset 0 -1px 0 rgba(255,255,255,.25)",
-        }}
-      >
-        {/* cursor spotlight (glass sheen that follows the pointer) */}
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 rounded-[30px]"
-          style={{
-            opacity: navPt ? 1 : 0,
-            transition: "opacity 300ms ease",
-            background: navPt
-              ? `radial-gradient(130px circle at ${navPt.x}px ${navPt.y}px, rgba(255,255,255,.75), ${tint}1f 45%, transparent 75%)`
-              : "none",
-          }}
-        />
-
-        {/* tab row: width = screen width minus side padding, gap, profile bubble and nav padding/border; capped at 252px */}
-        <div
-          ref={tabsRef}
-          className="relative flex"
-          style={{
-            width: "clamp(165px, calc(100vw - 24px - 12px - var(--prof) - 18px), 252px)",
-            height: ITEM_H,
-          }}
-        >
-          {/* liquid glass indicator (sized in % so it follows the tab width) */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute left-0 top-0 rounded-[22px] border border-white/70 backdrop-blur-md"
-            style={{
-              width: `${100 / items.length}%`,
-              height: ITEM_H,
-              opacity: activeIdx >= 0 ? 1 : 0,
-              transform: `translateX(${Math.max(activeIdx, 0) * 100}%) scale(${moving ? "1.14, 0.93" : "1, 1"})`,
-              transition: `transform 520ms ${SPRING}, background 400ms ease, opacity 200ms ease`,
-              background: `linear-gradient(160deg, ${tint}38 0%, ${tint}1a 55%, rgba(255,255,255,.35) 100%)`,
-              boxShadow: `0 4px 12px rgba(28,18,20,.12), inset 0 1.5px 0 rgba(255,255,255,.9), inset 0 -4px 10px ${tint}1a`,
-            }}
-          />
-
-          {items.map(({ href, label, Icon, color }, i) => {
-            const active = i === activeIdx;
-            const m = mag(i);
-            return (
-              <Link
-                key={label}
-                href={href}
-                aria-current={active ? "page" : undefined}
-                className="relative z-10 flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl text-[10px] active:scale-90 min-[360px]:text-[11px]"
-                style={{
-                  height: ITEM_H,
-                  color: active ? INK : "#4a3a3c",
-                  fontWeight: active ? 700 : 600,
-                  transition: `color 300ms ease, transform 250ms ${SPRING}`,
-                }}
-              >
-                <span
-                  style={{
-                    transform: `translateY(${active ? -1 : 0}px) scale(${(active ? 1.18 : 1) * m})`,
-                    transition: `transform ${tabs === null ? 450 : 140}ms ${tabs === null ? SPRING : "ease-out"}`,
-                  }}
-                >
-                  <Icon
-                    size={21}
-                    strokeWidth={active ? 2.2 : 2}
-                    color={INK}
-                    fill={active ? `${color}99` : "none"}
-                    style={{ transition: "fill 300ms ease, stroke 300ms ease" }}
-                  />
-                </span>
-                <span className="max-w-full truncate">{label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
-
-      {/* profile bubble */}
-      <Link
-        ref={profileRef}
-        href="/shop/profile"
-        aria-label="Profile"
-        onPointerMove={onProfMove}
-        onPointerLeave={() => setProfPt(null)}
-        className="pointer-events-auto relative grid h-[var(--prof)] w-[var(--prof)] shrink-0 place-items-center overflow-hidden rounded-full border border-white/70 backdrop-blur-2xl backdrop-saturate-150 active:scale-90 [-webkit-tap-highlight-color:transparent]"
-        style={{
-          background: profileActive
-            ? `linear-gradient(160deg, ${PROFILE_COLOR}59, ${PROFILE_COLOR}26 60%, rgba(255,255,255,.4))`
-            : "rgba(255,255,255,.4)",
-          boxShadow: profileActive
-            ? "0 6px 16px rgba(28,18,20,.14), inset 0 1.5px 0 rgba(255,255,255,.9)"
-            : "0 10px 28px rgba(74,7,16,.18), inset 0 1.5px 0 rgba(255,255,255,.85)",
-          transform: `scale(${profPt ? 1.1 : profileActive ? 1.08 : 1})`,
-          transition: `transform 560ms ${SPRING}, background 300ms ease, box-shadow 300ms ease`,
-        }}
-      >
-        <span
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            opacity: profPt ? 1 : 0,
-            transition: "opacity 250ms ease",
-            background: profPt
-              ? `radial-gradient(60px circle at ${profPt.x}px ${profPt.y}px, rgba(255,255,255,.8), ${PROFILE_COLOR}22 55%, transparent 80%)`
-              : "none",
-          }}
-        />
-        <User
-          size={25}
-          strokeWidth={profileActive ? 2.2 : 2}
-          color={INK}
-          fill={profileActive ? `${PROFILE_COLOR}99` : "none"}
-          className="relative"
-          style={{ transition: "fill 300ms ease, stroke 300ms ease" }}
-        />
-        <span className="sr-only">Profile</span>
-      </Link>
+      Image placeholder
     </div>
+  );
+}
+
+function Ornament() {
+  return (
+    <div aria-hidden className="mx-auto flex w-48 items-center gap-3 text-[#c9962b]">
+      <span className="h-px flex-1 bg-current opacity-60" />
+      <svg viewBox="0 0 12 12" className="h-3 w-3" fill="currentColor">
+        <path d="M6 0l6 6-6 6-6-6z" />
+      </svg>
+      <span className="h-px flex-1 bg-current opacity-60" />
+    </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <article>
+      {/* HERO */}
+      <header className="relative isolate overflow-hidden bg-[radial-gradient(ellipse_at_top,#7a1118_0%,#4a0710_55%,#2e0409_100%)] px-6 py-24 text-center md:py-32">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[820px] w-[820px] -translate-x-1/2 -translate-y-1/2 text-[#f2b632] opacity-25 motion-safe:animate-[spin_180s_linear_infinite]"
+        >
+          <svg viewBox="-300 -300 600 600" fill="none" stroke="currentColor" strokeWidth="0.7">
+            {[60, 110, 160, 210, 260, 295].map((r) => (
+              <circle key={r} r={r} />
+            ))}
+            {Array.from({ length: 12 }, (_, i) => (
+              <ellipse key={i} rx="26" ry="95" cy="-155" transform={`rotate(${i * 30})`} />
+            ))}
+          </svg>
+        </div>
+
+        <div className="mx-auto max-w-3xl">
+          <h1 className={`${serif.className} text-5xl font-medium leading-[1.05] text-[#fff6e0] md:text-7xl`}>
+            About AYENDRI
+          </h1>
+          <p className={`${serif.className} mt-5 text-2xl italic text-[#f2b632] md:text-3xl`}>
+            Sacred for a Higher You
+          </p>
+          <p className="mx-auto mt-8 max-w-xl text-[17px] leading-8 text-white/85">
+            Demo text: AYENDRI is a home for authentic Rudraksha, Karungali malas, idols and puja
+            essentials, chosen with care and sent to you with the respect they deserve.
+          </p>
+        </div>
+      </header>
+
+      {/* OUR STORY */}
+      <section className="bg-[#fffaf3] px-6 py-16 md:py-24">
+        <div className="mx-auto grid max-w-[1100px] items-center gap-10 md:grid-cols-[5fr_6fr] md:gap-16">
+          <ImagePlaceholder ratio="aspect-[4/5]" label="Portrait of the founder" />
+          <div>
+            <h2 className={h2Cls}>Our story</h2>
+            <p className={pCls}>
+              Demo text: AYENDRI began with a simple wish, to make genuine spiritual products easy to
+              find and easy to trust. Too often, devotees were left guessing what was real.
+            </p>
+            <p className={pCls}>
+              Demo text: Today a small team, led by [founder name], selects every product by hand and
+              answers every question personally.
+            </p>
+            <blockquote
+              className={`${serif.className} mt-8 border-l-2 border-[#f2b632] pl-6 text-2xl italic leading-snug text-[#4a0710]`}
+            >
+              “Demo quote: a sacred object should be as honest as it is beautiful.”
+            </blockquote>
+          </div>
+        </div>
+      </section>
+
+      {/* SOURCING */}
+      <section className="bg-[#f6efe6] px-6 py-16 md:py-24">
+        <div className="mx-auto grid max-w-[1100px] items-center gap-10 md:grid-cols-[6fr_5fr] md:gap-16">
+          <div className="order-2 md:order-1">
+            <h2 className={h2Cls}>Where our products come from</h2>
+            <p className={pCls}>
+              Demo text: We work directly with trusted growers, artisans and temple craftsmen, so we
+              know where each bead, mala and idol began its journey.
+            </p>
+            <p className={pCls}>
+              Demo text: Rudraksha beads are the seeds of the Elaeocarpus ganitrus tree, and you can
+              read more about it on{" "}
+              <a
+                href="https://en.wikipedia.org/wiki/Rudraksha"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-semibold !text-[#7a1118] underline underline-offset-4 hover:!text-[#a3161f] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#f2b632]"
+              >
+                Wikipedia
+              </a>
+              .
+            </p>
+          </div>
+          <div className="order-1 md:order-2">
+            <ImagePlaceholder ratio="aspect-[4/3]" label="Artisans at work" />
+          </div>
+        </div>
+      </section>
+
+      {/* CERTIFIED AND ENERGISED */}
+      <section className="bg-[#fffaf3] px-6 py-16 md:py-24">
+        <div className="mx-auto max-w-[1100px]">
+          <div className="mx-auto max-w-2xl text-center">
+            <h2 className={h2Cls}>What certified and energised means</h2>
+            <div className="mt-6">
+              <Ornament />
+            </div>
+            <p className={`${pCls} mt-6`}>
+              Demo text: Every piece goes through three quiet steps before it reaches your home.
+            </p>
+          </div>
+
+          <div className="mt-14 grid gap-12 md:grid-cols-3 md:gap-10">
+            <div>
+              <ImagePlaceholder ratio="aspect-[4/3]" label="Selecting products by hand" />
+              <h3 className={h3Cls}>Chosen by hand</h3>
+              <p className="mt-3 text-[16px] leading-7 text-[#3a2a22]">
+                Demo text: We look at size, grain, symmetry and finish, and set aside anything that
+                falls short.
+              </p>
+            </div>
+            <div>
+              <ImagePlaceholder ratio="aspect-[4/3]" label="Checking products before shipping" />
+              <h3 className={h3Cls}>Checked before it ships</h3>
+              <p className="mt-3 text-[16px] leading-7 text-[#3a2a22]">
+                Demo text: Each item is inspected again and packed with a note on what it is and how to
+                care for it.
+              </p>
+            </div>
+            <div>
+              <ImagePlaceholder ratio="aspect-[4/3]" label="Energising ritual" />
+              <h3 className={h3Cls}>Energised with mantra</h3>
+              <p className="mt-3 text-[16px] leading-7 text-[#3a2a22]">
+                Demo text: Products are energised with traditional mantras and prayers, so they arrive
+                ready to be placed in your puja space.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CLOSING */}
+      <section className="bg-[#4a0710] px-6 py-16 text-center md:py-20">
+        <h2 className={`${serif.className} text-4xl font-medium text-[#fff6e0] md:text-5xl`}>
+          Begin your collection
+        </h2>
+        <p className="mx-auto mt-4 max-w-md text-[17px] leading-8 text-white/80">
+          Demo text: Explore Rudraksha, malas, idols and puja essentials, or write to us with any
+          question.
+        </p>
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-x-8 gap-y-4">
+          <Link
+            href="/shop/category/all"
+            className="rounded-full border border-[#fff1c2] bg-gradient-to-b from-[#ffd66b] to-[#f2b632] px-8 py-3 font-bold text-[#4a0710] shadow-[0_2px_8px_rgba(0,0,0,.35)] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fff1c2] focus-visible:ring-offset-2 focus-visible:ring-offset-[#4a0710]"
+          >
+            Browse the collection
+          </Link>
+          <Link
+            href="/shop/contact"
+            className="font-semibold !text-[#ffd66b] underline underline-offset-4 hover:!text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#fff1c2]"
+          >
+            Contact us
+          </Link>
+        </div>
+        <p className="mt-10 text-xs text-white/70">
+          Last updated <time dateTime="2026-11-03">3 November 2026</time>
+        </p>
+      </section>
+    </article>
   );
 }
