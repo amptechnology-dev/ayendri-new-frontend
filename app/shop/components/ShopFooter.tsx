@@ -28,6 +28,9 @@ export default function ShopFooter() {
           <p className="mt-3 max-w-[280px] text-sm leading-relaxed text-white/70">
             Sacred for a Higher You. Authentic, energised spiritual products delivered with care.
           </p>
+          <p className="mt-2 max-w-[280px] text-xs leading-relaxed text-white/60">
+            Green Park, 33/A, Belghoria, Kolkata, West Bengal 700056 · amptechnologyoffice@gmail.com · +91 8697972001
+          </p>
           {/* <Link
             href="/store"
             className="mt-4 inline-block rounded-full border border-[#f2b632]/60 px-4 py-1.5 text-xs font-bold text-[#f2b632] transition hover:bg-[#f2b632] hover:text-[#4a0710]"
@@ -38,7 +41,7 @@ export default function ShopFooter() {
 
         {/* Shop (from backend categories) */}
         <div>
-          <h4 className={headCls}>Shop</h4>
+          <h2 className={headCls}>Shop</h2>
           {categories.length === 0 ? (
             <div className="space-y-2" aria-hidden>
               {[1, 2, 3, 4].map((n) => (
@@ -61,7 +64,7 @@ export default function ShopFooter() {
 
         {/* Terms and Conditions (from backend) */}
         <div>
-          <h4 className={headCls}>Terms &amp; Conditions</h4>
+          <h2 className={headCls}>Terms &amp; Conditions</h2>
           {loading && (
             <div className="space-y-2" aria-hidden>
               {[1, 2, 3].map((n) => (
@@ -94,12 +97,15 @@ export default function ShopFooter() {
 
         {/* Help */}
         <div>
-          <h4 className={headCls}>Help</h4>
+          <h2 className={headCls}>Help</h2>
           {[
             ["Track Order", "/shop/orders"],
-            ["Shipping", "/shop"],
-            ["Returns", "/shop"],
-            ["Contact", "/shop"],
+            ["Shipping & Returns", "/shop/shipping-returns", "/shop/editorial-policy"],
+            ["Contact Us", "/shop/contact"],
+            ["About Us", "/shop/about"],
+            ["Privacy Policy", "/shop/privacy-policy"],
+            ["Terms of Service", "/shop/terms"],
+            ["Editorial Policy", "/shop/editorial-policy"],
           ].map(([t, href]) => (
             <Link key={t} href={href} className={linkCls}>
               {t}
@@ -109,7 +115,7 @@ export default function ShopFooter() {
 
         {/* Company */}
         <div>
-          <h4 className={headCls}>Company</h4>
+          <h2 className={headCls}>Company</h2>
           <Link href="/" className={linkCls}>Ayendri Home</Link>
           {/* <Link href="/store" className={linkCls}>Find a Store</Link> */}
           <Link href="/shop/profile" className={linkCls}>My Account</Link>

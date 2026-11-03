@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Bell, Trash2 } from "lucide-react";
 import { useAuth } from "../auth";
 import { useShop } from "../shop-data";
+import { useNotifications } from "../notifications-store";
 import {
   clearAllNotifications,
   deleteNotification,
@@ -40,6 +41,12 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  const setGlobalUnread = useNotifications((s) => s.setUnread);
+
+  // keep the header badge equal to what this page shows
+  useEffect(() => {
+    if (!loading) setGlobalUnread(unread);
+  }, [loading, unread, setGlobalUnread]);
 
   const load = useCallback(async () => {
     if (!token) {
@@ -169,6 +176,12 @@ export default function NotificationsPage() {
           </div>
         )}
       </div>
+
+      {items.length > 0 && (
+        <p className="mt-2 text-xs text-[#9a7a7a]">
+          {items.length} notification{items.length > 1 ? "s" : ""} · {unread} unread
+        </p>
+      )}
 
       {error && (
         <div className="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-700">

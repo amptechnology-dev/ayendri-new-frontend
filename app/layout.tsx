@@ -23,6 +23,7 @@ const geistMono = Geist_Mono({
 const FAVICON = "/img/photos/ayendri-logo.png";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://ayendri.com"),
   title: "AYENDRI",
   description: "AYENDRI — Sacred for a Higher You",
   icons: {
@@ -74,8 +75,7 @@ export default function RootLayout({
           </PrimeReactProvider>
         </GoogleOAuthProvider>
 
-        {/* Load AdminKit app JS after hydration so DOM is ready */}
-        <Script src="/js/app.js" strategy="afterInteractive" />
+        
 
         {/* Footer client logic: set current year and back-to-top behavior */}
         <Script id="footer-scripts" strategy="afterInteractive">

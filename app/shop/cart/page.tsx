@@ -112,9 +112,13 @@ export default function Cart() {
   );
 
   return (
-    <div className="mx-auto grid w-full max-w-[1200px] min-w-0 grid-cols-1 gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,360px)] lg:gap-8 lg:py-10">
+    <div className="mx-auto grid w-full max-w-[1280px] min-w-0 grid-cols-1 gap-6 px-4 py-5 sm:px-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:gap-6 lg:py-6">
+      {/* ───────── LEFT: items + suggestions + explore ───────── */}
       <div className="min-w-0 space-y-4">
-        <h1 className="text-3xl font-black text-[#4a0710]">My Cart</h1>
+        <div className="flex items-baseline justify-between">
+          <h1 className="text-3xl font-black text-[#4a0710]">My Cart</h1>
+          <span className="text-sm text-[#9a7a7a]">{items.length} item(s)</span>
+        </div>
 
         {splitOrders && (
           <div className="flex items-start gap-2 rounded-2xl bg-[#fff4dc] px-4 py-3 text-xs font-medium">
@@ -123,109 +127,174 @@ export default function Cart() {
           </div>
         )}
 
-        {items.map((item) => {
-          const p = item.product;
-          const l = listedOf(item);
-          const dlv = l?.delivery;
-          const fastest = isFastestDelivery(dlv, l);
-          const na = item.isAvailable === false;
-          const notes = policyNotes({ ...(l ?? {}), ...p });
-          const img = imageUrl(p.image);
-          return (
-            <div key={item.lineId} className={`shop-card flex items-center gap-4 p-4 ${na ? "border border-[#ffcdd2] opacity-70" : ""}`}>
-              <div className="h-24 w-24 shrink-0 overflow-hidden rounded-2xl bg-[#fff1da]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {img && <img src={img} alt={p.title} className="h-full w-full object-contain" />}
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-start justify-between gap-2">
-                  <span className="font-semibold">{p.title}</span>
-                  <button aria-label="Remove item" onClick={() => removeItem(item)} className="text-[#e53935]"><Trash2 size={18} /></button>
+        {/* items in a 2-column grid on desktop */}
+        <div className="grid gap-3 xl:grid-cols-2">
+          {items.map((item) => {
+            const p = item.product;
+            const l = listedOf(item);
+            const dlv = l?.delivery;
+            const fastest = isFastestDelivery(dlv, l);
+            const na = item.isAvailable === false;
+            const notes = policyNotes({ ...(l ?? {}), ...p });
+            const img = imageUrl(p.image);
+            return (
+              <div
+                key={item.lineId}
+                className={`shop-card flex items-start gap-3 p-3 ${na ? "border border-[#ffcdd2] opacity-70" : ""}`}
+              >
+                <div className="h-20 w-20 shrink-0 overflow-hidden rounded-2xl bg-[#fff1da]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {img && <img src={img} alt={p.title} className="h-full w-full object-contain" />}
                 </div>
-                {!!item.variantLabel && <div className="text-[11px] font-semibold text-[#999]">{item.variantLabel}</div>}
-                {na && <span className="mt-1 inline-block rounded bg-[#ffebee] px-2 py-0.5 text-[11px] font-bold text-[#d32f2f]">Out of Stock / Unavailable</span>}
-                {!!notes.length && (
-                  <div className="mt-1 flex flex-wrap gap-1">
-                    {notes.map((n) => <span key={n} className="rounded bg-[#f1f7ee] px-1.5 py-0.5 text-[10px] font-semibold text-[#1b7f4b]">{n}</span>)}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-2">
+                    <span className="line-clamp-2 text-sm font-semibold">{p.title}</span>
+                    <button aria-label="Remove item" onClick={() => removeItem(item)} className="shrink-0 text-[#e53935]">
+                      <Trash2 size={16} />
+                    </button>
                   </div>
-                )}
-                {fastest && !na && <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-[#b26a00]"><Zap size={12} /> Fastest delivery</div>}
-                {!na && dlv && dlv.deliverable !== false && (
-                  <div className="mt-1 text-xs text-[#999]">
-                    {fastest ? "Fastest delivery by " : "Delivery by "}
-                    <b className="text-[#1b7f4b]">{deliveryDateText(dlv, l?.deliveryTime)}</b>
+                  {!!item.variantLabel && <div className="text-[11px] font-semibold text-[#999]">{item.variantLabel}</div>}
+                  {na && (
+                    <span className="mt-1 inline-block rounded bg-[#ffebee] px-2 py-0.5 text-[11px] font-bold text-[#d32f2f]">
+                      Out of Stock / Unavailable
+                    </span>
+                  )}
+                  {!!notes.length && (
+                    <div className="mt-1 flex flex-wrap gap-1">
+                      {notes.map((n) => (
+                        <span key={n} className="rounded bg-[#f1f7ee] px-1.5 py-0.5 text-[10px] font-semibold text-[#1b7f4b]">{n}</span>
+                      ))}
+                    </div>
+                  )}
+                  {fastest && !na && (
+                    <div className="mt-1 flex items-center gap-1 text-[11px] font-bold text-[#b26a00]">
+                      <Zap size={12} /> Fastest delivery
+                    </div>
+                  )}
+                  {!na && dlv && dlv.deliverable !== false && (
+                    <div className="mt-1 text-xs text-[#999]">
+                      {fastest ? "Fastest delivery by " : "Delivery by "}
+                      <b className="text-[#1b7f4b]">{deliveryDateText(dlv, l?.deliveryTime)}</b>
+                    </div>
+                  )}
+                  {!na && dlv?.deliverable === false && (
+                    <div className="mt-1 text-xs text-[#e53935]">Not deliverable to your pincode</div>
+                  )}
+                  {!!item.bookingDate && !na && (
+                    <BookingDate item={item} onChange={(d) => changeBookingDate(item, d)} />
+                  )}
+                  <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+                    <span className="font-extrabold text-[#7a1118]">
+                      {unitPrice(item) > 0 ? inr(unitPrice(item)) : "Order to know Price"}
+                      {originalPrice(item) > unitPrice(item) && (
+                        <s className="ml-2 text-xs font-normal text-[#9a8080]">{inr(originalPrice(item))}</s>
+                      )}
+                    </span>
+                    <Stepper item={item} small />
                   </div>
-                )}
-                {!na && dlv?.deliverable === false && <div className="mt-1 text-xs text-[#e53935]">Not deliverable to your pincode</div>}
-                                {!!item.bookingDate && !na && (
-                  <BookingDate item={item} onChange={(d) => changeBookingDate(item, d)} />
-                )}
-                <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                  <span className="font-extrabold text-[#7a1118]">
-                    {unitPrice(item) > 0 ? inr(unitPrice(item)) : "Order to know Price"}
-                    {originalPrice(item) > unitPrice(item) && <s className="ml-2 text-xs font-normal text-[#9a8080]">{inr(originalPrice(item))}</s>}
-                  </span>
-                  <Stepper item={item} />
                 </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
 
+        {/* suggestions: 3 side-by-side cards instead of a tall list */}
         {suggestions.length > 0 && (
           <div className="shop-card p-4">
-            <h2 className="mb-2 text-sm font-bold">You might also like this</h2>
-            {suggestions.map((p, i) => {
-              const off = typeof p.originalPrice === "number" && p.originalPrice > p.price
-                ? Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100) : null;
-              const inCart = items.find((it) => it.id === p._id);
-              return (
-                <div key={p._id} className={`flex items-center gap-3 py-2 ${i < suggestions.length - 1 ? "border-b border-[#f0f0f0]" : ""}`}>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imageUrl(p.image)} alt="" className="h-11 w-11 rounded-xl bg-[#fff1da] object-cover" />
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-sm font-semibold">{p.title}</div>
-                    <div className="flex items-center gap-2 text-sm">
-                      <b>{p.price > 0 ? inr(p.price) : "Order to know Price"}</b>
-                      {off !== null && <><s className="text-xs text-[#999]">{inr(p.originalPrice)}</s><span className="text-xs font-bold text-[#22a45d]">{off}% OFF</span></>}
+            <h2 className="mb-3 text-sm font-bold">You might also like this</h2>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {suggestions.map((p) => {
+                const off =
+                  typeof p.originalPrice === "number" && p.originalPrice > p.price
+                    ? Math.round(((p.originalPrice - p.price) / p.originalPrice) * 100)
+                    : null;
+                const inCart = items.find((it) => it.id === p._id);
+                return (
+                  <div key={p._id} className="flex items-center gap-3 rounded-2xl border border-[#f0e2c8] p-2.5">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={imageUrl(p.image)} alt="" className="h-12 w-12 shrink-0 rounded-xl bg-[#fff1da] object-cover" />
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-semibold">{p.title}</div>
+                      <div className="flex flex-wrap items-center gap-x-2 text-xs">
+                        <b className="text-sm">{p.price > 0 ? inr(p.price) : "Order to know Price"}</b>
+                        {off !== null && (
+                          <>
+                            <s className="text-[#999]">{inr(p.originalPrice)}</s>
+                            <span className="font-bold text-[#22a45d]">{off}% OFF</span>
+                          </>
+                        )}
+                      </div>
                     </div>
+                    {inCart ? (
+                      <Stepper item={inCart} small />
+                    ) : (
+                      <button
+                        onClick={() => add(p)}
+                        className="rounded-full border border-[#edad78] px-3 py-1 text-xs font-extrabold text-[#edad78]"
+                      >
+                        ADD
+                      </button>
+                    )}
                   </div>
-                  {inCart ? <Stepper item={inCart} small /> : (
-                    <button onClick={() => add(p)} className="rounded-full border border-[#edad78] px-4 py-1.5 text-xs font-extrabold text-[#edad78]">ADD</button>
-                  )}
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         )}
 
+        {/* keep exploring: a single row of cards, no horizontal scroll on desktop */}
         {products.length > 0 && (
-          <>
-            <h2 className="pt-6 text-xl font-extrabold text-[#4a0710]">Keep exploring</h2>
-            <div className="flex gap-4 overflow-x-auto pb-2">
-              {products.slice(0, 8).map((p) => (
-                <div key={p._id} className="w-[150px] shrink-0">
+          <div>
+            <h2 className="mb-2 text-lg font-extrabold text-[#4a0710]">Keep exploring</h2>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              {products.slice(0, 4).map((p) => (
+                <div key={p._id} className="min-w-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={imageUrl(p.image)} alt={p.title} className="aspect-square w-full rounded-2xl bg-[#fff1da] object-cover" />
-                  <div className="mt-2 line-clamp-2 text-sm font-semibold">{p.title}</div>
-                  <div className="text-sm font-extrabold">{p.price > 0 ? inr(p.price) : "Order to know Price"}</div>
-                  <button onClick={() => add(p)} className="mt-1 rounded-full border border-[#edad78] px-4 py-1 text-xs font-extrabold text-[#edad78]">ADD</button>
+                  <img
+                    src={imageUrl(p.image)}
+                    alt={p.title}
+                    className="aspect-[4/3] w-full rounded-2xl bg-[#fff1da] object-cover"
+                  />
+                  <div className="mt-1.5 line-clamp-1 text-sm font-semibold">{p.title}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-sm font-extrabold">{p.price > 0 ? inr(p.price) : "Order to know Price"}</span>
+                    <button
+                      onClick={() => add(p)}
+                      className="rounded-full border border-[#edad78] px-3 py-0.5 text-xs font-extrabold text-[#edad78]"
+                    >
+                      ADD
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
-          </>
+          </div>
         )}
       </div>
 
-      <aside className="shop-card box-border h-fit w-full min-w-0 space-y-4 p-4 sm:p-6">
+      {/* ───────── RIGHT: sticky summary ───────── */}
+      <aside className="shop-card box-border h-fit w-full min-w-0 space-y-4 p-4 sm:p-5 lg:sticky lg:top-4">
         <div className="flex gap-2">
-          <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Enter Promo Code" className="flex-1 rounded-full border border-[#e8cfa8] px-4 py-2.5 text-sm outline-none" />
-          <button onClick={() => setMsg(applyPromo(code) ? "₹10 off applied" : "Invalid code")} className="shop-gold-btn rounded-full px-5 text-sm">Apply</button>
+          <input
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            placeholder="Enter Promo Code"
+            className="min-w-0 flex-1 rounded-full border border-[#e8cfa8] px-4 py-2.5 text-sm outline-none"
+          />
+          <button
+            onClick={() => setMsg(applyPromo(code) ? "₹10 off applied" : "Invalid code")}
+            className="shop-gold-btn rounded-full px-5 text-sm"
+          >
+            Apply
+          </button>
         </div>
         {(msg || promo) && <p className="text-xs font-semibold text-green-700">{msg || `${promo} applied`}</p>}
 
         <button onClick={() => setOpen(!open)} className="flex w-full items-center justify-between font-extrabold">
-          Bill Details <span className="flex items-center gap-1">{payableText} <ChevronDown size={16} className={open ? "rotate-180" : ""} /></span>
+          Bill Details{" "}
+          <span className="flex items-center gap-1">
+            {payableText} <ChevronDown size={16} className={open ? "rotate-180" : ""} />
+          </span>
         </button>
         {open && (
           <div className="space-y-2 text-sm">
@@ -240,15 +309,21 @@ export default function Cart() {
               </>
             )}
             {discount > 0 && <Row l="Promo" v={"-" + inr(discount)} green />}
-            <div className="flex justify-between border-t border-[#eaeaea] pt-3 font-extrabold"><span>Total payable</span><span>{payableText}</span></div>
+            <div className="flex justify-between border-t border-[#eaeaea] pt-3 font-extrabold">
+              <span>Total payable</span>
+              <span>{payableText}</span>
+            </div>
           </div>
         )}
 
-        {items.length > 1 && hasPending && <p className="text-center text-xs text-[#999]">Items will be placed as separate orders.</p>}
+        {items.length > 1 && hasPending && (
+          <p className="text-center text-xs text-[#999]">Items will be placed as separate orders.</p>
+        )}
         <button onClick={checkout} className="shop-gold-btn w-full rounded-full py-3.5">Order Now</button>
       </aside>
     </div>
   );
+  
 }
 function BookingDate({ item, onChange }: { item: Item; onChange: (d: string) => Promise<void> }) {
   const [edit, setEdit] = useState(false);
@@ -328,6 +403,7 @@ function BookingDate({ item, onChange }: { item: Item; onChange: (d: string) => 
     </div>
   );
 }
+
 const Row = ({ l, v, green }: { l: string; v: string; green?: boolean }) => (
   <div className={`flex justify-between ${green ? "text-green-700" : ""}`}><span>{l}</span><span>{v}</span></div>
 );

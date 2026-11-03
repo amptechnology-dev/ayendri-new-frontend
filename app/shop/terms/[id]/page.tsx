@@ -1,7 +1,7 @@
 "use client";
 import { use } from "react";
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { htmlToBlocks, useTerms } from "../../terms-api";
 
 export default function TermDetail({ params }: { params: Promise<{ id: string }> }) {
@@ -10,10 +10,18 @@ export default function TermDetail({ params }: { params: Promise<{ id: string }>
   const term = terms.find((t) => t._id === decodeURIComponent(id));
 
   return (
-    <div className="mx-auto max-w-[760px] px-6 py-10">
-      <Link href="/shop/terms" className="inline-flex items-center text-sm font-bold text-[#9b4326]">
-        <ChevronLeft size={16} /> Terms and Conditions
-      </Link>
+    <article className="shop-card flex-1 p-6">
+      <div className="mb-3 flex items-center gap-1 text-xs text-[#9a7a7a]">
+        <Link href="/shop" className="hover:underline">Home</Link>
+        <ChevronRight size={12} />
+        <Link href="/shop/terms" className="hover:underline">Terms and Conditions</Link>
+        {term && (
+          <>
+            <ChevronRight size={12} />
+            <span className="line-clamp-1">{term.title}</span>
+          </>
+        )}
+      </div>
 
       {loading && <p className="py-10 text-center text-sm text-[#9a7a7a]">Loading…</p>}
 
@@ -22,7 +30,7 @@ export default function TermDetail({ params }: { params: Promise<{ id: string }>
       )}
 
       {term && (
-        <article className="shop-card mt-4 space-y-3 p-6">
+        <div className="space-y-3">
           <h1 className="text-xl font-black text-[#4a0710]">{term.title}</h1>
           {htmlToBlocks(term.description).map((b, i) =>
             b.type === "space" ? (
@@ -33,8 +41,8 @@ export default function TermDetail({ params }: { params: Promise<{ id: string }>
               </p>
             ),
           )}
-        </article>
+        </div>
       )}
-    </div>
+    </article>
   );
 }

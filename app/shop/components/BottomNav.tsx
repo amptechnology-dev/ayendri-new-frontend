@@ -249,6 +249,7 @@ export default function BottomNav() {
           className="relative"
           style={{ transition: "fill 300ms ease, stroke 300ms ease" }}
         />
+        <span className="sr-only">Profile</span>
       </Link>
     </div>
   );

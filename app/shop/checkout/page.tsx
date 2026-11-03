@@ -260,6 +260,10 @@ export default function Checkout() {
     const orig = item.product.originalPrice;
     return {
       slug: item.id,
+      lineId: item.lineId ?? item.id,
+      bookingDate: item.bookingDate
+        ? String(item.bookingDate).slice(0, 10)
+        : undefined,
       qty: item.quantity,
       product: {
         slug: item.id,
@@ -379,7 +383,7 @@ export default function Checkout() {
         );
       }
 
-      // the backend takes ONE booking date per checkout
+      // an order can have several booking dates (one per service item)
       const bookingDates = [
         ...new Set(
           cart.items
@@ -387,11 +391,7 @@ export default function Checkout() {
             .filter(Boolean),
         ),
       ];
-      if (bookingDates.length > 1) {
-        throw new Error(
-          "Your service items are booked for different dates. Please use the same booking date for all of them in your cart.",
-        );
-      }
+
       const missing = cart.items.find(
         (i) =>
           String(i.product?.productType ?? "").toUpperCase() === "SERVICE" &&
@@ -403,6 +403,12 @@ export default function Checkout() {
         );
       }
       const bookingDate = bookingDates[0];
+      const itemBookings = cart.items
+        .filter((i) => i.bookingDate)
+        .map((i) => ({
+          productId: i.product._id,
+          bookingDate: String(i.bookingDate).slice(0, 10),
+        }));
 
       const deliveryAddress = {
         fullName: address.fullName.trim(),
@@ -448,7 +454,8 @@ export default function Checkout() {
         storeIds,
         deliveryAddress,
         note: cart.remarks.trim() || undefined,
-        bookingDate, // undefined when the cart has no booking item
+        bookingDate, // first date, kept for the old backend field
+        itemBookings, // [{ productId, bookingDate }, ...] one per service item
         paymentMethod: cart.payment,
         fastestDelivery: fastest, // [FASTEST] preview er sathe hubohu same
       });
@@ -534,246 +541,273 @@ export default function Checkout() {
   }
 
   return (
-    <div className="mx-auto max-w-[760px] space-y-5 px-6 py-10">
-      <h1 className="text-3xl font-black text-[#4a0710]">Checkout</h1>
+    <div className="mx-auto max-w-[1180px] px-6 py-6">
+      <div className="mb-4 flex items-baseline justify-between">
+        <h1 className="text-3xl font-black text-[#4a0710]">Checkout</h1>
+        <span className="text-sm text-[#9a7a7a]">{rows.length} item(s)</span>
+      </div>
 
-      <section className="shop-card p-5">
-        <h2 className="font-extrabold">
-          Order Info
-          <span className="text-xs font-normal text-[#9a7a7a]">
-            {" "}
-            · {rows.length} item(s)
-          </span>
-        </h2>
-        {rows.map(({ product, qty }) => (
-          <div key={product.slug} className="mt-3 flex items-center gap-3">
-            <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl">
-              <img
-                src={product.image}
-                alt={product.name}
-                loading="lazy"
-                decoding="async"
-                className="absolute inset-0 h-full w-full object-cover"
-              />
-            </div>
-            <div className="flex-1 text-sm">
-              <b>{product.name}</b>
-              <div className="text-xs text-[#9a7a7a]">Qty {qty}</div>
-            </div>
-            <b>{inr(product.price * qty)}</b>
-          </div>
-        ))}
-      </section>
+      <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,1fr)_380px]">
+        {/* ───────── LEFT: address, fastest delivery, remarks ───────── */}
+        <div className="space-y-4">
+          <section className="shop-card space-y-3 p-5">
+            <h2 className="font-extrabold">Delivery address</h2>
 
-      <section className="shop-card space-y-3 p-5">
-        <h2 className="font-extrabold">Delivery address</h2>
-        {saved.length > 0 && (
-          <div className="space-y-2">
-            {saved.map((a) => (
-              <button
-                key={a._id}
-                type="button"
-                onClick={() => {
-                  setSelectedId(a._id!);
-                  setAddress(toForm(a));
-                }}
-                className={`w-full rounded-xl border p-3 text-left text-sm ${
-                  selectedId === a._id
-                    ? "border-[#e0622d] bg-orange-50"
-                    : "border-[#e8cfa8]"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <b>{a.label || "Home"}</b>
-                  {a.isDefault && (
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
-                      Default
-                    </span>
-                  )}
-                </div>
-                <div className="mt-1 text-xs text-[#6b4a4a]">
-                  {[a.addressLine, a.area, a.city, a.state, a.pincode]
-                    .filter(Boolean)
-                    .join(", ")}
-                </div>
-              </button>
-            ))}
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedId("new");
-                setAddress({
-                  ...EMPTY_ADDRESS,
-                  fullName: user?.name ?? "",
-                  phone: (user?.phone ?? "").replace(/\D/g, "").slice(-10),
-                });
-              }}
-              className={`w-full rounded-xl border border-dashed p-3 text-sm font-bold ${
-                selectedId === "new"
-                  ? "border-[#e0622d] text-[#9b4326]"
-                  : "border-[#e8cfa8] text-[#9a7a7a]"
-              }`}
-            >
-              + Use a new address
-            </button>
-          </div>
-        )}
-        {(
-          [
-            ["fullName", "Full name", true],
-            ["phone", "10-digit phone number", true],
-            ["addressLine", "House number, street, address", true],
-            ["area", "Area / locality", false],
-            ["city", "City", true],
-            ["state", "State", true],
-            ["pincode", "6-digit pincode", true],
-          ] as const
-        ).map(([key, label, required]) => (
-          <input
-            key={key}
-            value={address[key]}
-            onChange={(event) =>
-              setAddress((current) => ({
-                ...current,
-                [key]: event.target.value,
-              }))
-            }
-            placeholder={`${label}${required ? " *" : ""}`}
-            required={required}
-            inputMode={key === "phone" || key === "pincode" ? "numeric" : "text"}
-            className="w-full rounded-xl border border-[#e8cfa8] px-4 py-3 text-sm outline-none focus:border-[#e0622d]"
-          />
-        ))}
-      </section>
-
-      {/* [FASTEST] preview er fastestAvailable true hole-i dekhabe */}
-      {showFastest && (
-        <section className="shop-card space-y-3 p-5">
-          <div className="flex items-center justify-between gap-3">
-            <div className="min-w-0">
-              <h2 className="font-extrabold">⚡ Fastest delivery</h2>
-              <p className="text-xs text-[#9a7a7a]">
-                Get your order delivered with the fastest courier available.
-              </p>
-            </div>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={fastest}
-              aria-label="Fastest delivery"
-              onClick={() => setFastest((v) => !v)}
-              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                fastest ? "bg-[#e0622d]" : "bg-[#d9cbbd]"
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${
-                  fastest ? "left-[22px]" : "left-0.5"
-                }`}
-              />
-            </button>
-          </div>
-
-          <div className="space-y-2">
-            {fastestStores.map((s, i) => {
-              const opt = s.fastestOption;
-              return (
-                <div
-                  key={`${s.storeId}-${i}`}
-                  className="rounded-xl border border-[#e8cfa8] p-3 text-xs"
+            {saved.length > 0 && (
+              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
+                {saved.map((a) => (
+                  <button
+                    key={a._id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedId(a._id!);
+                      setAddress(toForm(a));
+                    }}
+                    className={`rounded-xl border p-3 text-left text-sm ${
+                      selectedId === a._id
+                        ? "border-[#e0622d] bg-orange-50"
+                        : "border-[#e8cfa8]"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <b>{a.label || "Home"}</b>
+                      {a.isDefault && (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
+                          Default
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-1 line-clamp-2 text-xs text-[#6b4a4a]">
+                      {[a.addressLine, a.area, a.city, a.state, a.pincode]
+                        .filter(Boolean)
+                        .join(", ")}
+                    </div>
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedId("new");
+                    setAddress({
+                      ...EMPTY_ADDRESS,
+                      fullName: user?.name ?? "",
+                      phone: (user?.phone ?? "").replace(/\D/g, "").slice(-10),
+                    });
+                  }}
+                  className={`flex items-center justify-center rounded-xl border border-dashed p-3 text-sm font-bold ${
+                    selectedId === "new"
+                      ? "border-[#e0622d] text-[#9b4326]"
+                      : "border-[#e8cfa8] text-[#9a7a7a]"
+                  }`}
                 >
-                  {previewStores.length > 1 && (
-                    <p className="mb-1 font-bold text-[#4a0710]">
-                      {s.storeName || "Store"}
-                      {s.totalItems ? ` · ${s.totalItems} item(s)` : ""}
-                    </p>
-                  )}
-                  <p className={fastest ? "text-[#9a7a7a]" : "font-bold text-[#4a0710]"}>
-                    Normal: {etaText(opt.normal)}
-                  </p>
-                  <p className={fastest ? "font-bold text-[#4a0710]" : "text-[#9a7a7a]"}>
-                    Fastest: {etaText(opt.fastest)}
-                    {opt.fastest?.fixedFeeApplied ? " (fastest delivery fee)" : ""}
+                  + Use a new address
+                </button>
+              </div>
+            )}
+
+            {/* form: 2-column grid; wide fields span both columns */}
+            <div className="grid grid-cols-2 gap-3">
+              {(
+                [
+                  ["fullName", "Full name", true, ""],
+                  ["phone", "10-digit phone number", true, ""],
+                  ["addressLine", "House number, street, address", true, "col-span-2"],
+                  ["area", "Area / locality", false, ""],
+                  ["city", "City", true, ""],
+                  ["state", "State", true, ""],
+                  ["pincode", "6-digit pincode", true, ""],
+                ] as const
+              ).map(([key, label, required, span]) => (
+                <input
+                  key={key}
+                  value={address[key]}
+                  onChange={(event) =>
+                    setAddress((current) => ({
+                      ...current,
+                      [key]: event.target.value,
+                    }))
+                  }
+                  placeholder={`${label}${required ? " *" : ""}`}
+                  required={required}
+                  inputMode={key === "phone" || key === "pincode" ? "numeric" : "text"}
+                  className={`${span} w-full rounded-xl border border-[#e8cfa8] px-4 py-2.5 text-sm outline-none focus:border-[#e0622d]`}
+                />
+              ))}
+            </div>
+          </section>
+
+          {/* [FASTEST] preview er fastestAvailable true hole-i dekhabe */}
+          {showFastest && (
+            <section className="shop-card space-y-3 p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <h2 className="font-extrabold">⚡ Fastest delivery</h2>
+                  <p className="text-xs text-[#9a7a7a]">
+                    Get your order delivered with the fastest courier available.
                   </p>
                 </div>
-              );
-            })}
-          </div>
-        </section>
-      )}
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={fastest}
+                  aria-label="Fastest delivery"
+                  onClick={() => setFastest((v) => !v)}
+                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                    fastest ? "bg-[#e0622d]" : "bg-[#d9cbbd]"
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${
+                      fastest ? "left-[22px]" : "left-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
 
-      <section className="shop-card p-5">
-        <h2 className="mb-2 font-extrabold">Remarks</h2>
-        <textarea
-          value={cart.remarks}
-          onChange={(event) => cart.set({ remarks: event.target.value })}
-          placeholder="Add any remarks (optional)"
-          className="h-24 w-full rounded-2xl border border-[#e8cfa8] p-3 text-sm outline-none"
-        />
-      </section>
-
-      <section className="shop-card space-y-2 p-5 text-sm">
-        <h2 className="font-extrabold">Bill details</h2>
-        <div className="flex justify-between">
-          <span>Subtotal</span>
-          <span>{inr(itemsAmount)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span>Delivery{fastest && showFastest ? " (fastest)" : ""}</span>
-          {previewLoading && !hasPreview ? (
-            <span className="text-[#9a7a7a]">Calculating…</span>
-          ) : shippingAmount === null ? (
-            <span className="text-[#9a7a7a]">Enter address to see charge</span>
-          ) : shippingAmount === 0 ? (
-            <span className="text-green-700">Free</span>
-          ) : (
-            <span className={previewLoading ? "text-[#9a7a7a]" : ""}>
-              {inr(shippingAmount)}
-            </span>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {fastestStores.map((s, i) => {
+                  const opt = s.fastestOption;
+                  return (
+                    <div
+                      key={`${s.storeId}-${i}`}
+                      className="rounded-xl border border-[#e8cfa8] p-3 text-xs"
+                    >
+                      {previewStores.length > 1 && (
+                        <p className="mb-1 font-bold text-[#4a0710]">
+                          {s.storeName || "Store"}
+                          {s.totalItems ? ` · ${s.totalItems} item(s)` : ""}
+                        </p>
+                      )}
+                      <p className={fastest ? "text-[#9a7a7a]" : "font-bold text-[#4a0710]"}>
+                        Normal: {etaText(opt.normal)}
+                      </p>
+                      <p className={fastest ? "font-bold text-[#4a0710]" : "text-[#9a7a7a]"}>
+                        Fastest: {etaText(opt.fastest)}
+                        {opt.fastest?.fixedFeeApplied ? " (fastest delivery fee)" : ""}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
           )}
+
+          <section className="shop-card p-5">
+            <h2 className="mb-2 font-extrabold">Remarks</h2>
+            <textarea
+              value={cart.remarks}
+              onChange={(event) => cart.set({ remarks: event.target.value })}
+              placeholder="Add any remarks (optional)"
+              className="h-20 w-full rounded-2xl border border-[#e8cfa8] p-3 text-sm outline-none"
+            />
+          </section>
         </div>
-        <div className="flex justify-between text-base font-black">
-          <span>Total</span>
-          <span>{inr(payableTotal)}</span>
-        </div>
-        {!!previewError && (
-          <p className="rounded-xl bg-red-50 p-2 text-xs text-red-700">
-            {previewError}
-          </p>
-        )}
-        {!!unavailableMsg && !previewError && (
-          <p className="rounded-xl bg-amber-50 p-2 text-xs text-amber-800">
-            {unavailableMsg} Please remove the unavailable item(s) from your cart
-            to place the order.
-          </p>
-        )}
-      </section>
 
-      <section className="shop-card p-5">
-        <label className="block text-sm font-bold">Payment method</label>
-        <select
-          value={cart.payment}
-          onChange={(event) =>
-            cart.set({ payment: event.target.value as "ONLINE" | "COD" })
-          }
-          className="mt-2 w-full rounded-full border border-[#e8cfa8] px-4 py-3 text-sm"
-        >
-          <option value="ONLINE">Pay Online</option>
-          <option value="COD">Cash on Delivery</option>
-        </select>
-      </section>
+        {/* ───────── RIGHT: sticky summary (items, bill, payment, place order) ───────── */}
+        <aside className="space-y-4 lg:sticky lg:top-4">
+          <section className="shop-card p-5">
+            <h2 className="font-extrabold">Order Info</h2>
+            <div className="mt-2 max-h-[220px] space-y-3 overflow-y-auto pr-1">
+              {rows.map(({ lineId, product, qty, bookingDate }, idx) => (
+                <div key={`${lineId}-${idx}`} className="flex items-center gap-3">
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl">
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      loading="lazy"
+                      decoding="async"
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1 text-sm">
+                    <b className="line-clamp-1">{product.name}</b>
+                    <div className="text-xs text-[#9a7a7a]">
+                      Qty {qty}
+                      {bookingDate ? ` · Booking: ${bookingDate}` : ""}
+                    </div>
+                  </div>
+                  <b className="text-sm">{inr(product.price * qty)}</b>
+                </div>
+              ))}
+            </div>
+          </section>
 
-      {error && (
-        <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>
-      )}
+          <section className="shop-card space-y-2 p-5 text-sm">
+            <h2 className="font-extrabold">Bill details</h2>
+            <div className="flex justify-between">
+              <span>Subtotal</span>
+              <span>{inr(itemsAmount)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Delivery{fastest && showFastest ? " (fastest)" : ""}</span>
+              {previewLoading && !hasPreview ? (
+                <span className="text-[#9a7a7a]">Calculating…</span>
+              ) : shippingAmount === null ? (
+                <span className="text-[#9a7a7a]">Enter address to see charge</span>
+              ) : shippingAmount === 0 ? (
+                <span className="text-green-700">Free</span>
+              ) : (
+                <span className={previewLoading ? "text-[#9a7a7a]" : ""}>
+                  {inr(shippingAmount)}
+                </span>
+              )}
+            </div>
+            <div className="flex justify-between border-t border-[#e8cfa8] pt-2 text-base font-black">
+              <span>Total</span>
+              <span>{inr(payableTotal)}</span>
+            </div>
+            {!!previewError && (
+              <p className="rounded-xl bg-red-50 p-2 text-xs text-red-700">
+                {previewError}
+              </p>
+            )}
+            {!!unavailableMsg && !previewError && (
+              <p className="rounded-xl bg-amber-50 p-2 text-xs text-amber-800">
+                {unavailableMsg} Please remove the unavailable item(s) from your
+                cart to place the order.
+              </p>
+            )}
+          </section>
 
-      <button
-        onClick={submitOrder}
-        disabled={cannotOrder}
-        className="shop-gold-btn w-full rounded-full py-4 font-bold disabled:opacity-50"
-      >
-        {busy ? "Processing..." : `Place Order · ${inr(payableTotal)}`}
-      </button>
+          <section className="shop-card p-5">
+            <h2 className="mb-2 text-sm font-bold">Payment method</h2>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  ["ONLINE", "Pay Online"],
+                  ["COD", "Cash on Delivery"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => cart.set({ payment: value })}
+                  aria-pressed={cart.payment === value}
+                  className={`rounded-xl border px-3 py-2.5 text-sm font-bold ${
+                    cart.payment === value
+                      ? "border-[#e0622d] bg-orange-50 text-[#9b4326]"
+                      : "border-[#e8cfa8] text-[#9a7a7a]"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          {error && (
+            <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>
+          )}
+
+          <button
+            onClick={submitOrder}
+            disabled={cannotOrder}
+            className="shop-gold-btn w-full rounded-full py-4 font-bold disabled:opacity-50"
+          >
+            {busy ? "Processing..." : `Place Order · ${inr(payableTotal)}`}
+          </button>
+        </aside>
+      </div>
 
       {successModal}
     </div>

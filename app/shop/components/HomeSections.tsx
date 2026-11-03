@@ -9,6 +9,7 @@ import Reveal from "./Reveal";
 import Carousel from "./Carousel";
 import ProductCard from "./ProductCard";
 import DivinePicks from "./DivinePicks";
+import AboutCard from "./AboutCard";
 import { useShop } from "../shop-data";
 
 const Pic = ({ i, className = "" }: { i: number; className?: string }) => {
@@ -161,7 +162,7 @@ function GroupTile({
   const from = list.length ? Math.min(...list.map((p) => p.price)) : null;
 
   return (
-    <Link href={cat ? `/shop/category/${cat.slug}` : "/shop/category/all"} className="group block">
+    <Link href={cat ? `/shop/category/${cat.slug}` : "/shop/category/all"} className="group block min-w-0">
       <div className={`relative overflow-hidden ${className}`}>
         {img && (
           <img
@@ -173,8 +174,8 @@ function GroupTile({
           />
         )}
       </div>
-      {showName && <div className="mt-2 font-bold">{name}</div>}
-      {showPrice && from !== null && <div className="text-sm font-bold text-[#a3161c]">From {inr(from)}</div>}
+      {showName && <div className="mt-2 break-words text-center text-[11px] font-bold leading-tight sm:text-base">{name}</div>}
+      {showPrice && from !== null && <div className="text-center text-xs font-bold text-[#a3161c] sm:text-sm">From {inr(from)}</div>}
     </Link>
   );
 }
@@ -191,14 +192,14 @@ function CelebrateDiwali() {
     ["Diyas & lamps", ["diya", "lamp"]],
   ];
   return (
-    <section className="px-6 py-14">
-      <div className="relative mx-auto max-w-[1180px] rounded-[44px] bg-[#fdeaa8] px-6 pb-8 pt-10 text-center">
-        <span className="absolute -left-3 -top-5 -rotate-12 text-6xl">🪷</span><span className="absolute -right-3 -top-5 rotate-12 text-6xl">🪷</span>
-        <div className="text-sm font-bold tracking-[.45em] text-[#4a0710]">CELEBRATE</div>
-        <h2 className="font-serif text-6xl font-bold text-[#7a1118] md:text-7xl">Diwali</h2>
-        <span className="mt-2 inline-block rounded-full border border-[#e3c36a] bg-white px-5 py-1.5 text-sm font-bold">🪔 Dhanteras 6 Nov · Lakshmi Puja 8 Nov</span>
-        <div className="mt-6 rounded-3xl border border-dashed border-[#e3c36a] bg-[#fff7e0] p-5">
-          <div className="grid grid-cols-3 gap-4 md:grid-cols-6">
+    <section className="px-3 py-10 sm:px-6 sm:py-14">
+      <div className="relative mx-auto max-w-[1180px] rounded-[32px] bg-[#fdeaa8] px-3 pb-6 pt-8 text-center sm:rounded-[44px] sm:px-6 sm:pb-8 sm:pt-10">
+        <span className="absolute -left-2 -top-4 -rotate-12 text-4xl sm:-left-3 sm:-top-5 sm:text-6xl">🪷</span><span className="absolute -right-2 -top-4 rotate-12 text-4xl sm:-right-3 sm:-top-5 sm:text-6xl">🪷</span>
+        <div className="text-xs font-bold tracking-[.45em] text-[#4a0710] sm:text-sm">CELEBRATE</div>
+        <h2 className="font-serif text-5xl font-bold text-[#7a1118] sm:text-6xl md:text-7xl">Diwali</h2>
+        <span className="mt-2 inline-block rounded-full border border-[#e3c36a] bg-white px-4 py-1.5 text-xs font-bold sm:px-5 sm:text-sm">🪔 Dhanteras 6 Nov · Lakshmi Puja 8 Nov</span>
+        <div className="mt-5 rounded-3xl border border-dashed border-[#e3c36a] bg-[#fff7e0] p-3 sm:mt-6 sm:p-5">
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-4 md:grid-cols-6">
             {tiles.map(([t, kw], i) => (
               <GroupTile key={t} name={t} keywords={kw} fallbackIndex={i + 2}
                 className="shop-arch mx-auto aspect-[3/4] w-full max-w-[190px] border-2 border-[#d9a13a] [&_img]:transition [&_img]:duration-700 group-hover:[&_img]:scale-110" />
@@ -207,14 +208,16 @@ function CelebrateDiwali() {
         </div>
       </div>
       <div className="mx-auto mt-10 max-w-[1180px]">
-        <div className="mb-4 flex items-end justify-between"><h3 className="text-2xl font-extrabold text-[#4a0710]">Diwali puja essentials</h3><Link href="/shop/category/all" className="text-sm font-bold text-[#7a1118]">See all ›</Link></div>
+        <div className="mb-4 flex items-end justify-between gap-3">
+  <h3 className="text-lg font-extrabold text-[#4a0710] sm:text-2xl">Diwali puja essentials</h3>
+  <Link href="/shop/category/all" className="shrink-0 whitespace-nowrap text-sm font-bold text-[#7a1118]">See all ›</Link>
+</div>
         <Carousel itemWidth={220}>{products.map((p) => <ProductCard key={p.slug} p={p} />)}</Carousel>
       </div>
     </section>
   );
 }
 
-/* ---------- 5. Red festival banner ---------- */
 /* ---------- 5. Red festival banner ---------- */
 function FestivalBanner() {
   const cards = [["DIWALI OFFER", "Flat 50% Off", "on bestsellers", "Shop now", "/shop/category/all"], ["COMBOS", "Up to 70% Off", "on Divine Combos", "Shop combos", "/shop/category/all"], ["FREE GIFT", "Free Silver Coin", "on purchase above ₹2,000", "Start shopping", "/shop/category/all"]];
@@ -260,19 +263,19 @@ function Intention() {
     ["Peace", ["idol", "mala", "peace"], 6],
   ];
   return (
-    <section className="px-6 py-14">
-      <div className="relative mx-auto max-w-[1180px] rounded-t-[90px] rounded-b-3xl bg-gradient-to-b from-[#f9b85a] to-[#ee7d22] px-5 pb-12 pt-10 text-center">
-        <div className="text-sm font-bold tracking-[.4em] text-[#4a0710]">SHOP WITH</div>
-        <h2 className="text-6xl font-black text-[#4a0710] md:text-7xl">PURITY</h2>
-        <div className="mt-6 rounded-3xl border border-dashed border-[#f0c88a] bg-[#fffaf0] p-6">
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+    <section className="px-3 py-10 sm:px-6 sm:py-14">
+      <div className="relative mx-auto max-w-[1180px] rounded-t-[70px] rounded-b-3xl bg-gradient-to-b from-[#f9b85a] to-[#ee7d22] px-3 pb-12 pt-8 text-center sm:rounded-t-[90px] sm:px-5 sm:pt-10">
+        <div className="text-xs font-bold tracking-[.4em] text-[#4a0710] sm:text-sm">SHOP WITH</div>
+        <h2 className="text-[40px] font-black leading-tight text-[#4a0710] min-[400px]:text-5xl sm:text-6xl md:text-7xl">PURITY</h2>
+        <div className="mt-5 rounded-3xl border border-dashed border-[#f0c88a] bg-[#fffaf0] p-3 sm:mt-6 sm:p-6">
+          <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-4">
             {items.map(([n, kw, i]) => (
               <GroupTile key={n} name={n} keywords={kw} fallbackIndex={i} showPrice showName={false}
                 className="shop-arch mx-auto aspect-[3/4] w-full max-w-[190px] border-2 border-[#d9a13a] [&_img]:transition [&_img]:duration-700 group-hover:[&_img]:scale-110" />
             ))}
           </div>
         </div>
-        <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#fcd7b0] px-6 py-2 text-sm font-bold text-[#7a1118] shadow">★ Flat 50% off on bestsellers</span>
+        <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#fcd7b0] px-4 py-2 text-xs font-bold text-[#7a1118] shadow sm:px-6 sm:text-sm">★ Flat 50% off on bestsellers</span>
       </div>
       <div className="mx-auto mt-12 max-w-[1180px]"><Carousel itemWidth={220}>{products.map((p) => <ProductCard key={p.slug} p={p} />)}</Carousel></div>
     </section>
@@ -283,6 +286,7 @@ export default function HomeSections() {
   return (
     <>
       <Reveal><DivinePicks /></Reveal>
+      <Reveal><AboutCard /></Reveal>
       <Reveal><CelebrateDiwali /></Reveal>
       <Reveal><FestivalBanner /></Reveal>
       <Reveal><Intention /></Reveal>

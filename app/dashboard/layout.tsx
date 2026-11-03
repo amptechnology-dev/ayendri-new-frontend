@@ -10,11 +10,15 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({
   children,
 }) => {
-  
+
   return (
-    <DashboardLayout>
+    <>
+      <link href="/css/app.css" rel="stylesheet" precedence="default" />
+      <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet" precedence="default" />
+      <DashboardLayout>
         {children}
-    </DashboardLayout>
+      </DashboardLayout>
+    </>
   );
 };
 
