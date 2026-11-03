@@ -564,8 +564,10 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                       width: 28,
                       height: 28,
                       minWidth: 28,
+                      minHeight: 28,
                       borderRadius: 8,
                       fontSize: 14,
+                      lineHeight: 1,
                       flexShrink: 0,
                       background: childActive
                         ? "rgba(255,255,255,0.18)"
@@ -576,11 +578,17 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                       color: childActive
                         ? "#fff"
                         : "var(--brand-blue, #2196d3)",
+                      transition: "background 0.2s ease, color 0.2s ease",
                     }}
                   >
                     <i
                       className={`pi ${item.icon || "pi-circle"}`}
-                      style={{ fontSize: 14 }}
+                      style={{
+                        fontSize: 14,
+                        display: "block",
+                        lineHeight: 1,
+                        color: "inherit",
+                      }}
                     />
                   </span>
                 );
