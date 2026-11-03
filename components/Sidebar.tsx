@@ -24,6 +24,7 @@ type MenuItem = {
   label: string;
   icon?: string;
   href?: string;
+  children?: MenuItem[];
 };
 
 type Section = {
@@ -55,12 +56,22 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
   // [REQUESTS] STORE er pending return / replace / refund request (badge er jonno)
   const [pendingRequests, setPendingRequests] = useState(0);
   const [pendingReviews, setPendingReviews] = useState(0);
+  const [reportsOpen, setReportsOpen] = useState(false);
 
   const isActive = (href?: string) => {
     if (!href) return false;
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname === href || pathname.startsWith(href + "/");
   };
+
+  useEffect(() => {
+    if (
+      pathname.startsWith("/dashboard/reports") ||
+      pathname.startsWith("/dashboard/reports/shipping-cost")
+    ) {
+      setReportsOpen(true);
+    }
+  }, [pathname]);
 
   // [STOCK] store settings theke stock management on/off load
   useEffect(() => {
@@ -309,12 +320,6 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                       icon: "pi-truck",
                       href: "/dashboard/delivery",
                     },
-                    // [SHIPPING COST] courier cost / store bears report
-                    {
-                      label: "Shipping Cost",
-                      icon: "pi-calculator",
-                      href: "/dashboard/shipping-cost",
-                    },
                   ]
                 : []),
               // payment OFF hole Payments + Settlements dutoi hide hobe
@@ -336,6 +341,26 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                 label: "Customers",
                 icon: "pi-user",
                 href: "/dashboard/customers",
+              },
+              {
+                label: "Reports",
+                icon: "pi-chart-line",
+                children: [
+                  { label: "Order Report", href: "/dashboard/reports/orders" },
+                  {
+                    label: "Product Report",
+                    href: "/dashboard/reports/products",
+                  },
+                  { label: "GST Report", href: "/dashboard/reports/gst" },
+                  ...(deliveryEnabled
+                    ? [
+                        {
+                          label: "Shipping Cost",
+                          href: "/dashboard/reports/shipping-cost",
+                        },
+                      ]
+                    : []),
+                ],
               },
               {
                 label: "Visitors",
@@ -527,6 +552,148 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
             )}
 
             {sec.items.map((item) => {
+              if (item.children?.length) {
+                const childActive = item.children.some((c) => isActive(c.href));
+                const iconBox = (
+                  <span
+                    className="sidebar-icon"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      width: 28,
+                      height: 28,
+                      minWidth: 28,
+                      borderRadius: 8,
+                      fontSize: 14,
+                      flexShrink: 0,
+                      background: childActive
+                        ? "rgba(255,255,255,0.18)"
+                        : "var(--surface-soft, #f1f5f9)",
+                      border: childActive
+                        ? "none"
+                        : "1px solid var(--border, #e2e8f0)",
+                      color: childActive
+                        ? "#fff"
+                        : "var(--brand-blue, #2196d3)",
+                    }}
+                  >
+                    <i
+                      className={`pi ${item.icon || "pi-circle"}`}
+                      style={{ fontSize: 14 }}
+                    />
+                  </span>
+                );
+
+                const groupStyle: React.CSSProperties = {
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  width: "100%",
+                  justifyContent:
+                    collapsed && !isMobile ? "center" : "flex-start",
+                  padding: collapsed && !isMobile ? "8px" : "8px 10px",
+                  borderRadius: 10,
+                  textDecoration: "none",
+                  marginBottom: 2,
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: childActive ? 600 : 500,
+                  fontSize: "0.86rem",
+                  color: childActive ? "#fff" : "var(--brand-primary-dark)",
+                  background: childActive
+                    ? "linear-gradient(110deg, var(--brand-primary), var(--brand-blue))"
+                    : "transparent",
+                  boxShadow: childActive
+                    ? "0 6px 16px rgba(26, 58, 107, 0.22)"
+                    : "none",
+                };
+
+                // sidebar chhoto (icon only) hole prothom child e niye jabe
+                if (!showLabels) {
+                  return (
+                    <Link
+                      key={item.label}
+                      href={item.children[0].href || "#"}
+                      title={item.label}
+                      className={`sidebar-link${childActive ? " active" : ""}`}
+                      style={groupStyle}
+                    >
+                      {iconBox}
+                    </Link>
+                  );
+                }
+
+                return (
+                  <div
+                    key={item.label}
+                    style={{ marginBottom: 2 }}
+                    onMouseEnter={() => setReportsOpen(true)}
+                    onMouseLeave={() => {
+                      // report page e thakle khola thakbe, nahole hover sorle bondho
+                      if (!childActive) setReportsOpen(false);
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setReportsOpen((o) => !o)}
+                      className={`sidebar-link${childActive ? " active" : ""}`}
+                      style={groupStyle}
+                    >
+                      {iconBox}
+                      <span
+                        style={{
+                          flex: 1,
+                          textAlign: "left",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {item.label}
+                      </span>
+                      <i
+                        className={`pi ${reportsOpen ? "pi-chevron-up" : "pi-chevron-down"}`}
+                        style={{ fontSize: 11 }}
+                      />
+                    </button>
+
+                    {reportsOpen && (
+                      <div
+                        style={{
+                          marginLeft: 22,
+                          paddingLeft: 10,
+                          borderLeft: "1px solid var(--border)",
+                        }}
+                      >
+                        {item.children.map((c) => {
+                          const a = isActive(c.href);
+                          return (
+                            <Link
+                              key={c.href}
+                              href={c.href || "#"}
+                              className={`sidebar-link${a ? " active" : ""}`}
+                              style={{
+                                display: "block",
+                                padding: "7px 10px",
+                                borderRadius: 8,
+                                marginBottom: 2,
+                                textDecoration: "none",
+                                fontSize: "0.82rem",
+                                fontWeight: a ? 600 : 500,
+                                color: a ? "#fff" : "var(--brand-primary-dark)",
+                                background: a
+                                  ? "linear-gradient(110deg, var(--brand-primary), var(--brand-blue))"
+                                  : "transparent",
+                              }}
+                            >
+                              {c.label}
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
               const active = isActive(item.href);
 
               const badgeCount =

@@ -12,6 +12,7 @@ import {
   ShippingCostSummary,
 } from "@/service/delivery.service";
 import { formatDate } from "@/helper/DateTime";
+import { downloadReport, ReportFormat } from "@/service/report.service";
 
 type StoreOption = { _id: string; storeName: string };
 
@@ -76,6 +77,29 @@ export default function ShippingCostPage() {
   const [rows, setRows] = useState<ShippingCostRow[]>([]);
   const [pagination, setPagination] = useState({ page: 1, rows: 10, total: 0 });
   const reqRef = useRef(0);
+
+    const [downloading, setDownloading] = useState<ReportFormat | "">("");
+
+  const handleDownload = async (format: ReportFormat) => {
+    try {
+      setDownloading(format);
+      await downloadReport(
+        "shipping-cost",
+        format,
+        {
+          ...(storeId ? { storeId } : {}),
+          ...(from ? { from } : {}),
+          ...(to ? { to } : {}),
+          ...(booked ? { booked } : {}),
+        },
+        `shipping-cost-${from || "start"}_to_${to || "today"}`,
+      );
+    } catch (err: any) {
+      toast.error(err?.message || "Download failed");
+    } finally {
+      setDownloading("");
+    }
+  };
 
   useEffect(() => {
     axiosInstance
@@ -178,6 +202,28 @@ export default function ShippingCostPage() {
               <option value="true">Courier booked</option>
               <option value="false">Not booked yet</option>
             </select>
+                        {(["xlsx", "csv", "pdf"] as ReportFormat[]).map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => handleDownload(f)}
+                disabled={!!downloading}
+                className="flex items-center gap-1.5 rounded-md bg-white px-2.5 py-1.5 text-sm font-medium text-blue-700 hover:bg-blue-50 disabled:opacity-60"
+              >
+                <i
+                  className={`pi ${
+                    downloading === f
+                      ? "pi-spin pi-spinner"
+                      : f === "xlsx"
+                        ? "pi-file-excel"
+                        : f === "pdf"
+                          ? "pi-file-pdf"
+                          : "pi-file"
+                  }`}
+                />
+                {f === "xlsx" ? "Excel" : f.toUpperCase()}
+              </button>
+            ))}
           </div>
         </div>
 
