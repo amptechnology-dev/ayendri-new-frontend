@@ -56,13 +56,27 @@ server {
     }
 
     location / {
-        return 301 https://\$host\$request_uri;
+        return 301 https://$DOMAIN\$request_uri;
     }
 }
 
 server {
     listen 443 ssl;
-    server_name $DOMAIN $WWW_DOMAIN;
+    server_name $WWW_DOMAIN;
+
+    ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+
+    return 301 https://$DOMAIN\$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name $DOMAIN;
+
+    gzip on;
+    gzip_types text/css application/javascript application/json image/svg+xml;
+    gzip_min_length 1024;
 
     ssl_certificate /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;

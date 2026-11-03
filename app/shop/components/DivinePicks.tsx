@@ -17,9 +17,11 @@ const Spark = ({ className = "", size = 14 }: { className?: string; size?: numbe
   </svg>
 );
 
-/* ───────── illustrations (76 × 72) ───────── */
+/* ───────── illustrations (smaller on mobile) ───────── */
+const ART_CLS = "h-[54px] w-[58px] sm:h-[72px] sm:w-[76px]";
+
 const DiyaArt = () => (
-  <svg viewBox="0 0 80 76" className="h-[72px] w-[76px]" aria-hidden>
+  <svg viewBox="0 0 80 76" className={ART_CLS} aria-hidden>
     <defs>
       <linearGradient id="dp-bowl" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffd66b" /><stop offset="1" stopColor="#d4801a" /></linearGradient>
       <linearGradient id="dp-flame" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stopColor="#ff7f1a" /><stop offset="1" stopColor="#ffd75e" /></linearGradient>
@@ -38,7 +40,7 @@ const DiyaArt = () => (
 );
 
 const PlantArt = () => (
-  <svg viewBox="0 0 80 76" className="h-[72px] w-[76px]" aria-hidden>
+  <svg viewBox="0 0 80 76" className={ART_CLS} aria-hidden>
     <defs>
       <linearGradient id="dp-pot" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#e07b47" /><stop offset="1" stopColor="#b9482a" /></linearGradient>
       <linearGradient id="dp-leaf" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#7ccb68" /><stop offset="1" stopColor="#2f8f3b" /></linearGradient>
@@ -56,7 +58,7 @@ const PlantArt = () => (
 );
 
 const TagArt = () => (
-  <svg viewBox="0 0 80 76" className="h-[72px] w-[76px]" aria-hidden>
+  <svg viewBox="0 0 80 76" className={ART_CLS} aria-hidden>
     <defs>
       <linearGradient id="dp-tag" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#a8242e" /><stop offset="1" stopColor="#6f0f1e" /></linearGradient>
       <linearGradient id="dp-coin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffd96a" /><stop offset="1" stopColor="#d99a1e" /></linearGradient>
@@ -74,7 +76,7 @@ const TagArt = () => (
   </svg>
 );
 
-/* ───────── swipeable product image (touch swipe, mouse drag, arrows, dots) ───────── */
+/* ───────── swipeable product image ───────── */
 function Swiper({ images, alt, discount, productId }: { images: string[]; alt: string; discount: number; productId: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const drag = useRef<{ x: number; left: number } | null>(null);
@@ -99,7 +101,7 @@ function Swiper({ images, alt, discount, productId }: { images: string[]; alt: s
   };
 
   return (
-    <div className="group relative h-[88px] w-[88px] shrink-0 overflow-hidden rounded-2xl bg-[#fff1da] shadow-[0_4px_10px_rgba(90,40,10,.22)]">
+    <div className="group relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-xl bg-[#fff1da] shadow-[0_4px_10px_rgba(90,40,10,.22)] sm:h-[88px] sm:w-[88px] sm:rounded-2xl">
       <div
         ref={ref}
         onScroll={onScroll}
@@ -130,7 +132,7 @@ function Swiper({ images, alt, discount, productId }: { images: string[]; alt: s
       </div>
 
       {discount > 0 && (
-        <span className="pointer-events-none absolute left-0 top-0 z-10 rounded-br-lg bg-[#1a6e35] px-1.5 text-[9px] font-extrabold leading-[14px] text-white">
+        <span className="pointer-events-none absolute left-0 top-0 z-10 rounded-br-lg bg-[#1a6e35] px-1 text-[8px] font-extrabold leading-[13px] text-white sm:px-1.5 sm:text-[9px] sm:leading-[14px]">
           {discount}% OFF
         </span>
       )}
@@ -147,49 +149,57 @@ function Swiper({ images, alt, discount, productId }: { images: string[]; alt: s
               <ChevronRight size={13} />
             </button>
           )}
-          <div className="pointer-events-none absolute inset-x-0 bottom-1.5 z-10 flex justify-center gap-1">
+          <div className="pointer-events-none absolute inset-x-0 bottom-1 z-10 flex justify-center gap-1">
             {images.map((_, k) => (
-              <span key={k} className={`h-1.5 rounded-full transition-all ${k === i ? "w-3 bg-white" : "w-1.5 bg-white/60"}`} />
+              <span key={k} className={`h-1 rounded-full transition-all sm:h-1.5 ${k === i ? "w-3 bg-white" : "w-1.5 bg-white/60"}`} />
             ))}
           </div>
         </>
       )}
 
-      <WishlistButton productId={productId} size={12} className="absolute right-1 top-1 z-20 h-6 w-6" />
+      <WishlistButton productId={productId} size={11} className="absolute right-0.5 top-0.5 z-20 h-5 w-5 sm:right-1 sm:top-1 sm:h-6 sm:w-6" />
     </div>
   );
 }
 
-/* ───────── product row (swipe images, open product, add to cart) ───────── */
-function Row({ p }: { p: Product }) {
+/* ───────── product row ─────────
+   `hideOnMobile` hides the 3rd product below 640px so only 2 show on phones */
+function Row({ p, hideOnMobile = false }: { p: Product; hideOnMobile?: boolean }) {
   const { add, modal } = useBookingAdd();
   const [done, setDone] = useState(false);
   const extra = (p as Product & { images?: string[] }).images;
   const imgs: string[] = extra && extra.length ? extra : [p.image];
 
   return (
-    <div className="mx-2.5 flex min-h-0 flex-1 items-center gap-2.5 border-b border-[#f0e3d2] last:border-b-0">
+    <div
+      className={`mx-2 items-center gap-2 border-b border-[#f0e3d2] py-2 last:border-b-0 sm:mx-2.5 sm:min-h-0 sm:flex-1 sm:gap-2.5 sm:py-0 ${
+        hideOnMobile ? "hidden sm:flex" : "flex"
+      }`}
+    >
       <Swiper images={imgs} alt={p.name} discount={off(p)} productId={p.slug} />
       <div className="flex min-w-0 flex-1 flex-col justify-center">
-        <Link href={`/shop/product/${p.slug}`} className="line-clamp-2 text-[13px] font-semibold leading-[17px] text-[#2b1a12] hover:underline">
+        <Link
+          href={`/shop/product/${p.slug}`}
+          className="line-clamp-2 text-[11.5px] font-semibold leading-[15px] text-[#2b1a12] hover:underline sm:text-[13px] sm:leading-[17px]"
+        >
           {p.name}
         </Link>
-        <div className="mt-1 flex flex-wrap items-baseline gap-x-1.5">
-          <b className="whitespace-nowrap text-[16px] font-extrabold text-[#241410]">₹{fmt(p.price)}</b>
-          {p.mrp > p.price && <s className="whitespace-nowrap text-[11px] text-[#9d8f86]">₹{fmt(p.mrp)}</s>}
+        <div className="mt-0.5 flex flex-wrap items-baseline gap-x-1.5 sm:mt-1">
+          <b className="whitespace-nowrap text-[14px] font-extrabold text-[#241410] sm:text-[16px]">₹{fmt(p.price)}</b>
+          {p.mrp > p.price && <s className="whitespace-nowrap text-[10px] text-[#9d8f86] sm:text-[11px]">₹{fmt(p.mrp)}</s>}
         </div>
         <button
           onClick={() =>
-  add(p as any, 1, () => {
-    setDone(true);
-    setTimeout(() => setDone(false), 1200);
-  })
-}
-          className={`mt-1.5 flex h-[30px] w-full items-center justify-center gap-1 rounded-lg border-2 text-[13px] font-bold tracking-[.03em] transition active:scale-95 ${
+            add(p as any, 1, () => {
+              setDone(true);
+              setTimeout(() => setDone(false), 1200);
+            })
+          }
+          className={`mt-1 flex h-[26px] w-full items-center justify-center gap-1 rounded-md border-2 text-[11.5px] font-bold tracking-[.03em] transition active:scale-95 sm:mt-1.5 sm:h-[30px] sm:rounded-lg sm:text-[13px] ${
             done ? "border-[#1a6e35] bg-[#1a6e35] text-white" : "border-[#8e1a22] bg-white text-[#8e1a22] hover:bg-[#8e1a22] hover:text-white"
           }`}
         >
-          {done ? <><Check size={14} /> ADDED</> : "ADD"}
+          {done ? <><Check size={13} /> ADDED</> : "ADD"}
         </button>
       </div>
 
@@ -198,30 +208,30 @@ function Row({ p }: { p: Product }) {
   );
 }
 
-/* ───────── tall arched card (jharokha-style niche) ───────── */
+/* ───────── tall arched card ───────── */
 function PickCard({ title, sub, art, bg, footBg, tabs, children }: {
   title: string; sub: string; art: React.ReactNode; bg: string; footBg: string;
   tabs?: React.ReactNode; children: React.ReactNode;
 }) {
   return (
-    <div className={`relative flex h-[640px] w-[272px] shrink-0 snap-start flex-col overflow-hidden rounded-b-[28px] rounded-t-[136px] border border-white/70 shadow-[0_22px_44px_-18px_rgba(120,60,20,.4)] transition duration-300 hover:-translate-y-1 ${bg}`}>
-      <div className="flex flex-col items-center px-4 pt-9 text-center">
+    <div className={`relative flex w-[226px] shrink-0 snap-start flex-col overflow-hidden rounded-b-[22px] rounded-t-[113px] border border-white/70 shadow-[0_22px_44px_-18px_rgba(120,60,20,.4)] transition duration-300 hover:-translate-y-1 sm:h-[640px] sm:w-[272px] sm:rounded-b-[28px] sm:rounded-t-[136px] ${bg}`}>
+      <div className="flex flex-col items-center px-3 pt-6 text-center sm:px-4 sm:pt-9">
         {art}
-        <h3 className="mt-2 text-[22px] font-extrabold leading-[1.1] tracking-[-.01em] text-[#2e1409]">{title}</h3>
-        <p className="mt-1 text-[13px] leading-[17px] text-[#7a5a48]">{sub}</p>
+        <h3 className="mt-1.5 text-[17px] font-extrabold leading-[1.1] tracking-[-.01em] text-[#2e1409] sm:mt-2 sm:text-[22px]">{title}</h3>
+        <p className="mt-0.5 text-[11px] leading-[15px] text-[#7a5a48] sm:mt-1 sm:text-[13px] sm:leading-[17px]">{sub}</p>
       </div>
-      {tabs && <div className="mx-3 mt-3">{tabs}</div>}
-      <div className="mx-3 mb-3 mt-3 flex min-h-0 flex-1 flex-col rounded-[20px] bg-[#fffaf3] shadow-[0_2px_10px_rgba(120,60,20,.08)]">
+      {tabs && <div className="mx-2.5 mt-2 sm:mx-3 sm:mt-3">{tabs}</div>}
+      <div className="mx-2.5 mb-2.5 mt-2.5 flex min-h-0 flex-col rounded-2xl bg-[#fffaf3] shadow-[0_2px_10px_rgba(120,60,20,.08)] sm:mx-3 sm:mb-3 sm:mt-3 sm:flex-1 sm:rounded-[20px]">
         {children}
       </div>
-      <Link href="/shop/category/all" className={`flex h-[52px] shrink-0 items-center justify-center gap-1 text-[17px] font-extrabold text-[#5a1218] ${footBg}`}>
-        See all <ChevronsRight size={18} />
+      <Link href="/shop/category/all" className={`mt-auto flex h-[40px] shrink-0 items-center justify-center gap-1 text-[14px] font-extrabold text-[#5a1218] sm:h-[52px] sm:text-[17px] ${footBg}`}>
+        See all <ChevronsRight size={16} />
       </Link>
     </div>
   );
 }
 
-/* ───────── MAHASALE: gopuram tower + pillars + sanctum arch ───────── */
+/* ───────── MAHASALE ───────── */
 function Window({ x, b, h }: { x: number; b: number; h: number }) {
   return <path d={`M${x - 5} ${b} v-${h} a5 5 0 0 1 10 0 v${h}z`} fill="#4d0716" stroke="#f2c25a" strokeWidth="1" />;
 }
@@ -234,9 +244,9 @@ function Mahasale() {
   } as const;
 
   return (
-    <div className="relative flex h-[640px] w-[300px] shrink-0 snap-start flex-col transition duration-300 hover:-translate-y-1">
+    <div className="relative flex w-[250px] shrink-0 snap-start flex-col transition duration-300 hover:-translate-y-1 sm:h-[640px] sm:w-[300px]">
       {/* gopuram tower */}
-      <svg viewBox="0 0 300 112" className="h-[112px] w-full shrink-0" aria-hidden>
+      <svg viewBox="0 0 300 112" className="h-[80px] w-full shrink-0 sm:h-[112px]" aria-hidden>
         <defs>
           <linearGradient id="dp-tier" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ee8a3d" /><stop offset="1" stopColor="#b3361a" /></linearGradient>
           <linearGradient id="dp-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffe08a" /><stop offset="1" stopColor="#d99a1e" /></linearGradient>
@@ -255,20 +265,20 @@ function Mahasale() {
       </svg>
 
       {/* sandstone body with fluted pillars */}
-      <div className="relative flex min-h-0 flex-1 flex-col bg-gradient-to-b from-[#f4dcae] to-[#e3c488] px-[18px] pb-3">
-        <span aria-hidden className="absolute bottom-0 left-[2px] top-0 w-[13px]" style={pillar} />
-        <span aria-hidden className="absolute bottom-0 right-[2px] top-0 w-[13px]" style={pillar} />
-        <span aria-hidden className="absolute left-0 top-0 h-[6px] w-[17px] rounded-sm bg-[#b9822c]" />
-        <span aria-hidden className="absolute right-0 top-0 h-[6px] w-[17px] rounded-sm bg-[#b9822c]" />
+      <div className="relative flex min-h-0 flex-col bg-gradient-to-b from-[#f4dcae] to-[#e3c488] px-[15px] pb-2.5 sm:flex-1 sm:px-[18px] sm:pb-3">
+        <span aria-hidden className="absolute bottom-0 left-[2px] top-0 w-[11px] sm:w-[13px]" style={pillar} />
+        <span aria-hidden className="absolute bottom-0 right-[2px] top-0 w-[11px] sm:w-[13px]" style={pillar} />
+        <span aria-hidden className="absolute left-0 top-0 h-[6px] w-[15px] rounded-sm bg-[#b9822c] sm:w-[17px]" />
+        <span aria-hidden className="absolute right-0 top-0 h-[6px] w-[15px] rounded-sm bg-[#b9822c] sm:w-[17px]" />
 
         {/* sanctum arch */}
-        <div className="relative flex min-h-0 flex-1 flex-col rounded-b-2xl rounded-t-[130px] bg-gradient-to-b from-[#7d1228] to-[#4d0716] px-1.5 pb-2 pt-6 shadow-[inset_0_4px_14px_rgba(0,0,0,.35)]">
-          <div className="text-center text-[11px] font-extrabold tracking-[.4em] text-[#fbe3b0]">DIWALI</div>
-          <h3 className="bg-gradient-to-b from-[#ffe28d] via-[#f5c04a] to-[#dd9c26] bg-clip-text text-center text-[27px] font-black leading-[32px] tracking-[.04em] text-transparent">MAHASALE</h3>
-          <p className="mb-2 text-center text-[12px] text-[#f6e3c4]">Up to 75% off on puja essentials</p>
+        <div className="relative flex min-h-0 flex-col rounded-b-2xl rounded-t-[100px] bg-gradient-to-b from-[#7d1228] to-[#4d0716] px-1.5 pb-1.5 pt-4 shadow-[inset_0_4px_14px_rgba(0,0,0,.35)] sm:flex-1 sm:rounded-t-[130px] sm:pb-2 sm:pt-6">
+          <div className="text-center text-[10px] font-extrabold tracking-[.4em] text-[#fbe3b0] sm:text-[11px]">DIWALI</div>
+          <h3 className="bg-gradient-to-b from-[#ffe28d] via-[#f5c04a] to-[#dd9c26] bg-clip-text text-center text-[21px] font-black leading-[26px] tracking-[.04em] text-transparent sm:text-[27px] sm:leading-[32px]">MAHASALE</h3>
+          <p className="mb-1.5 text-center text-[11px] text-[#f6e3c4] sm:mb-2 sm:text-[12px]">Up to 75% off on puja essentials</p>
 
-          <div className="flex min-h-0 flex-1 flex-col rounded-[16px] bg-[#fffaf3]">
-            {top.map((p) => <Row key={p.slug} p={p} />)}
+          <div className="flex min-h-0 flex-col rounded-[14px] bg-[#fffaf3] sm:flex-1 sm:rounded-[16px]">
+            {top.map((p, idx) => <Row key={p.slug} p={p} hideOnMobile={idx === 2} />)}
           </div>
         </div>
       </div>
@@ -276,8 +286,8 @@ function Mahasale() {
       {/* plinth steps */}
       <div className="h-1.5 bg-[#e0b25c]" />
       <div className="h-1.5 bg-[#b98a3a]" />
-      <Link href="/shop/category/all" className="flex h-[44px] shrink-0 items-center justify-center gap-1 rounded-b-[24px] bg-[#4d0716] text-[16px] font-extrabold text-[#f5c04a]">
-        Explore all offers <ChevronsRight size={18} />
+      <Link href="/shop/category/all" className="flex h-[38px] shrink-0 items-center justify-center gap-1 rounded-b-[20px] bg-[#4d0716] text-[14px] font-extrabold text-[#f5c04a] sm:h-[44px] sm:rounded-b-[24px] sm:text-[16px]">
+        Explore all offers <ChevronsRight size={16} />
       </Link>
     </div>
   );
@@ -293,55 +303,54 @@ export default function DivinePicks() {
 
   return (
     <section
-      className="px-6 pb-11 pt-6"
+      className="px-3 pb-6 pt-4 sm:px-6 sm:pb-11 sm:pt-6"
       style={{ background: "radial-gradient(circle at 24px 24px, transparent 14px, rgba(222,170,120,.12) 15px, transparent 16px) 0 0/48px 48px, #fdf1e3" }}
     >
       <div className="relative mx-auto max-w-[1260px]">
         <Spark className="absolute left-[calc(50%-382px)] top-3 hidden lg:block" size={14} />
         <Spark className="absolute left-[calc(50%+378px)] top-[30px] hidden lg:block" size={12} />
 
-        <h2 className="text-center text-[34px] font-extrabold leading-[56px] tracking-[-.015em] text-[#7a1520] sm:text-[48px]">
+        <h2 className="text-center text-[24px] font-extrabold leading-[36px] tracking-[-.015em] text-[#7a1520] sm:text-[48px] sm:leading-[56px]">
           Divine Picks,{" "}
           <span className="relative whitespace-nowrap text-[#b1141c]">
             Best Prices
-            <svg className="absolute -bottom-[7px] left-0 w-full" viewBox="0 0 250 12" preserveAspectRatio="none" aria-hidden>
+            <svg className="absolute -bottom-[5px] left-0 w-full sm:-bottom-[7px]" viewBox="0 0 250 12" preserveAspectRatio="none" aria-hidden>
               <path d="M3 9Q125 -2 247 6" stroke="#d99a1e" strokeWidth="4" fill="none" strokeLinecap="round" />
             </svg>
           </span>
         </h2>
-        <p className="mt-[14px] text-center text-[20px] font-medium text-[#8b5a3c]">Puja essentials for every day, in one place</p>
+        <p className="mt-2 text-center text-[13px] font-medium text-[#8b5a3c] sm:mt-[14px] sm:text-[20px]">Puja essentials for every day, in one place</p>
 
-        {/* tall, narrow cards side by side; scrolls sideways on smaller screens */}
-        <div className="mt-8 flex items-stretch gap-5 overflow-x-auto px-1 pb-8 pt-2 snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden min-[1230px]:justify-center">
+        {/* cards side by side; scrolls sideways on smaller screens */}
+        <div className="mt-5 flex items-stretch gap-3 overflow-x-auto px-1 pb-5 pt-2 snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-8 sm:gap-5 sm:pb-8 min-[1230px]:justify-center">
           <Mahasale />
 
           <PickCard title="Your everyday needs" sub="Daily puja essentials" art={<DiyaArt />}
                     bg="bg-gradient-to-b from-[#fff2df] to-[#ffe4c0]" footBg="bg-[#ffdfad]">
-            {products.slice(0, 3).map((p) => <Row key={p.slug} p={p} />)}
+            {products.slice(0, 3).map((p, idx) => <Row key={p.slug} p={p} hideOnMobile={idx === 2} />)}
           </PickCard>
 
           <PickCard title="Organic & natural" sub="Our natural agarbatti range" art={<PlantArt />}
                     bg="bg-gradient-to-b from-[#e9f8e1] to-[#c9eabf]" footBg="bg-[#c4e7ba]">
-            {products.slice(3, 6).map((p) => <Row key={p.slug} p={p} />)}
+            {products.slice(3, 6).map((p, idx) => <Row key={p.slug} p={p} hideOnMobile={idx === 2} />)}
           </PickCard>
 
           <PickCard title="Lowest prices every day" sub="Puja needs for every budget" art={<TagArt />}
                     bg="bg-gradient-to-b from-[#fff6d6] to-[#f6df97]" footBg="bg-[#f3dc8e]"
                     tabs={
-                      <div className="flex h-14 rounded-2xl bg-[#eddcc9] p-[5px]">
+                      <div className="flex h-11 rounded-xl bg-[#eddcc9] p-1 sm:h-14 sm:rounded-2xl sm:p-[5px]">
                         {[199, 299, 499].map((c) => (
                           <button key={c} onClick={() => setCap(c)}
-                                  className={`flex-1 rounded-xl leading-tight transition ${cap === c ? "bg-[#7a1118] text-white shadow-md" : "text-[#3a1a10]"}`}>
-                            <div className="text-[12px] font-semibold">Under</div>
-                            <div className="text-[17px] font-extrabold">₹ {c}</div>
+                                  className={`flex-1 rounded-lg leading-tight transition sm:rounded-xl ${cap === c ? "bg-[#7a1118] text-white shadow-md" : "text-[#3a1a10]"}`}>
+                            <div className="text-[10px] font-semibold sm:text-[12px]">Under</div>
+                            <div className="text-[14px] font-extrabold sm:text-[17px]">₹ {c}</div>
                           </button>
                         ))}
                       </div>
                     }>
-            {low.map((p) => <Row key={p.slug} p={p} />)}
+            {low.map((p, idx) => <Row key={p.slug} p={p} hideOnMobile={idx === 2} />)}
           </PickCard>
         </div>
-      
       </div>
     </section>
   );

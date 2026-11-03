@@ -7,6 +7,7 @@ import {
   Calendar,
   Check,
   CheckCircle2,
+  FileText,
   ChevronDown,
   ChevronRight,
   ChevronUp,
@@ -77,6 +78,8 @@ type OrderView = {
   bookingDateMs?: number;
   deliveredAtMs?: number;
   estimatedDelivery?: string;
+  invoiceUrl?: string;
+  invoiceNumber?: string;
   steps: { label: string; date: string }[];
 };
 
@@ -313,6 +316,14 @@ function toOrderView(record: any, index: number, catalog: any[]): OrderView {
     lines: pricedLines,
     cancelledBy,
     paymentStatus: textValue(record.paymentStatus, ""),
+    invoiceUrl:
+      typeof record.invoiceUrl === "string" && record.invoiceUrl
+        ? record.invoiceUrl
+        : undefined,
+    invoiceNumber:
+      typeof record.invoiceNumber === "string" && record.invoiceNumber
+        ? record.invoiceNumber
+        : undefined,
     bookingDate: bm ? fmtDate(new Date(+bm[1], +bm[2] - 1, +bm[3])) : "",
     bookingDateMs,
     deliveredAtMs,
@@ -429,43 +440,43 @@ function AccountSidebar({
 
   return (
     <aside className="overflow-hidden rounded-xl bg-white shadow-sm">
-      <div className="p-5 pb-0">
-        <div className="rounded-xl border border-[#e5e7eb] p-5">
+      <div className="p-3 pb-0 sm:p-5 sm:pb-0">
+        <div className="rounded-xl border border-[#e5e7eb] p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <p className="text-lg font-semibold text-[#1f2430]">
+              <p className="truncate text-base font-semibold text-[#1f2430] sm:text-lg">
                 Hey, {name}
               </p>
               {phone && (
-                <p className="mt-1 truncate text-sm text-[#3c4150]">
+                <p className="mt-1 truncate text-xs text-[#3c4150] sm:text-sm">
                   Logged with {phone}
                 </p>
               )}
             </div>
-            <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#1a56db] text-xl font-bold text-white">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#1a56db] text-lg font-bold text-white sm:h-12 sm:w-12 sm:text-xl">
               {name.charAt(0).toUpperCase()}
             </span>
           </div>
         </div>
       </div>
 
-      <p className="px-6 pb-3 pt-8 text-lg font-semibold text-[#1f2430]">
+      <p className="px-4 pb-2 pt-5 text-base font-semibold text-[#1f2430] sm:px-6 sm:pb-3 sm:pt-8 sm:text-lg">
         Account
       </p>
 
       <nav>
         {/* Order ID: typing shows that order's products on the right */}
-        <div className="flex items-center gap-4 border-t border-[#e5e7eb] bg-white px-6 py-5">
-          <Search size={22} className="shrink-0 text-[#1f2430]" />
+        <div className="flex items-center gap-3 border-t border-[#e5e7eb] bg-white px-4 py-3.5 sm:gap-4 sm:px-6 sm:py-5">
+          <Search size={20} className="shrink-0 text-[#1f2430]" />
           <label className="min-w-0 flex-1">
-            <span className="block text-lg font-medium text-[#1f2430]">
+            <span className="block text-base font-medium text-[#1f2430] sm:text-lg">
               Order ID
             </span>
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Enter Order ID"
-              className="mt-1 block h-11 w-full rounded-lg border border-[#d9dce6] bg-white px-3 text-sm outline-none focus:border-[#a3161c]"
+              className="mt-1 block h-10 w-full rounded-lg border border-[#d9dce6] bg-white px-3 text-base outline-none focus:border-[#a3161c] sm:h-11 sm:text-sm"
             />
           </label>
         </div>
@@ -473,14 +484,14 @@ function AccountSidebar({
         {/* My Orders */}
         <Link
           href="/shop/orders"
-          className="flex items-center gap-4 border-t border-[#e5e7eb] bg-[#ececef] px-6 py-5"
+          className="flex items-center gap-3 border-t border-[#e5e7eb] bg-[#ececef] px-4 py-3.5 sm:gap-4 sm:px-6 sm:py-5"
         >
-          <ShoppingBag size={22} className="shrink-0 text-[#1f2430]" />
+          <ShoppingBag size={20} className="shrink-0 text-[#1f2430]" />
           <span className="min-w-0 flex-1">
-            <span className="block text-lg font-medium text-[#1f2430]">
+            <span className="block text-base font-medium text-[#1f2430] sm:text-lg">
               My Orders
             </span>
-            <span className="block text-sm text-[#3c4150]">
+            <span className="block text-xs text-[#3c4150] sm:text-sm">
               Track your recent purchases
             </span>
           </span>
@@ -491,14 +502,14 @@ function AccountSidebar({
         <div className="border-t border-[#e5e7eb] bg-white">
           <button
             onClick={() => setMenuOpen(!menuOpen)}
-            className="flex w-full items-center gap-4 px-6 py-5 text-left hover:bg-[#f6f6f8]"
+            className="flex w-full items-center gap-3 px-4 py-3.5 text-left hover:bg-[#f6f6f8] sm:gap-4 sm:px-6 sm:py-5"
           >
-            <SlidersHorizontal size={22} className="shrink-0 text-[#1f2430]" />
+            <SlidersHorizontal size={20} className="shrink-0 text-[#1f2430]" />
             <span className="min-w-0 flex-1">
-              <span className="block text-lg font-medium text-[#1f2430]">
+              <span className="block text-base font-medium text-[#1f2430] sm:text-lg">
                 Order Status
               </span>
-              <span className="block text-sm text-[#3c4150]">
+              <span className="block text-xs text-[#3c4150] sm:text-sm">
                 {activeLabel}
               </span>
             </span>
@@ -517,7 +528,7 @@ function AccountSidebar({
                     setActiveTab(tab.key);
                     setMenuOpen(false);
                   }}
-                  className={`flex w-full items-center justify-between py-3 pl-[70px] pr-6 text-left text-sm hover:bg-[#f6f6f8] ${
+                  className={`flex w-full items-center justify-between py-3 pl-[52px] pr-4 text-left text-sm hover:bg-[#f6f6f8] sm:pl-[70px] sm:pr-6 ${
                     tab.key === activeTab
                       ? "font-extrabold text-[#a3161c]"
                       : "text-[#1f2430]"
@@ -535,9 +546,9 @@ function AccountSidebar({
       {signedIn && (
         <button
           onClick={onLogout}
-          className="flex w-full items-center gap-3 border-t border-[#e5e7eb] px-6 py-8 text-left text-lg font-medium text-[#c8161d]"
+          className="flex w-full items-center gap-3 border-t border-[#e5e7eb] px-4 py-4 text-left text-base font-medium text-[#c8161d] sm:px-6 sm:py-8 sm:text-lg"
         >
-          <LogOut size={22} />
+          <LogOut size={20} />
           Logout
         </button>
       )}
@@ -714,8 +725,8 @@ export default function OrdersPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#e5e7eb] px-4 py-8 md:px-8">
-      <div className="mx-auto grid max-w-[1240px] gap-5 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
+    <main className="min-h-screen bg-[#e5e7eb] px-3 py-4 sm:px-4 sm:py-8 md:px-8">
+      <div className="mx-auto grid max-w-[1240px] gap-4 sm:gap-5 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
         <AccountSidebar
           onLogout={() => void onLogout()}
           user={auth?.user}
@@ -729,8 +740,8 @@ export default function OrdersPage() {
         />
 
         {/* Right panel */}
-        <section className="min-h-[700px] rounded-xl bg-white p-5 shadow-sm md:p-6">
-          <h1 className="text-2xl font-semibold text-[#1f2430]">My Orders</h1>
+        <section className="min-w-0 rounded-xl bg-white p-3 shadow-sm sm:p-5 md:p-6 lg:min-h-[700px]">
+          <h1 className="text-xl font-semibold text-[#1f2430] sm:text-2xl">My Orders</h1>
 
           {reviewNotice && (
             <div className="mt-4 flex items-start justify-between gap-3 rounded-xl bg-green-50 p-3 text-sm text-green-800">
@@ -742,20 +753,20 @@ export default function OrdersPage() {
           )}
 
           {!token && (
-            <div className="mt-6 flex overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f8f9fb]">
-              <div className="grid w-28 shrink-0 place-items-center bg-[#e5e7eb] text-[#9aa0b4] sm:w-32">
-                <ShoppingBag size={36} />
+            <div className="mt-4 flex overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f8f9fb] sm:mt-6">
+              <div className="grid w-20 shrink-0 place-items-center bg-[#e5e7eb] text-[#9aa0b4] sm:w-32">
+                <ShoppingBag size={30} />
               </div>
-              <div className="p-5">
-                <h2 className="text-lg font-semibold text-[#1f2430]">
+              <div className="min-w-0 p-4 sm:p-5">
+                <h2 className="text-base font-semibold text-[#1f2430] sm:text-lg">
                   Your orders live here
                 </h2>
-                <p className="mt-2 text-sm text-[#3c4150]">
+                <p className="mt-1.5 text-sm text-[#3c4150] sm:mt-2">
                   Sign in to see orders created with your account.
                 </p>
                 <Link
                   href="/shop/login?next=/shop/orders"
-                  className="shop-gold-btn mt-4 inline-block rounded-full px-6 py-3"
+                  className="shop-gold-btn mt-3 inline-block rounded-full px-5 py-2.5 text-sm sm:mt-4 sm:px-6 sm:py-3"
                 >
                   Sign in
                 </Link>
@@ -770,8 +781,8 @@ export default function OrdersPage() {
           )}
 
           {!!error && (
-            <div className="mt-6 rounded-lg border border-[#e5e7eb] bg-[#f8f9fb] p-6">
-              <h2 className="text-lg font-semibold text-[#1f2430]">
+            <div className="mt-4 rounded-lg border border-[#e5e7eb] bg-[#f8f9fb] p-4 sm:mt-6 sm:p-6">
+              <h2 className="text-base font-semibold text-[#1f2430] sm:text-lg">
                 Orders could not load
               </h2>
               <p className="mt-2 text-sm text-[#3c4150]">{error}</p>
@@ -785,15 +796,15 @@ export default function OrdersPage() {
           )}
 
           {token && !loading && !error && filtered.length === 0 && (
-            <div className="mt-6 flex overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f8f9fb]">
-              <div className="grid w-28 shrink-0 place-items-center bg-[#e5e7eb] text-[#9aa0b4] sm:w-32">
-                <ShoppingBag size={36} />
+            <div className="mt-4 flex overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f8f9fb] sm:mt-6">
+              <div className="grid w-20 shrink-0 place-items-center bg-[#e5e7eb] text-[#9aa0b4] sm:w-32">
+                <ShoppingBag size={30} />
               </div>
-              <div className="p-5">
-                <h2 className="text-lg font-semibold text-[#1f2430]">
+              <div className="min-w-0 p-4 sm:p-5">
+                <h2 className="text-base font-semibold text-[#1f2430] sm:text-lg">
                   No {activeLabel.toLowerCase()} orders
                 </h2>
-                <p className="mt-2 text-sm text-[#3c4150]">
+                <p className="mt-1.5 text-sm text-[#3c4150] sm:mt-2">
                   Orders in this category will appear here.{" "}
                   <Link href="/shop" className="text-[#1a56db] underline">
                     Shop Now
@@ -804,7 +815,7 @@ export default function OrdersPage() {
           )}
 
           {/* Order cards: one per line */}
-          <div className="mt-6 space-y-4">
+          <div className="mt-4 space-y-3 sm:mt-6 sm:space-y-4">
             {filtered.map((order) =>
               order.lines.map((line, idx) => {
                 const group = lineGroup(order, line);
@@ -828,11 +839,11 @@ export default function OrdersPage() {
                   >
                     <Link
                       href={`/shop/orders/${encodeURIComponent(order.id)}`}
-                      className="flex items-stretch gap-4"
+                      className="flex items-stretch gap-3 sm:gap-4"
                     >
                       <div
-                        className="relative w-28 shrink-0 self-stretch bg-[#e5e7eb] sm:w-32"
-                        style={{ minHeight: 112 }}
+                        className="relative w-[88px] shrink-0 self-stretch bg-[#e5e7eb] sm:w-32"
+                        style={{ minHeight: 104 }}
                       >
                         {image ? (
                           <Image
@@ -849,16 +860,16 @@ export default function OrdersPage() {
                         )}
                       </div>
 
-                      <div className="flex min-w-0 flex-1 gap-3 py-4 pr-4">
-                        <div className="min-w-0 flex-1 space-y-1 self-center">
-                          <p className="truncate text-lg font-medium text-[#1f2430]">
+                      <div className="flex min-w-0 flex-1 flex-col gap-2 py-3 pr-3 sm:flex-row sm:gap-3 sm:py-4 sm:pr-4">
+                        <div className="min-w-0 flex-1 space-y-0.5 sm:space-y-1 sm:self-center">
+                          <p className="line-clamp-2 text-sm font-medium leading-snug text-[#1f2430] sm:truncate sm:text-lg">
                             {line.title}
                             {line.quantity > 1 ? ` × ${line.quantity}` : ""}
                           </p>
-                          <p className="truncate text-sm text-[#3c4150]">
+                          <p className="truncate text-xs text-[#3c4150] sm:text-sm">
                             ID: {order.orderNumber || order.id}
                           </p>
-                          <p className="text-sm text-[#3c4150]">{order.date}</p>
+                          <p className="text-xs text-[#3c4150] sm:text-sm">{order.date}</p>
                           {line.fastest &&
                             (group === "PROCESSING" ||
                               group === "APPROVED") && (
@@ -868,9 +879,9 @@ export default function OrdersPage() {
                             )}
                         </div>
 
-                        <div className="flex flex-col items-end justify-between text-right">
+                        <div className="flex items-end justify-between gap-2 text-left sm:flex-col sm:items-end sm:text-right">
                           <div className="space-y-0.5">
-                            <p className="text-base font-semibold text-[#1f2430]">
+                            <p className="text-sm font-semibold text-[#1f2430] sm:text-base">
                               {(line.price ?? 0) > 0
                                 ? money((line.price ?? 0) * line.quantity)
                                 : "Price pending"}
@@ -887,14 +898,14 @@ export default function OrdersPage() {
                                 </p>
                               )}
                           </div>
-                          <span className="text-sm text-[#1a56db]">
+                          <span className="shrink-0 whitespace-nowrap text-xs text-[#1a56db] sm:text-sm">
                             View details
                           </span>
                         </div>
                       </div>
                     </Link>
 
-                    <div className="space-y-3 px-4 pb-4 empty:hidden">
+                    <div className="space-y-3 px-3 pb-3 empty:hidden sm:px-4 sm:pb-4">
                       {(group === "APPROVED" || group === "REJECTED") &&
                         !!line.remarks && (
                           <div
@@ -909,7 +920,7 @@ export default function OrdersPage() {
                                   ? "Cancelled by you"
                                   : "Rejected"}
                             </p>
-                            <p className="text-xs">Remarks: {line.remarks}</p>
+                            <p className="break-words text-xs">Remarks: {line.remarks}</p>
                           </div>
                         )}
 
@@ -931,7 +942,7 @@ export default function OrdersPage() {
                                     )}
                                   </div>
                                   <div
-                                    className={`flex-1 ${last ? "" : "pb-2"}`}
+                                    className={`min-w-0 flex-1 ${last ? "" : "pb-2"}`}
                                   >
                                     <div className="flex items-center justify-between gap-2">
                                       <span
@@ -940,7 +951,7 @@ export default function OrdersPage() {
                                         {step.label}
                                       </span>
                                       {!!step.date && (
-                                        <span className="text-[11px] font-semibold text-[#7b8094]">
+                                        <span className="shrink-0 text-[11px] font-semibold text-[#7b8094]">
                                           {step.date}
                                         </span>
                                       )}
@@ -962,7 +973,7 @@ export default function OrdersPage() {
 
                       {!!order.bookingDate && (
                         <div className="flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1.5 text-xs">
-                          <Calendar size={14} className="text-[#a3161c]" />
+                          <Calendar size={14} className="shrink-0 text-[#a3161c]" />
                           <span>
                             Booking date:{" "}
                             <b className="text-[#a3161c]">
@@ -987,62 +998,62 @@ export default function OrdersPage() {
                       ))}
 
                       {group === "DELIVERED" &&
-  !!line.productId &&
-  (() => {
-    const mine = myReviews[line.productId!];
+                        !!line.productId &&
+                        (() => {
+                          const mine = myReviews[line.productId!];
 
-    if (mine) {
-      return (
-        <div className="rounded-xl border border-[#f0dcc0] bg-[#fff8e8] p-3">
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs font-extrabold text-[#4a0710]">Your review</p>
-            <span className="text-[11px] text-[#9a7a7a]">{fmtDate(mine.createdAt)}</span>
-          </div>
-          <div className="mt-1 flex items-center gap-1.5">
-            <StarsDisplay value={mine.rating} size={14} />
-            <b className="text-xs text-[#4a0710]">{Number(mine.rating).toFixed(1)}</b>
-          </div>
-          {mine.comment && (
-            <p className="mt-1.5 whitespace-pre-line text-xs leading-snug text-[#3a2a2a]">
-              {mine.comment}
-            </p>
-          )}
-          {mine.image && (
-            <Image
-              src={imgUrl(mine.image)}
-              alt="Your review photo"
-              width={64}
-              height={64}
-              unoptimized
-              className="mt-2 h-16 w-16 rounded-lg object-cover"
-            />
-          )}
-          <Link
-            href={`/shop/product/${encodeURIComponent(line.productId!)}`}
-            className="mt-2 inline-block text-[11px] font-bold text-[#8b1a2b] underline"
-          >
-            Edit on product page
-          </Link>
-        </div>
-      );
-    }
+                          if (mine) {
+                            return (
+                              <div className="rounded-xl border border-[#f0dcc0] bg-[#fff8e8] p-3">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-xs font-extrabold text-[#4a0710]">Your review</p>
+                                  <span className="shrink-0 text-[11px] text-[#9a7a7a]">{fmtDate(mine.createdAt)}</span>
+                                </div>
+                                <div className="mt-1 flex items-center gap-1.5">
+                                  <StarsDisplay value={mine.rating} size={14} />
+                                  <b className="text-xs text-[#4a0710]">{Number(mine.rating).toFixed(1)}</b>
+                                </div>
+                                {mine.comment && (
+                                  <p className="mt-1.5 whitespace-pre-line break-words text-xs leading-snug text-[#3a2a2a]">
+                                    {mine.comment}
+                                  </p>
+                                )}
+                                {mine.image && (
+                                  <Image
+                                    src={imgUrl(mine.image)}
+                                    alt="Your review photo"
+                                    width={64}
+                                    height={64}
+                                    unoptimized
+                                    className="mt-2 h-16 w-16 rounded-lg object-cover"
+                                  />
+                                )}
+                                <Link
+                                  href={`/shop/product/${encodeURIComponent(line.productId!)}`}
+                                  className="mt-2 inline-block text-[11px] font-bold text-[#8b1a2b] underline"
+                                >
+                                  Edit on product page
+                                </Link>
+                              </div>
+                            );
+                          }
 
-    return (
-      <div className="flex items-center justify-between gap-3 rounded-xl border border-[#f0dcc0] bg-[#fff8e8] px-3 py-2.5">
-        <div className="min-w-0">
-          <p className="text-xs font-extrabold text-[#4a0710]">Loved it? Tell others</p>
-          <p className="text-[11px] text-[#6b4a4a]">Your review helps other devotees choose.</p>
-        </div>
-        <button
-          onClick={() => setReviewTarget({ productId: line.productId!, title: line.title })}
-          className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#a3161c] px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-[#7a1118] active:scale-95"
-        >
-          <Star size={14} className="fill-[#f2b632] text-[#f2b632]" />
-          Write a review
-        </button>
-      </div>
-    );
-  })()}
+                          return (
+                            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-[#f0dcc0] bg-[#fff8e8] px-3 py-2.5 sm:flex-nowrap sm:gap-3">
+                              <div className="min-w-0">
+                                <p className="text-xs font-extrabold text-[#4a0710]">Loved it? Tell others</p>
+                                <p className="text-[11px] text-[#6b4a4a]">Your review helps other devotees choose.</p>
+                              </div>
+                              <button
+                                onClick={() => setReviewTarget({ productId: line.productId!, title: line.title })}
+                                className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#a3161c] px-4 py-2 text-xs font-bold text-white shadow-md transition hover:bg-[#7a1118] active:scale-95"
+                              >
+                                <Star size={14} className="fill-[#f2b632] text-[#f2b632]" />
+                                Write a review
+                              </button>
+                            </div>
+                          );
+                        })()}
 
                       {types.length > 0 && lineRequests.length === 0 && (
                         <Link
@@ -1051,6 +1062,18 @@ export default function OrdersPage() {
                         >
                           {types.map((t) => LABEL[t]).join(" / ")} request
                         </Link>
+                      )}
+
+                      {!!order.invoiceUrl && (
+                        <a
+                          href={order.invoiceUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-[#a3161c] bg-white px-3.5 py-1.5 text-xs font-bold text-[#a3161c] transition hover:bg-[#a3161c] hover:text-white active:scale-95"
+                        >
+                          <FileText size={14} />
+                          Download invoice{order.invoiceNumber ? ` · ${order.invoiceNumber}` : ""}
+                        </a>
                       )}
 
                       {((paid && idx === 0) || (canCancel && idx === 0)) && (
@@ -1065,7 +1088,7 @@ export default function OrdersPage() {
                           {canCancel && idx === 0 && (
                             <button
                               onClick={() => onCancelPress(order)}
-                              className="text-[11px] font-medium text-red-600 hover:underline"
+                              className="py-1 text-[11px] font-medium text-red-600 hover:underline"
                             >
                               Cancel Order
                             </button>
@@ -1096,9 +1119,9 @@ export default function OrdersPage() {
 
       {/* For You: full-width row under both panels */}
       {catalog.length > 0 && (
-        <section className="mx-auto mt-8 max-w-[1240px]">
-          <h2 className="text-xl font-semibold text-[#1f2430]">For You</h2>
-          <div className="mt-4 grid grid-cols-2 gap-5 md:grid-cols-4">
+        <section className="mx-auto mt-6 max-w-[1240px] sm:mt-8">
+          <h2 className="text-lg font-semibold text-[#1f2430] sm:text-xl">For You</h2>
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:gap-5 md:grid-cols-4">
             {catalog.slice(0, 4).map((p) => (
               <ProductCard key={p.slug} p={p} />
             ))}
@@ -1109,7 +1132,7 @@ export default function OrdersPage() {
       {/* Cancel confirm */}
       {cancelTarget && (
         <div className="fixed inset-0 z-[70] grid place-items-center bg-black/50 p-4">
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6">
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 sm:p-6">
             <h3 className="text-lg font-black">Cancel Order</h3>
             <p className="mt-2 text-sm text-[#5a3a3a]">
               Cancel order #{cancelTarget.orderNumber || cancelTarget.id}? All
