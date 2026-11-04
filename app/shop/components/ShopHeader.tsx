@@ -143,7 +143,7 @@ export default function ShopHeader() {
   };
   const scheduleClose = () => {
     cancelClose();
-    closeTimer.current = setTimeout(() => setOpen(null), 120);
+    closeTimer.current = setTimeout(() => setOpen(null), 200);
   };
   useEffect(() => {
     return () => {
@@ -510,7 +510,7 @@ export default function ShopHeader() {
               }}
               className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,.25)] transition duration-200 active:scale-95 ${
                 open === c.slug
-                  ? "border-[#fff1c2] bg-[#fffaf3] text-[#4a0710]"
+                  ? "border-[#fff1c2] bg-[#fffaf3] !text-[#4a0710]"
                   : "border-white/40 bg-white/15 text-white hover:border-[#f6c453] hover:bg-white/25"
               }`}
             >
@@ -539,12 +539,14 @@ export default function ShopHeader() {
       {/* mega menu: sub-categories on the left, products on the right (large screens only) */}
       {active && (
         <div
-          onMouseEnter={cancelClose}
-          onMouseLeave={scheduleClose}
           className="shop-mega absolute inset-x-0 top-full z-50 hidden border-t-4 border-[#f2b632] bg-[#fffaf3] text-[#2a0a0d] shadow-2xl lg:block"
         >
           <div className="mx-auto grid max-w-[1300px] gap-8 px-8 py-6 lg:grid-cols-[240px_1fr] xl:grid-cols-[280px_1fr]">
-            <div className="space-y-3">
+            <div
+              className="space-y-3 self-start"
+              onMouseEnter={cancelClose}
+              onMouseLeave={scheduleClose}
+            >
               {subs.map((s, i) => (
                 <Link
                   key={s}
@@ -574,6 +576,8 @@ export default function ShopHeader() {
                     <Link
                       key={p.slug}
                       href={`/shop/product/${p.slug}`}
+                      onMouseEnter={cancelClose}
+                      onMouseLeave={scheduleClose}
                       className="group/p block"
                     >
                       <div className="relative aspect-square overflow-hidden rounded-2xl border border-[#e8d6bd] bg-[#f6efe6] shadow-sm transition duration-300 group-hover/p:-translate-y-1 group-hover/p:border-[#f2b632] group-hover/p:shadow-lg">
@@ -607,6 +611,8 @@ export default function ShopHeader() {
 
               <Link
                 href={subHref(subs[subSel])}
+                onMouseEnter={cancelClose}
+                onMouseLeave={scheduleClose}
                 className="mt-6 inline-flex items-center gap-2 rounded-full border border-[#fff1c2] bg-gradient-to-b from-[#ffd66b] to-[#f2b632] px-5 py-2.5 text-sm font-extrabold !text-[#4a0710] shadow-[0_2px_8px_rgba(0,0,0,.2)] transition hover:brightness-105 active:scale-95"
               >
                 View {active.sub.length ? subs[subSel] : active.name}{" "}

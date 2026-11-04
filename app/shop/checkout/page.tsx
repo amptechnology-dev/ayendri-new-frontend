@@ -1,6 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import { useRouter } from "next/navigation";
+import { Truck, Zap, Check } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useCart, bill } from "../cart";
 import { useAuth, errMsg, shopApi } from "../auth";
@@ -695,7 +696,7 @@ export default function Checkout() {
           </section>
 
           {/* [FASTEST] preview er fastestAvailable true hole-i dekhabe */}
-                    {/* [FASTEST] fastest only when it is really faster than normal */}
+          {/* [FASTEST] fastest only when it is really faster than normal */}
           {showFastest && !canUseFastest && (
             <section className="shop-card p-5">
               <div className="flex items-start gap-3">
@@ -715,75 +716,150 @@ export default function Checkout() {
             </section>
           )}
 
-          {showFastest && canUseFastest && (
-            <section className="shop-card space-y-3 p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="font-extrabold">⚡ Fastest delivery</h2>
-                  <p className="text-xs text-[#9a7a7a]">
-                    Get your order delivered with the fastest courier available.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={fastest}
-                  aria-label="Fastest delivery"
-                  onClick={() => setFastest((v) => !v)}
-                  className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-                    fastest ? "bg-[#e0622d]" : "bg-[#d9cbbd]"
-                  }`}
-                >
-                  <span
-                    className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${
-                      fastest ? "left-[22px]" : "left-0.5"
-                    }`}
-                  />
-                </button>
-              </div>
+                    {showFastest && canUseFastest && (() => {
+            const normalOf = (s: any) => s.fastestOption?.normal ?? s.delivery;
+            const fastOf = (s: any) =>
+              isFasterOption(s.fastestOption)
+                ? s.fastestOption.fastest
+                : normalOf(s);
+            const total = (pick: (s: any) => any) =>
+              previewStores.reduce(
+                (a, s) => a + Number(pick(s)?.shippingCharge ?? 0),
+                0,
+              );
+            const multi = previewStores.length > 1;
 
-              <div className="grid gap-2 sm:grid-cols-2">
-                {previewStores.map((s, i) => {
-                  const opt = s.fastestOption;
-                  const faster = isFasterOption(opt);
-                  return (
-                    <div
-                      key={`${s.storeId}-${i}`}
-                      className="rounded-xl border border-[#e8cfa8] p-3 text-xs"
-                    >
-                      <p
-                        className={
-                          fastest && faster
-                            ? "text-[#9a7a7a]"
-                            : "font-bold text-[#4a0710]"
-                        }
+            const options = [
+              {
+                fast: false,
+                Icon: Truck,
+                title: "Standard",
+                sub: "Regular courier service",
+                sum: total(normalOf),
+                line: (s: any) => etaText(normalOf(s)),
+              },
+              {
+                fast: true,
+                Icon: Zap,
+                title: "Express",
+                sub: "Fastest courier available",
+                sum: total(fastOf),
+                line: (s: any) =>
+                  isFasterOption(s.fastestOption)
+                    ? `${etaText(s.fastestOption.fastest)}${
+                        s.fastestOption.fastest?.fixedFeeApplied
+                          ? " (incl. express fee)"
+                          : ""
+                      }`
+                    : "Ships standard",
+              },
+            ];
+
+            return (
+              <section className="shop-card p-5">
+                <div className="mb-4">
+                  <div className="text-[11px] font-bold uppercase tracking-[.2em] text-[#9a7a7a]">
+                    Delivery
+                  </div>
+                  <h2 className="mt-0.5 text-lg font-extrabold text-[#4a0710]">
+                    Choose your delivery speed
+                  </h2>
+                </div>
+
+                <div
+                  role="radiogroup"
+                  aria-label="Delivery option"
+                  className="grid gap-3 sm:grid-cols-2"
+                >
+                  {options.map((o) => {
+                    const selected = fastest === o.fast;
+                    return (
+                      <button
+                        key={o.title}
+                        type="button"
+                        role="radio"
+                        aria-checked={selected}
+                        onClick={() => setFastest(o.fast)}
+                        className={`group relative flex flex-col rounded-2xl border p-4 text-left transition ${
+                          selected
+                            ? "border-[#7a1118] bg-[#fffaf3] ring-1 ring-[#7a1118]"
+                            : "border-[#e8cfa8] bg-white hover:border-[#c9a77a]"
+                        }`}
                       >
-                        Normal: {etaText(opt?.normal ?? s.delivery)}
-                      </p>
-                      {faster ? (
-                        <p
-                          className={
-                            fastest
-                              ? "font-bold text-[#4a0710]"
-                              : "text-[#9a7a7a]"
-                          }
-                        >
-                          Fastest: {etaText(opt.fastest)}
-                          {opt.fastest?.fixedFeeApplied
-                            ? " (fastest delivery fee)"
-                            : ""}
-                        </p>
-                      ) : (
-                        <p className="text-[#9a7a7a]">
-                          Fastest delivery not available
-                        </p>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
+                        {/* header */}
+                        <div className="flex items-start gap-3">
+                          <span
+                            className={`grid h-10 w-10 shrink-0 place-items-center rounded-full border transition ${
+                              selected
+                                ? "border-[#7a1118] bg-[#7a1118] text-white"
+                                : "border-[#e8cfa8] bg-[#fdf6ec] text-[#7a1118]"
+                            }`}
+                          >
+                            <o.Icon size={18} strokeWidth={1.8} />
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-extrabold text-[#4a0710]">
+                                {o.title}
+                              </span>
+                              {o.fast && (
+                                <span className="rounded-full border border-[#e0b24d] bg-[#fff4dc] px-2 py-px text-[9px] font-bold uppercase tracking-wider text-[#8a5a00]">
+                                  Faster
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-[#9a7a7a]">
+                              {o.sub}
+                            </div>
+                          </div>
+                          <span
+                            className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition ${
+                              selected
+                                ? "border-[#7a1118] bg-[#7a1118] text-white"
+                                : "border-[#d9cbbd] bg-white text-transparent"
+                            }`}
+                          >
+                            <Check size={12} strokeWidth={3} />
+                          </span>
+                        </div>
+
+                        {/* price */}
+                        <div className="mt-4 flex items-baseline gap-1.5">
+                          <span className="text-2xl font-black text-[#4a0710]">
+                            {o.sum === 0 ? "Free" : inr(o.sum)}
+                          </span>
+                          <span className="text-xs text-[#9a7a7a]">
+                            delivery
+                          </span>
+                        </div>
+
+                        {/* eta per shipment */}
+                        <div className="mt-3 divide-y divide-[#f0dcc0] border-t border-[#f0dcc0] text-xs text-[#6b4a4a]">
+                          {previewStores.map((s, i) => (
+                            <div
+                              key={`${s.storeId}-${i}`}
+                              className="flex items-center justify-between gap-3 py-2"
+                            >
+                              {multi && (
+                                <span className="shrink-0 text-[#9a7a7a]">
+                                  Shipment {i + 1}
+                                </span>
+                              )}
+                              <span
+                                className={`font-semibold text-[#4a0710] ${multi ? "text-right" : ""}`}
+                              >
+                                {o.line(s)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            );
+          })()}
 
           <section className="shop-card p-5">
             <h2 className="mb-2 font-extrabold">Remarks</h2>
