@@ -41,8 +41,6 @@ import DeliveryDateDialog, {
 } from "@/components/orders/DeliveryDateDialog";
 // [DELIVERY] order place er somoy er estimate dekhano
 import { formatEstimateRange, getEtaLabel } from "@/helper/delivery";
-import ShipmentCard from "@/components/orders/ShipmentCard";
-import DeliverySpeedCard from "@/components/orders/DeliverySpeedCard";
 import ShippingCostCard from "@/components/orders/ShippingCostCard";
 
 const WORKER_ENDPOINT = "/api/worker/all-workers";
@@ -398,7 +396,7 @@ function PaymentCard({ order }: { order: OrderRow }) {
   );
   const isOnline = method === "ONLINE";
   const waitingForPayment =
-    isOnline && status !== "PAID" && order.status === "PENDING";
+    isOnline && status !== "PAID" && order.status === "CONFIRMED";
 
   return (
     <SectionCard
@@ -1610,7 +1608,7 @@ function OrderDetailsPage() {
 
   const canEditDeliveryDate =
     order.deliveryEnabled !== false &&
-    ["PENDING", "CONFIRMED", "SHIPPED"].includes(order.status);
+    ["CONFIRMED", "SHIPPED"].includes(order.status);
 
   const deliveryInfo = order.deliveryInfo;
 
@@ -1764,13 +1762,13 @@ function OrderDetailsPage() {
             Payment has been received, so this order can no longer be cancelled.
           </p>
         )}
-        {quotePending && order.status === "PENDING" && (
+        {quotePending && order.status === "CONFIRMED" && (
           <p className="text-xs text-amber-700">
             Order can be confirmed only after the customer accepts your price
             estimate.
           </p>
         )}
-        {!quotePending && paymentPending && order.status === "PENDING" && (
+        {!quotePending && paymentPending && order.status === "CONFIRMED" && (
           <p className="text-xs text-amber-700">
             <i className="pi pi-lock mr-1"></i>
             This is an online payment order. It can be confirmed only after the
@@ -1782,7 +1780,7 @@ function OrderDetailsPage() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* ---------- LEFT ---------- */}
           <div className="lg:col-span-7 space-y-4 min-w-0">
-            {order.status === "PENDING" && quotePending && (
+            {order.status === "CONFIRMED" && quotePending && (
               <QuotePanel
                 key={
                   order.quote?.quotedAt ??
@@ -1958,19 +1956,6 @@ function OrderDetailsPage() {
               <div className="space-y-4">
                 <OrderRequestsCard order={order} onChanged={getOrderDetails} />
 
-                <DeliverySpeedCard
-                  order={order}
-                  onUpdated={(o) =>
-                    setOrder((prev) => (prev ? { ...prev, ...o } : prev))
-                  }
-                />
-
-                <ShipmentCard
-                  order={order}
-                  onUpdated={(o) =>
-                    setOrder((prev) => (prev ? { ...prev, ...o } : prev))
-                  }
-                />
                 <CourierDetailsCard order={order} />
               </div>
             )}
@@ -2216,7 +2201,7 @@ function OrderDetailsPage() {
                   </div>
                 )}
 
-                {(deliveryInfo as any).fastestDelivery && (
+                {(deliveryInfo as any)?.fastestDelivery && (
                   <InfoTile label="Speed">
                     Fastest delivery
                     {(deliveryInfo as any).fastestFeeApplied

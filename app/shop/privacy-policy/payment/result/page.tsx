@@ -3,8 +3,8 @@ import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 import axiosInstance from "@/service/axios.service";
-import { submitPayUPayment } from "../../checkout/payment";
-import OrderSuccessModal from "../../components/order-success-modal";
+import { submitPayUPayment } from "../../../checkout/payment";
+import OrderSuccessModal from "../../../components/order-success-modal";
 
 const KEY = "ayendri:payOrder";
 
