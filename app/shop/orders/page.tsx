@@ -31,6 +31,7 @@ import { actionError, cancelOrderItem } from "../order-actions";
 import { rawOrderItems } from "../order-items";
 import ReviewModal from "../components/ReviewModal";
 import { StarsDisplay } from "../components/Stars";
+import Pagination from "../components/Pagination";
 
 type Decision = "APPROVED" | "REJECTED";
 type StatusGroup =
@@ -99,6 +100,7 @@ const MONTHS = [
 ];
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CANCEL_WINDOW_DAYS = 10;
+const PAGE_SIZE = 5; // order cards per page
 const money = (n: number) => `₹${n.toFixed(2)}`;
 
 const textValue = (v: unknown, fallback: string) =>
@@ -574,6 +576,7 @@ export default function OrdersPage() {
   const [activeTab, setActiveTab] = useState<StatusGroup>("PROCESSING");
   const [query, setQuery] = useState("");
   const [menuOpen, setMenuOpen] = useState(false);
+  const [page, setPage] = useState(1);
   const [cancelTarget, setCancelTarget] = useState<OrderView | null>(null);
   const [cancelBusy, setCancelBusy] = useState(false);
   const [cancelError, setCancelError] = useState("");
@@ -635,6 +638,27 @@ export default function OrdersPage() {
 
   const activeLabel =
     TABS.find((t) => t.key === activeTab)?.label ?? "Select Any";
+
+  // back to page 1 whenever the filter changes
+  useEffect(() => {
+    setPage(1);
+  }, [activeTab, query]);
+
+  const cards = useMemo(
+    () =>
+      filtered.flatMap((order) =>
+        order.lines.map((line, idx) => ({ order, line, idx })),
+      ),
+    [filtered],
+  );
+  const totalPages = Math.max(1, Math.ceil(cards.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageCards = cards.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  const changePage = (p: number) => {
+    setPage(p);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const myId = String(auth?.user?._id ?? auth?.user?.id ?? "");
 
@@ -816,8 +840,7 @@ export default function OrdersPage() {
 
           {/* Order cards: one per line */}
           <div className="mt-4 space-y-3 sm:mt-6 sm:space-y-4">
-            {filtered.map((order) =>
-              order.lines.map((line, idx) => {
+            {pageCards.map(({ order, line, idx }) => {
                 const group = lineGroup(order, line);
                 const paid = isPaid(order);
                 const windowOpen = cancelWindowOpen(order);
@@ -1111,9 +1134,12 @@ export default function OrdersPage() {
                     </div>
                   </article>
                 );
-              }),
-            )}
+            })}
           </div>
+
+          {token && !loading && !error && (
+            <Pagination page={safePage} totalPages={totalPages} onChange={changePage} />
+          )}
         </section>
       </div>
 
