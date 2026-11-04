@@ -29,7 +29,7 @@ const toPayload = (a: SavedAddress) => ({
 });
 
 const norm = (v?: string) => (v ?? "").trim().toLowerCase().replace(/\s+/g, " ");
-const sameAddress = (a: SavedAddress, b: SavedAddress) =>
+export const sameAddress = (a: SavedAddress, b: SavedAddress) =>
   norm(a.addressLine) === norm(b.addressLine) &&
   norm(a.area) === norm(b.area) &&
   norm(a.city) === norm(b.city) &&
@@ -54,11 +54,21 @@ export async function getSavedAddresses(contact?: {
 
 // Used after an order: skips duplicates and never throws,
 // so a failed save can't make a successful order look failed.
+// Throws on failure. Returns "duplicate" if it already exists.
+export async function saveAddressStrict(
+  address: SavedAddress,
+): Promise<"saved" | "duplicate"> {
+  const existing = await getSavedAddresses();
+  if (existing.some((a) => sameAddress(a, address))) return "duplicate";
+  await axiosInstance.post(BASE, toPayload(address));
+  return "saved";
+}
+
+// Used after an order: never throws, so a failed save can't make
+// a successful order look failed.
 export async function addSavedAddress(address: SavedAddress) {
   try {
-    const existing = await getSavedAddresses();
-    if (existing.some((a) => sameAddress(a, address))) return;
-    await axiosInstance.post(BASE, toPayload(address));
+    await saveAddressStrict(address);
   } catch (e) {
     console.warn("[Addresses] could not save address", e);
   }
