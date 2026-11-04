@@ -66,8 +66,8 @@ const readUserInfo = (): UserInfo | null => {
 };
 
 /* ---------- tiny inline icons ---------- */
-const Svg = ({ children, className = "h-5 w-5" }: { children: React.ReactNode; className?: string }) => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}
+const Svg = ({ children, className = "h-4 w-4" }: { children: React.ReactNode; className?: string }) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.75}
     strokeLinecap="round" strokeLinejoin="round" className={className}>
     {children}
   </svg>
@@ -87,10 +87,10 @@ const IconTrash = ({ className }: { className?: string }) => (
 const IconSend = ({ className }: { className?: string }) => (
   <Svg className={className}><path d="m22 2-7 20-4-9-9-4zM22 2 11 13" /></Svg>
 );
-const Spinner = ({ className = "h-4 w-4" }: { className?: string }) => (
+const Spinner = ({ className = "h-3.5 w-3.5" }: { className?: string }) => (
   <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none">
-    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
-    <path d="M4 12a8 8 0 0 1 8-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" className="opacity-75" />
+    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-20" />
+    <path d="M4 12a8 8 0 0 1 8-8" stroke="currentColor" strokeWidth="4" strokeLinecap="round" />
   </svg>
 );
 
@@ -246,6 +246,11 @@ export default function ChatBotWidget() {
     if (!userInfo) setShowForm(true);
   };
 
+  const iconBtn =
+    "flex h-7 w-7 items-center justify-center rounded-full text-neutral-500 transition hover:bg-[#6b1f2a]/10 hover:text-[#6b1f2a]";
+  const field =
+    "w-full rounded-lg border border-neutral-200/80 bg-white/60 px-3 py-2 text-[13px] text-neutral-800 outline-none transition placeholder:text-neutral-400 focus:border-[#6b1f2a]/50";
+
   return (
     <>
       {/* Floating button (mobile e BottomNav er upore) */}
@@ -254,98 +259,88 @@ export default function ChatBotWidget() {
           type="button"
           aria-label="Open AYENDRI chat"
           onClick={() => setOpen(true)}
-          className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 via-orange-500 to-red-600 text-white shadow-xl transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl focus:outline-none focus:ring-2 focus:ring-amber-300 md:bottom-8 md:right-8"
+          className="fixed bottom-24 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-[#6b1f2a] text-white shadow-lg shadow-black/20 transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#6b1f2a]/40 md:bottom-8 md:right-8"
         >
-          <IconChat className="h-7 w-7" />
-          <span className="absolute -right-1 -top-1 flex h-4 w-4">
-            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex h-4 w-4 rounded-full bg-emerald-400" />
-          </span>
+          <IconChat className="h-5 w-5" />
         </button>
       )}
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed inset-x-3 bottom-24 z-50 md:inset-x-auto md:bottom-8 md:right-8 md:w-[400px]">
-          <div className="overflow-hidden rounded-3xl border border-amber-200 bg-white shadow-[0_30px_80px_rgba(120,53,15,0.3)]">
+        <div className="fixed inset-x-3 bottom-24 z-50 md:inset-x-auto md:bottom-8 md:right-8 md:w-[340px]">
+          <div className="overflow-hidden rounded-2xl border border-white/50 bg-white/70 shadow-[0_20px_50px_rgba(0,0,0,0.15)] backdrop-blur-xl">
             {/* Header */}
-            <div className="bg-gradient-to-br from-amber-500 via-orange-500 to-red-600 px-4 py-3 text-white">
-              <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/20 ring-1 ring-white/30">
-                    <IconChat className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <p className="text-base font-semibold leading-tight">AYENDRI Assistant</p>
-                    <p className="flex items-center gap-1.5 text-xs text-white/85">
-                      <span className="h-2 w-2 rounded-full bg-emerald-300" /> Online
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button type="button" onClick={startFreshChat} title="New chat" aria-label="New chat"
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 transition hover:bg-white/30">
-                    <IconPlus className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={startFreshChat} title="Delete chat" aria-label="Delete chat"
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 transition hover:bg-red-700/70">
-                    <IconTrash className="h-4 w-4" />
-                  </button>
-                  <button type="button" onClick={() => setOpen(false)} title="Close" aria-label="Close chat"
-                    className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 transition hover:bg-white/30">
-                    <IconClose className="h-4 w-4" />
-                  </button>
-                </div>
+            <div className="flex items-center justify-between border-b border-black/5 bg-white/40 px-4 py-2.5">
+              <div className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#6b1f2a]" />
+                <p className="text-[13px] font-medium tracking-wide text-neutral-900">
+                  AYENDRI Assistant
+                </p>
+              </div>
+              <div className="flex items-center gap-0.5">
+                <button type="button" onClick={startFreshChat} title="New chat" aria-label="New chat" className={iconBtn}>
+                  <IconPlus className="h-3.5 w-3.5" />
+                </button>
+                <button type="button" onClick={startFreshChat} title="Delete chat" aria-label="Delete chat" className={iconBtn}>
+                  <IconTrash className="h-3.5 w-3.5" />
+                </button>
+                <button type="button" onClick={() => setOpen(false)} title="Close" aria-label="Close chat" className={iconBtn}>
+                  <IconClose className="h-3.5 w-3.5" />
+                </button>
               </div>
             </div>
 
             {/* Body */}
-            <div className="relative flex h-[min(62vh,540px)] flex-col bg-amber-50/40">
+            <div className="relative flex h-[min(54vh,420px)] flex-col">
               {showForm && (
-                <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/95 px-5 backdrop-blur-sm">
-                  <form onSubmit={handleFormSubmit}
-                    className="w-full max-w-sm space-y-3 rounded-2xl border border-amber-200 bg-white p-5 shadow-xl">
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 px-5 backdrop-blur-md">
+                  <form
+                    onSubmit={handleFormSubmit}
+                    className="w-full max-w-[280px] space-y-3 rounded-xl border border-white/60 bg-white/70 p-4 shadow-lg backdrop-blur-xl"
+                  >
                     <div>
-                      <h3 className="text-sm font-semibold text-gray-900">Before we start chatting</h3>
-                      <p className="text-xs text-gray-500">Please share your name and phone number.</p>
+                      <h3 className="text-[13px] font-medium text-neutral-900">Before we start</h3>
+                      <p className="text-[11px] text-neutral-500">Please share your name and phone number.</p>
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-medium text-gray-700">Your Name</label>
+                      <label className="text-[11px] font-medium text-neutral-600">Name</label>
                       <input
                         value={form.name}
                         onChange={(e) => { setFormError(""); setForm((p) => ({ ...p, name: e.target.value })); }}
-                        placeholder="Enter your name"
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
+                        placeholder="Your name"
+                        className={field}
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-xs font-medium text-gray-700">Phone Number</label>
+                      <label className="text-[11px] font-medium text-neutral-600">Phone</label>
                       <input
                         type="tel"
                         value={form.phone}
                         onChange={(e) => { setFormError(""); setForm((p) => ({ ...p, phone: e.target.value })); }}
-                        placeholder="Enter your phone number"
-                        className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
+                        placeholder="Your phone number"
+                        className={field}
                       />
                     </div>
-                    {formError && <p className="text-xs font-medium text-red-500">{formError}</p>}
-                    <button type="submit"
-                      className="w-full rounded-xl bg-gradient-to-r from-amber-500 to-red-600 py-2.5 text-sm font-semibold text-white shadow-md transition hover:-translate-y-0.5">
+                    {formError && <p className="text-[11px] text-[#6b1f2a]">{formError}</p>}
+                    <button
+                      type="submit"
+                      className="w-full rounded-lg bg-[#6b1f2a] py-2 text-[13px] font-medium text-white transition hover:bg-[#561922]"
+                    >
                       Start Chatting
                     </button>
-                    <p className="text-center text-[11px] text-gray-400">
-                      We use this only to assist you better and follow up if needed.
+                    <p className="text-center text-[10px] text-neutral-400">
+                      Used only to assist you and follow up if needed.
                     </p>
                   </form>
                 </div>
               )}
 
               {/* Messages */}
-              <div className="flex-1 space-y-3 overflow-y-auto px-4 py-4">
+              <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
                 {historyLoading && (
                   <div className="flex justify-center">
-                    <div className="flex items-center gap-2 rounded-full border border-amber-200 bg-white px-3 py-1.5 text-xs text-gray-600">
-                      <Spinner className="h-3.5 w-3.5 text-orange-500" /> Loading conversation...
+                    <div className="flex items-center gap-1.5 rounded-full border border-black/5 bg-white/60 px-2.5 py-1 text-[11px] text-neutral-500">
+                      <Spinner className="h-3 w-3 text-[#6b1f2a]" /> Loading...
                     </div>
                   </div>
                 )}
@@ -355,10 +350,10 @@ export default function ChatBotWidget() {
                   return (
                     <div key={m.id} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
                       <div
-                        className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-4 py-2.5 text-sm leading-6 shadow-sm ${
+                        className={`max-w-[85%] whitespace-pre-wrap rounded-xl px-3 py-2 text-[13px] leading-5 ${
                           isUser
-                            ? "rounded-br-md bg-gradient-to-br from-amber-500 to-red-600 text-white"
-                            : "rounded-bl-md border border-amber-100 bg-white text-gray-800"
+                            ? "rounded-br-sm bg-[#6b1f2a] text-white"
+                            : "rounded-bl-sm border border-white/60 bg-white/70 text-neutral-800"
                         }`}
                       >
                         {m.content}
@@ -369,8 +364,8 @@ export default function ChatBotWidget() {
 
                 {loading && (
                   <div className="flex justify-start">
-                    <div className="flex items-center gap-2 rounded-2xl rounded-bl-md border border-amber-100 bg-white px-4 py-2.5 text-sm text-gray-600 shadow-sm">
-                      <Spinner className="h-4 w-4 text-orange-500" /> Thinking...
+                    <div className="flex items-center gap-1.5 rounded-xl rounded-bl-sm border border-white/60 bg-white/70 px-3 py-2 text-[12px] text-neutral-500">
+                      <Spinner className="h-3 w-3 text-[#6b1f2a]" /> Thinking...
                     </div>
                   </div>
                 )}
@@ -378,15 +373,15 @@ export default function ChatBotWidget() {
               </div>
 
               {/* Input area */}
-              <div className="border-t border-amber-100 bg-white px-4 py-3">
-                <div className="mb-2 flex gap-2 overflow-x-auto pb-1">
+              <div className="border-t border-black/5 bg-white/40 px-3 py-2.5">
+                <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                   {CATEGORIES.map((c) => (
                     <button
                       key={c.id}
                       type="button"
                       onClick={() => sendMessage(c.query)}
                       disabled={loading}
-                      className="shrink-0 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-900 transition hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+                      className="shrink-0 rounded-full border border-neutral-300/70 bg-white/50 px-2.5 py-1 text-[11px] text-neutral-600 transition hover:border-[#6b1f2a]/50 hover:text-[#6b1f2a] disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {c.label}
                     </button>
@@ -399,22 +394,19 @@ export default function ChatBotWidget() {
                     onChange={(e) => setInput(e.target.value)}
                     onKeyDown={handleKeyDown}
                     placeholder="Type your message..."
-                    rows={2}
+                    rows={1}
                     maxLength={1000}
-                    className="min-h-[56px] flex-1 resize-none rounded-2xl border border-gray-200 px-3 py-2 text-sm outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
+                    className="max-h-24 min-h-[38px] flex-1 resize-none rounded-lg border border-neutral-200/80 bg-white/60 px-3 py-2 text-[13px] text-neutral-800 outline-none transition placeholder:text-neutral-400 focus:border-[#6b1f2a]/50"
                   />
                   <button
                     type="submit"
                     disabled={!canSend}
                     aria-label="Send"
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-amber-500 to-red-600 text-white shadow-md transition hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="flex h-[38px] w-[38px] shrink-0 items-center justify-center rounded-lg bg-[#6b1f2a] text-white transition hover:bg-[#561922] disabled:cursor-not-allowed disabled:opacity-40"
                   >
-                    <IconSend className="h-4 w-4" />
+                    <IconSend className="h-3.5 w-3.5" />
                   </button>
                 </form>
-                <p className="mt-1.5 text-[11px] text-gray-400">
-                  Enter to send, Shift + Enter for a new line.
-                </p>
               </div>
             </div>
           </div>

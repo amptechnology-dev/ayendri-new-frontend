@@ -53,10 +53,15 @@ export default function Page() {
   return (
     <article>
       {/* HERO */}
-      <header className="relative isolate overflow-hidden bg-[radial-gradient(ellipse_at_top,#7a1118_0%,#4a0710_55%,#2e0409_100%)] px-6 py-24 text-center md:py-32">
+      <header className="relative isolate overflow-hidden border-b border-[#e8d6bd] bg-[radial-gradient(ellipse_at_top,#fff0bd_0%,#ffd98a_35%,#ffb55c_75%,#f0913a_100%)] px-6 py-24 text-center md:py-32">
+        {/* soft glow in the centre for extra depth */}
         <div
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[820px] w-[820px] -translate-x-1/2 -translate-y-1/2 text-[#f2b632] opacity-25 motion-safe:animate-[spin_180s_linear_infinite]"
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.45)_0%,rgba(255,255,255,0)_55%)]"
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute left-1/2 top-1/2 -z-10 h-[820px] w-[820px] -translate-x-1/2 -translate-y-1/2 text-[#b45309] opacity-25 motion-safe:animate-[spin_180s_linear_infinite]"
         >
           <svg viewBox="-300 -300 600 600" fill="none" stroke="currentColor" strokeWidth="0.7">
             {[60, 110, 160, 210, 260, 295].map((r) => (
@@ -69,13 +74,13 @@ export default function Page() {
         </div>
 
         <div className="mx-auto max-w-3xl">
-          <h1 className={`${serif.className} text-5xl font-medium leading-[1.05] text-[#fff6e0] md:text-7xl`}>
+          <h1 className={`${serif.className} text-5xl font-medium leading-[1.05] text-[#4a0710] md:text-7xl`}>
             About AYENDRI
           </h1>
-          <p className={`${serif.className} mt-5 text-2xl italic text-[#f2b632] md:text-3xl`}>
+          <p className={`${serif.className} mt-5 text-2xl italic text-[#7a1118] md:text-3xl`}>
             Sacred for a Higher You
           </p>
-          <p className="mx-auto mt-8 max-w-xl text-[17px] leading-8 text-white/85">
+          <p className="mx-auto mt-8 max-w-xl text-[17px] leading-8 text-[#3a2a22]">
             Demo text: AYENDRI is a home for authentic Rudraksha, Karungali malas, idols and puja
             essentials, chosen with care and sent to you with the respect they deserve.
           </p>
