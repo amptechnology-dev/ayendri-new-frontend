@@ -7,6 +7,7 @@ import { off, type Product } from "../data";
 import { useBookingAdd } from "./useBookingAdd";
 import { useShop } from "../shop-data";
 import WishlistButton from "./WishlistButton";
+import { isService } from "./ServicesSection";
 
 const fmt = (x: number) => x.toLocaleString("en-IN");
 
@@ -237,7 +238,8 @@ function Window({ x, b, h }: { x: number; b: number; h: number }) {
 }
 
 function Mahasale() {
-  const products = useShop((s) => s.products);
+  const allProducts = useShop((s) => s.products);
+  const products = allProducts.filter((p) => !isService(p));
   const top = [...products].sort((a, b) => off(b) - off(a)).slice(0, 3);
   const pillar = {
     background: "repeating-linear-gradient(90deg,#c99a4b 0 2px,#f4dfae 2px 5px)",
@@ -295,7 +297,8 @@ function Mahasale() {
 
 /* ───────── section ───────── */
 export default function DivinePicks() {
-  const products = useShop((s) => s.products);
+  const allProducts = useShop((s) => s.products);
+  const products = allProducts.filter((p) => !isService(p));
   const [cap, setCap] = useState(199);
   const sorted = [...products].sort((a, b) => a.price - b.price);
   const within = sorted.filter((p) => p.price <= cap);

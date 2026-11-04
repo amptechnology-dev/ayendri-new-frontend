@@ -21,6 +21,8 @@ import {
   Hash,
   Package,
   Sparkles,
+  Ban,
+  ShieldCheck,
 } from "lucide-react";
 import { inr } from "../../data";
 import { useShop } from "../../shop-data";
@@ -31,6 +33,7 @@ import FastestBadge from "../../components/FastestBadge";
 import { StarsDisplay } from "../../components/Stars";
 import ReviewSection from "../../components/ReviewSection";
 import { useAuth } from "../../auth";
+import { htmlToBlocks, useTerms } from "../../terms-api";
 import { useBookingAdd } from "../../components/useBookingAdd";
 import {
   formatBookingDate,
@@ -45,6 +48,7 @@ const PROMO = { code: "AYENDRI10", text: "₹10 off on your order" };
 const TABS = [
   { id: "description", label: "Description" },
   { id: "specification", label: "Specification" },
+  { id: "policies", label: "Policies" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
@@ -146,6 +150,7 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   const userId = useAuth((s) => s.user?.id ?? null);
   const { add: addWithBooking, modal: bookingModal } = useBookingAdd();   // <- here
   const p = products.find((x) => x.slug === slug);
+  const { terms } = useTerms();
   
 
   // hooks must stay above the early returns
@@ -499,6 +504,84 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
     ...products.filter((x) => x.slug !== p.slug && x.category === p.category),
     ...products.filter((x) => x.slug !== p.slug && x.category !== p.category),
   ].slice(0, 4);
+
+  // ---- Policies summary ----
+  const cancelTerm = terms.find((t: any) => /cancel/i.test(t.title ?? ""));
+  const termSnippet = (t?: any) => {
+    if (!t) return "";
+    const text = htmlToBlocks(t.description)
+      .filter((b: any) => b.type !== "space")
+      .map((b: any) => b.text)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return text.length > 130 ? text.slice(0, 130).trimEnd() + "…" : text;
+  };
+  const policies = [
+    {
+      I: Undo2,
+      t: "Return",
+      ok: Boolean(raw?.isReturnable),
+      s: raw?.isReturnable
+        ? raw.returnDays
+          ? `Return within ${raw.returnDays} days of delivery`
+          : "Eligible for return"
+        : "This item can't be returned",
+    },
+    {
+      I: Repeat,
+      t: "Replacement",
+      ok: Boolean(raw?.isReplaceable),
+      s: raw?.isReplaceable
+        ? raw.replaceDays
+          ? `Replace within ${raw.replaceDays} days of delivery`
+          : "Eligible for replacement"
+        : "This item can't be replaced",
+    },
+    {
+      I: Banknote,
+      t: "Refund",
+      ok: Boolean(raw?.isRefundable),
+      s: raw?.isRefundable
+        ? raw.refundDays
+          ? `Refund within ${raw.refundDays} days`
+          : "Eligible for refund"
+        : "This item isn't refundable",
+    },
+    {
+      I: Ban,
+      t: "Cancellation",
+      ok: Boolean(cancelTerm),
+      s:
+        termSnippet(cancelTerm) ||
+        "Cancellation rules are listed in our terms",
+    },
+  ];
+
+  // policy summaries straight from the backend Terms
+  const summarize = (html: string, max = 320) => {
+    const text = htmlToBlocks(html)
+      .filter((b: any) => b.type !== "space")
+      .map((b: any) => b.text)
+      .join(" ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (text.length <= max) return text;
+    const cut = text.slice(0, max);
+    return cut.slice(0, cut.lastIndexOf(" ") > 0 ? cut.lastIndexOf(" ") : max) + "…";
+  };
+  const policyTerms = terms
+    .filter((t: any) =>
+      /refund|return|replac|cancel/i.test(
+        `${t.title ?? ""} ${String(t.description ?? "").replace(/<[^>]+>/g, " ")}`,
+      ),
+    )
+    .map((t: any) => ({
+      id: t._id,
+      title: String(t.title),
+      text: summarize(t.description),
+    }))
+    .filter((t) => t.text);
 
   const copyCode = async () => {
     try {
@@ -951,6 +1034,36 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
                   No specifications available.
                 </p>
               ))}
+
+                        {tab === "policies" && (
+              <div className="space-y-5">
+                {policyTerms.length ? (
+                  policyTerms.map((t) => (
+                    <div key={t.id}>
+                      <h3 className="text-lg font-extrabold text-[#8b1a2b]">
+                        {t.title}
+                      </h3>
+                      <p className="mt-1 text-[15px] leading-7 text-[#3a2a2a]">
+                        {t.text}
+                      </p>
+                      <Link
+                        href={`/shop/terms/${encodeURIComponent(t.id)}`}
+                        className="mt-1 inline-block text-sm font-bold text-[#a3161c] hover:underline"
+                      >
+                        Read full policy →
+                      </Link>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-sm text-[#9a7a7a]">
+                    No policies available.{" "}
+                    <Link href="/shop/terms" className="font-bold text-[#a3161c] underline">
+                      View terms and conditions
+                    </Link>
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           {/* fade-out when collapsed */}
@@ -974,6 +1087,53 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
             </button>
           </div>
         )}
+      </section>
+
+      {/* ---------- Ratings & Reviews ---------- */}
+      <section className="mt-12 rounded-3xl border border-[#f0dcc0] bg-white p-4 shadow-sm sm:p-6">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="flex items-center gap-2 text-xl font-black text-[#4a0710]">
+            <ShieldCheck size={22} className="text-[#a3161c]" /> Policies
+          </h2>
+          <Link
+            href={
+              cancelTerm
+                ? `/shop/terms/${encodeURIComponent(cancelTerm._id)}`
+                : "/shop/terms"
+            }
+            className="text-sm font-bold text-[#a3161c] hover:underline"
+          >
+            View full terms →
+          </Link>
+        </div>
+        <p className="mt-1 text-sm text-[#9a7a7a]">
+          A quick summary for {p.name}
+        </p>
+
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {policies.map(({ I, t, s, ok }) => (
+            <div
+              key={t}
+              className={`rounded-2xl border p-4 ${
+                ok
+                  ? "border-[#f0dcc0] bg-[#fffaf0]"
+                  : "border-[#eee] bg-[#f8f8f8] opacity-80"
+              }`}
+            >
+              <span
+                className={`grid h-10 w-10 place-items-center rounded-full ${
+                  ok ? "bg-[#fdecec] text-[#a3161c]" : "bg-[#eee] text-[#9a9a9a]"
+                }`}
+              >
+                <I size={18} />
+              </span>
+              <div className="mt-2 text-sm font-extrabold text-[#4a0710]">
+                {t}
+              </div>
+              <p className="mt-1 text-xs leading-relaxed text-[#6b4a4a]">{s}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* ---------- Ratings & Reviews ---------- */}
