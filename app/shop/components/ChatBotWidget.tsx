@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 
 // NEXT_PUBLIC_API_URL e jodi already "/api" thake, tahole path theke "/api" soriye nin
 const API = process.env.NEXT_PUBLIC_API_URL;
@@ -95,6 +96,12 @@ const Spinner = ({ className = "h-3.5 w-3.5" }: { className?: string }) => (
 );
 
 export default function ChatBotWidget() {
+  const pathname = usePathname();
+  // Store page er route onujayi regex ta bodle nin. Example: /shop/store/<24-char id>
+  const storeId =
+    pathname.match(/\/shop\/(?:store|stores)\/([a-f0-9]{24})/i)?.[1] ||
+    undefined;
+
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState("");
@@ -187,6 +194,7 @@ export default function ChatBotWidget() {
           message,
           name: userInfo.name,
           phoneNumber: userInfo.phoneNumber,
+          ...(storeId ? { storeId } : {}),
         }),
       });
       const json = await res.json();
@@ -356,7 +364,9 @@ export default function ChatBotWidget() {
                             : "rounded-bl-sm border border-white/60 bg-white/70 text-neutral-800"
                         }`}
                       >
-                        {m.content}
+                        {m.role === "assistant"
+                          ? m.content.replace(/\*\*/g, "")
+                          : m.content}
                       </div>
                     </div>
                   );
