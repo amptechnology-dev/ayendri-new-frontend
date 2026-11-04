@@ -9,6 +9,7 @@ import DisableAdminKitCss from "./components/DisableAdminKitCss";
 import ShopGate from "./components/ShopGate";
 import ShopLoader from "./components/ShopLoader";
 import NotificationWatcher from "./components/NotificationWatcher";
+import ChatBotWidget from "./components/ChatBotWidget";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -18,7 +19,7 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "AYENDRI Shop: Sacred for a Higher You",
-    description:
+  description:
     "Shop authentic Rudraksha, malas, idols, jewellery and puja essentials at AYENDRI. Sacred, energised products delivered across India with care.",
 };
 
@@ -39,6 +40,7 @@ export default function ShopLayout({
       </main>
       <ShopFooter />
       <BottomNav />
+      <ChatBotWidget />
     </div>
   );
 }
