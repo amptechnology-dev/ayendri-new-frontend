@@ -17,19 +17,20 @@ import { InputTextarea } from "primereact/inputtextarea";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
 import { formatDate } from "@/helper/DateTime";
 import { getCustomer } from "@/helper/order";
+// 🔥 CHANGED: STATUS_STYLES lagbe na (StageBadge use hobe), notun helper import
 import {
   OrderRow,
   OrderStatus,
-  STATUS_STYLES,
   STATUS_ICONS,
   getNextStatuses,
   isQuotePending,
+  isPaymentPending,
+  getStageLabel,
   updateOrderStatusApi,
 } from "@/types/order";
 import { useNotifications } from "@/lib/NotificationContext";
-import DeliveryDateDialog, {
-  formatDeliveryDate,
-} from "@/components/orders/DeliveryDateDialog";
+// 🔥 CHANGED: DeliveryDateDialog default import muche shudhu formatter rakha
+import { formatDeliveryDate } from "@/components/orders/DeliveryDateDialog";
 // [DELIVERY] order place er somoy er estimate dekhano
 import { formatEstimateRange } from "@/helper/delivery";
 
@@ -79,13 +80,30 @@ const QuoteBadge = ({ order }: { order: OrderRow }) => {
   return null;
 };
 
-// price estimate pending thakle CONFIRMED option hide
+// 🔥 CHANGED: stage badge (table + card duto jaygay)
+const StageBadge = ({ order }: { order: OrderRow }) => {
+  const s = getStageLabel(order);
+  return (
+    <span
+      className={`px-2 py-1 rounded-full text-xs font-medium whitespace-nowrap ${s.tone}`}
+    >
+      {s.label}
+    </span>
+  );
+};
+
+// 🔥 CHANGED: quote / payment pending thakle DELIVERED hide, PAID hole CANCEL hide
 const availableStatuses = (order: OrderRow): OrderStatus[] =>
   getNextStatuses(order.status).filter((s) => {
-    if (s === "CONFIRMED" && isQuotePending(order)) return false;
+    if (s === "DELIVERED" && (isQuotePending(order) || isPaymentPending(order)))
+      return false;
     if (s === "CANCELLED" && order.paymentStatus === "PAID") return false;
     return true;
   });
+
+// 🔥 CHANGED: button label (table dropdown + card view duto jaygay same)
+const statusActionLabel = (s: OrderStatus) =>
+  s === "DELIVERED" ? "Mark as Delivered" : "Cancel order";
 
 // status response e userId string ashle purono populated customer rekhe dao
 const mergeOrder = (prev: OrderRow, incoming: any): OrderRow => {
@@ -95,13 +113,6 @@ const mergeOrder = (prev: OrderRow, incoming: any): OrderRow => {
   }
   return merged;
 };
-
-// delivery date shudhu ei status gulo te edit kora jay
-const DELIVERY_DATE_EDITABLE: OrderStatus[] = [
-  "PENDING",
-  "CONFIRMED",
-  "SHIPPED",
-];
 
 const deliveryCell = (row: OrderRow) => {
   if (row.deliveryEnabled === false) return "-";
@@ -121,7 +132,7 @@ const deliveryCell = (row: OrderRow) => {
   return estimate || row.deliveryInfo?.etaLabel || "-";
 };
 
-// [নতুন] courier + Air/Surface + ETA + "chosen" dekhay
+// courier + Air/Surface + ETA + "chosen" dekhay
 const courierCell = (row: OrderRow) => {
   const s = row.shipment;
   const d: any = row.deliveryInfo;
@@ -188,12 +199,7 @@ function OrdersPage() {
   const [cancelNote, setCancelNote] = useState("");
   const [cancelError, setCancelError] = useState("");
 
-  // delivery date dialog state (ship / edit)
-  const [dateDialog, setDateDialog] = useState<{
-    visible: boolean;
-    order: OrderRow | null;
-    mode: "ship" | "edit";
-  }>({ visible: false, order: null, mode: "edit" });
+  // 🔥 CHANGED: dateDialog state muche dewa hoyeche
 
   // stale response guard
   const requestIdRef = useRef(0);
@@ -293,6 +299,7 @@ function OrdersPage() {
     }
   };
 
+  // 🔥 CHANGED: SHIPPED er block muche dewa hoyeche (shipment ekhon auto)
   const requestStatusChange = (order: OrderRow, newStatus: OrderStatus) => {
     if (newStatus === "CANCELLED") {
       if (order.paymentStatus === "PAID") {
@@ -305,65 +312,16 @@ function OrdersPage() {
       return;
     }
 
-    // [DELIVERY] delivery off hole date lagbe na, shoja confirm dialog e jabe
-    if (newStatus === "SHIPPED" && order.deliveryEnabled !== false) {
-      setDateDialog({ visible: true, order, mode: "ship" });
-      return;
-    }
-
     confirmDialog({
-      message: `Change order #${order.orderNumber} status from "${order.status}" to "${newStatus}"?`,
-      header: "Confirm Status Change",
+      message: `Mark order #${order.orderNumber} as delivered? Automatic courier tracking will stop.`,
+      header: "Confirm Delivery",
       icon: "pi pi-exclamation-triangle",
       acceptClassName: "p-button-warning",
       accept: () => applyStatusChange(order._id, newStatus),
     });
   };
 
-  const closeDateDialog = () =>
-    setDateDialog((d) => ({ ...d, visible: false }));
-
-  const confirmDeliveryDate = async (dateStr: string) => {
-    const order = dateDialog.order;
-    if (!order) return;
-    const isShip = dateDialog.mode === "ship";
-
-    try {
-      setUpdatingId(order._id);
-      const res = isShip
-        ? await axiosInstance.patch(`${ENDPOINT}/${order._id}/status`, {
-            status: "SHIPPED",
-            expectedDeliveryDate: dateStr,
-          })
-        : await axiosInstance.patch(`${ENDPOINT}/${order._id}/delivery-date`, {
-            expectedDeliveryDate: dateStr,
-          });
-
-      toast.success(
-        res.data.message ||
-          (isShip ? "Order marked as SHIPPED" : "Delivery date updated"),
-      );
-
-      if (isShip && statusFilter !== "ALL") {
-        await getOrders(); // filter on thakle row ar ei list e thakbe na
-      } else {
-        setOrderData((prev) =>
-          prev.map((o) =>
-            o._id === order._id ? mergeOrder(o, res.data.order) : o,
-          ),
-        );
-      }
-      closeDateDialog();
-    } catch (err: any) {
-      toast.error(
-        err?.response?.data?.errors?.[0]?.message ||
-          err?.response?.data?.message ||
-          "Failed to update delivery date",
-      );
-    } finally {
-      setUpdatingId(null);
-    }
-  };
+  // 🔥 CHANGED: closeDateDialog / confirmDeliveryDate muche dewa hoyeche
 
   const closeCancelDialog = () => {
     setCancelDialog({ visible: false, orderId: null });
@@ -389,13 +347,8 @@ function OrdersPage() {
     if (ok) closeCancelDialog();
   };
 
-  const statusTemplate = (rowData: OrderRow) => (
-    <span
-      className={`px-2 py-1 rounded-full text-xs font-medium ${STATUS_STYLES[rowData.status]}`}
-    >
-      {rowData.status}
-    </span>
-  );
+  // 🔥 CHANGED: StageBadge use
+  const statusTemplate = (rowData: OrderRow) => <StageBadge order={rowData} />;
 
   const customerTemplate = (rowData: OrderRow) => {
     const c = getCustomer(rowData);
@@ -444,43 +397,16 @@ function OrdersPage() {
     );
   };
 
-  // View + status-change + delivery date dropdown ekshathe (SplitButton)
+  // 🔥 CHANGED: View + status-change dropdown (delivery date / courier choose item muche dewa)
   const actionTemplate = (rowData: OrderRow) => {
     const items: any[] = availableStatuses(rowData).map((s) => ({
-      label: `Mark as ${s}`,
+      label: statusActionLabel(s),
       icon: STATUS_ICONS[s],
       command: () => requestStatusChange(rowData, s),
     }));
 
-    if (
-      DELIVERY_DATE_EDITABLE.includes(rowData.status) &&
-      rowData.deliveryEnabled !== false
-    ) {
-      items.unshift({
-        label: rowData.expectedDeliveryDate
-          ? "Edit delivery date"
-          : "Set delivery date",
-        icon: "pi pi-calendar",
-        command: () =>
-          setDateDialog({ visible: true, order: rowData, mode: "edit" }),
-      });
-    }
-
-    // [নতুন] courier / delivery speed bachte details page e niye jay
-    if (
-      (rowData.deliveryInfo as any)?.mode === "NATIONAL" &&
-      ["PENDING", "CONFIRMED"].includes(rowData.status) &&
-      !rowData.shipment?.awb
-    ) {
-      items.unshift({
-        label: "Choose courier / speed",
-        icon: "pi pi-bolt",
-        command: () => goToDetails(rowData._id),
-      });
-    }
-
     // price estimate pending: details page e giye price dite hobe
-    if (rowData.status === "PENDING" && isQuotePending(rowData)) {
+    if (rowData.status === "CONFIRMED" && isQuotePending(rowData)) {
       items.unshift({
         label:
           rowData.priceStatus === "QUOTED"
@@ -533,6 +459,7 @@ function OrdersPage() {
           />
         </IconField>
 
+        {/* 🔥 CHANGED: PENDING option muche dewa hoyeche */}
         <select
           value={statusFilter}
           onChange={(e) =>
@@ -541,7 +468,6 @@ function OrdersPage() {
           className="p-inputtext-sm border rounded-md px-2 py-1.5 bg-white"
         >
           <option value="ALL">All Status</option>
-          <option value="PENDING">Pending</option>
           <option value="CONFIRMED">Confirmed</option>
           <option value="SHIPPED">Shipped</option>
           <option value="DELIVERED">Delivered</option>
@@ -610,11 +536,8 @@ function OrdersPage() {
                             {formatDate(order.createdAt)}
                           </p>
                         </div>
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-xs font-semibold ${STATUS_STYLES[order.status]}`}
-                        >
-                          {order.status}
-                        </span>
+                        {/* 🔥 CHANGED: STATUS_STYLES span → StageBadge */}
+                        <StageBadge order={order} />
                       </div>
 
                       <div className="text-xs text-gray-700 space-y-0.5">
@@ -683,7 +606,7 @@ function OrdersPage() {
                         {nextStatuses.map((s) => (
                           <Button
                             key={s}
-                            label={s}
+                            label={statusActionLabel(s)}
                             icon={STATUS_ICONS[s]}
                             loading={updatingId === order._id}
                             onClick={() => requestStatusChange(order, s)}
@@ -853,29 +776,7 @@ function OrdersPage() {
           </div>
         </Dialog>
 
-        {/* Expected delivery date dialog (ship / edit) */}
-        <DeliveryDateDialog
-          visible={dateDialog.visible}
-          title={
-            dateDialog.mode === "ship"
-              ? `Ship Order #${dateDialog.order?.orderNumber ?? ""}`
-              : "Expected Delivery Date"
-          }
-          description={
-            dateDialog.mode === "ship"
-              ? "Set when this order will reach the customer, then it will be marked as Shipped."
-              : "Set or change when this order will reach the customer."
-          }
-          confirmLabel={dateDialog.mode === "ship" ? "Ship Order" : "Save Date"}
-          loading={updatingId === dateDialog.order?._id}
-          // [DELIVERY] date set kora na thakle customer ke dekhano estimate er shesh date prefill
-          initialDate={
-            dateDialog.order?.expectedDeliveryDate ??
-            dateDialog.order?.deliveryInfo?.estimatedMaxDate
-          }
-          onHide={closeDateDialog}
-          onConfirm={confirmDeliveryDate}
-        />
+        {/* 🔥 CHANGED: <DeliveryDateDialog /> muche dewa hoyeche */}
 
         <ConfirmDialog />
         <ToastContainer position="top-right" />

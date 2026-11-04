@@ -16,7 +16,7 @@ export default function OrderReportPage() {
           },
         },
         {
-          label: "Pending orders",
+          label: "Open orders",
           props: {
             type: "pending-orders",
             title: "Pending orders report",

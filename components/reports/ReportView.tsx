@@ -28,7 +28,7 @@ export type ViewProps = {
 
 const NO_FILTERS: FilterKey[] = [];
 
-const ORDER_STATUSES = ["PENDING", "CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"];
+const ORDER_STATUSES = ["CONFIRMED", "SHIPPED", "DELIVERED", "CANCELLED"];
 
 const currentMonth = () => {
   const d = new Date();

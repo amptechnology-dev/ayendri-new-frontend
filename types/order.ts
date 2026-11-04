@@ -1,12 +1,8 @@
 import axiosInstance from "@/service/axios.service";
 import type { DeliveryInfo, OrderShipment } from "@/helper/delivery";
 
-export type OrderStatus =
-  | "PENDING"
-  | "CONFIRMED"
-  | "SHIPPED"
-  | "DELIVERED"
-  | "CANCELLED";
+// 🔥 CHANGED: PENDING muche dewa hoyeche (order ekhon shoja CONFIRMED hoye start hoy)
+export type OrderStatus = "CONFIRMED" | "SHIPPED" | "DELIVERED" | "CANCELLED";
 
 // price on request flow
 export type PriceStatus =
@@ -208,26 +204,32 @@ export type OrderRow = {
   createdAt: string;
   updatedAt: string;
   paymentOff?: boolean;
+
+  // 🔥 CHANGED: auto-shipment fields
+  autoShip?: boolean;
+  shipStartDate?: string | null;
+  shipmentDone?: boolean;
+  shipError?: string | null;
 };
 
+// 🔥 CHANGED: PENDING remove
 export const ORDER_STATUSES: OrderStatus[] = [
-  "PENDING",
   "CONFIRMED",
   "SHIPPED",
   "DELIVERED",
   "CANCELLED",
 ];
 
+// 🔥 CHANGED: PENDING key remove
 export const STATUS_STYLES: Record<OrderStatus, string> = {
-  PENDING: "bg-yellow-100 text-yellow-800",
   CONFIRMED: "bg-blue-100 text-blue-800",
   SHIPPED: "bg-indigo-100 text-indigo-800",
   DELIVERED: "bg-green-100 text-green-800",
   CANCELLED: "bg-red-100 text-red-800",
 };
 
+// 🔥 CHANGED: PENDING key remove
 export const STATUS_ICONS: Record<OrderStatus, string> = {
-  PENDING: "pi pi-clock",
   CONFIRMED: "pi pi-check-circle",
   SHIPPED: "pi pi-truck",
   DELIVERED: "pi pi-verified",
@@ -260,29 +262,33 @@ export const ATTEMPT_STYLES: Record<PaymentAttemptStatus, string> = {
 export const TERMINAL_STATUSES: OrderStatus[] = ["DELIVERED", "CANCELLED"];
 
 /**
- * Backend er ALLOWED_TRANSITIONS mirror — key: target status, value: allowed *current* statuses.
- * ⚠️ Backend controller er ALLOWED_TRANSITIONS er sathe match kore niyo.
+ * 🔥 CHANGED: PENDING bad, SHIPPED ekhon auto (courier) set kore, manual na.
+ * Backend er ALLOWED_TRANSITIONS er sathe match kore niyo.
+ * key: target status, value: allowed *current* statuses.
  */
 export const ALLOWED_FROM: Partial<Record<OrderStatus, OrderStatus[]>> = {
-  CONFIRMED: ["PENDING"],
   SHIPPED: ["CONFIRMED"],
-  DELIVERED: ["SHIPPED"],
-  CANCELLED: ["PENDING", "CONFIRMED"],
+  DELIVERED: ["CONFIRMED", "SHIPPED"],
+  CANCELLED: ["CONFIRMED"],
 };
 
-/** Given current status, kon kon status-e move kora jabe */
-export const getNextStatuses = (current: OrderStatus): OrderStatus[] =>
-  ORDER_STATUSES.filter((target) => ALLOWED_FROM[target]?.includes(current));
+/** 🔥 CHANGED: Given current status, kon kon status-e move kora jabe (manual) */
+export const getNextStatuses = (status: OrderStatus): OrderStatus[] => {
+  if (status === "CONFIRMED") return ["DELIVERED", "CANCELLED"];
+  if (status === "SHIPPED") return ["DELIVERED"];
+  return [];
+};
 
-/** Store price estimate pathay / user accept-er opekkhay (CONFIRMED kora jabe na) */
+/** Store price estimate pathay / user accept-er opekkhay */
 export const isQuotePending = (o: { priceStatus?: PriceStatus }) =>
   o.priceStatus === "AWAITING_QUOTE" || o.priceStatus === "QUOTED";
 
-/** ONLINE order e payment complete hoyni (CONFIRMED kora jabe na) */
-export const isPaymentPending = (o: {
-  paymentMethod?: PaymentMethod;
-  paymentStatus?: PaymentStatus;
-}) => o.paymentMethod === "ONLINE" && o.paymentStatus !== "PAID";
+/** 🔥 CHANGED: ONLINE payment ekhono hoyni */
+export const isPaymentPending = (o: OrderRow) =>
+  o.paymentMethod === "ONLINE" &&
+  !o.paymentOff &&
+  o.paymentStatus !== "PAID" &&
+  o.status === "CONFIRMED";
 
 /** PATCH /store-orders/:orderId/status */
 export const updateOrderStatusApi = (
@@ -305,3 +311,36 @@ export const submitQuoteApi = (
     items,
     ...(note ? { note } : {}),
   });
+
+// 🔥 CHANGED: stage label (status badge hishebe dekhabe)
+export const getStageLabel = (o: OrderRow): { label: string; tone: string } => {
+  if (o.status === "CANCELLED")
+    return { label: "Cancelled", tone: "bg-red-100 text-red-700" };
+  if (o.status === "DELIVERED")
+    return { label: "Delivered", tone: "bg-green-100 text-green-800" };
+  if (o.status === "SHIPPED")
+    return { label: "Shipped", tone: "bg-indigo-100 text-indigo-800" };
+
+  // CONFIRMED
+  if (o.priceStatus === "AWAITING_QUOTE")
+    return { label: "Quote needed", tone: "bg-amber-100 text-amber-800" };
+  if (o.priceStatus === "QUOTED")
+    return { label: "Awaiting customer", tone: "bg-purple-100 text-purple-800" };
+  if (isPaymentPending(o))
+    return { label: "Awaiting payment", tone: "bg-amber-100 text-amber-800" };
+  if (!o.autoShip)
+    return { label: "Confirmed", tone: "bg-blue-100 text-blue-800" };
+  if (o.shipError && !o.shipmentDone)
+    return { label: "Courier retrying", tone: "bg-red-100 text-red-700" };
+  if (o.shipmentDone || o.shipment?.awb)
+    return { label: "Courier booked", tone: "bg-blue-100 text-blue-800" };
+  if (o.shipStartDate && new Date(o.shipStartDate).getTime() > Date.now()) {
+    const d = new Date(o.shipStartDate).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      timeZone: "Asia/Kolkata",
+    });
+    return { label: `Starts ${d}`, tone: "bg-sky-100 text-sky-800" };
+  }
+  return { label: "Booking courier", tone: "bg-blue-100 text-blue-800" };
+};
