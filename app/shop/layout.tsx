@@ -9,7 +9,7 @@ import DisableAdminKitCss from "./components/DisableAdminKitCss";
 import ShopGate from "./components/ShopGate";
 import ShopLoader from "./components/ShopLoader";
 import NotificationWatcher from "./components/NotificationWatcher";
-import FirstVisitAudio from "./components/FirstVisitAudio";
+import ChatBotWidget from "./components/ChatBotWidget";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -52,7 +52,6 @@ export default function ShopLayout({
       />
       <script dangerouslySetInnerHTML={{ __html: INTRO_AUDIO_SCRIPT }} />
       <DisableAdminKitCss />
-      <FirstVisitAudio />
       <CartSync />
       <NotificationWatcher />
       <ShopHeader />
@@ -62,6 +61,7 @@ export default function ShopLayout({
       </main>
       <ShopFooter />
       <BottomNav />
+      <ChatBotWidget />
     </div>
   );
 }
