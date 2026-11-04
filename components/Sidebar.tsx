@@ -312,7 +312,11 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                 icon: "pi-star",
                 href: "/dashboard/reviews",
               },
-              // delivery off hole Delivery + Shipping Cost dutoi hide hobe
+              {
+                label: "Chatbot",
+                icon: "pi-comments",
+                href: "/dashboard/chatbot",
+              },
               ...(deliveryEnabled
                 ? [
                     {
