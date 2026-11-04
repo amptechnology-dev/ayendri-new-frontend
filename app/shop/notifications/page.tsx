@@ -1,11 +1,12 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, Trash2 } from "lucide-react";
+import { Bell, CheckCheck, MessageSquare, Package, Trash2 } from "lucide-react";
 import { useAuth } from "../auth";
 import { useShop } from "../shop-data";
 import { useNotifications } from "../notifications-store";
+import Pagination from "../components/Pagination";
 import {
   clearAllNotifications,
   deleteNotification,
@@ -39,8 +40,9 @@ export default function NotificationsPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [pageLoading, setPageLoading] = useState(false);
   const [error, setError] = useState("");
+  const [filter, setFilter] = useState<"all" | "unread">("all");
   const setGlobalUnread = useNotifications((s) => s.setUnread);
 
   // keep the header badge equal to what this page shows
@@ -74,23 +76,26 @@ export default function NotificationsPage() {
     if (ready) void load();
   }, [ready, load]);
 
-  const loadMore = async () => {
-    if (!token || loadingMore || page >= totalPages) return;
-    setLoadingMore(true);
+  const goToPage = async (p: number) => {
+    if (!token || pageLoading || p < 1 || p > totalPages || p === page) return;
+    setPageLoading(true);
+    setError("");
     try {
-      const d = await fetchNotifications(token, page + 1, storeMongoId || undefined);
+      const d = await fetchNotifications(token, p, storeMongoId || undefined);
       const list = filterNotificationsForStore(d.notifications ?? [], [storeMongoId]);
-      setItems((prev) => [...prev, ...list]);
-      setPage(page + 1);
+      setItems(list);
+      setPage(p);
       setTotalPages(d.totalPages ?? totalPages);
+      if (typeof d.unreadCount === "number") setUnread(d.unreadCount);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch {
-      setError("Unable to load more notifications.");
+      setError("Unable to load this page. Please try again.");
     } finally {
-      setLoadingMore(false);
+      setPageLoading(false);
     }
   };
 
-    const open = async (n: AppNotification) => {
+  const open = async (n: AppNotification) => {
     if (token && !n.isRead) {
       setItems((prev) => prev.map((x) => (x._id === n._id ? { ...x, isRead: true } : x)));
       setUnread((u) => Math.max(0, u - 1));
@@ -141,6 +146,11 @@ export default function NotificationsPage() {
     }
   };
 
+  const visible = useMemo(
+    () => (filter === "unread" ? items.filter((n) => !n.isRead) : items),
+    [items, filter]
+  );
+
   if (!ready || loading) {
     return <p className="py-20 text-center text-sm text-[#9a7a7a]">Loading notifications…</p>;
   }
@@ -157,81 +167,130 @@ export default function NotificationsPage() {
     );
   }
 
+  const tabClass = (active: boolean) =>
+    `flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-sm font-bold transition ${
+      active ? "bg-[#fff1da] text-[#9b4326]" : "text-[#5a3a3a] hover:bg-[#fff8ec]"
+    }`;
+
   return (
-    <main className="mx-auto max-w-[640px] px-6 py-10">
-      <div className="flex items-center justify-between gap-3">
-        <h1 className="text-2xl font-black text-[#4a0710]">
-          Notifications{unread > 0 && <span className="ml-2 rounded-full bg-[#a3161c] px-2 py-0.5 align-middle text-xs text-white">{unread}</span>}
-        </h1>
-        {items.length > 0 && (
-          <div className="flex gap-2 text-xs font-bold">
-            {unread > 0 && (
-              <button onClick={readAll} className="rounded-full border border-[#e8cfa8] px-3 py-1.5 text-[#9b4326]">
-                Mark all read
+    <main className="mx-auto w-full max-w-[1100px] px-4 py-8 sm:px-6 lg:py-10">
+      <h1 className="text-2xl font-black text-[#4a0710] lg:text-3xl">Notifications</h1>
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
+        {/* Sidebar */}
+        <aside className="shop-card p-4 lg:sticky lg:top-24">
+          <div className="flex gap-2 lg:flex-col lg:gap-1">
+            <button onClick={() => setFilter("all")} className={tabClass(filter === "all")}>
+              <span>All</span>
+              <span className="text-xs font-semibold text-[#9a7a7a]">{items.length}</span>
+            </button>
+            <button onClick={() => setFilter("unread")} className={tabClass(filter === "unread")}>
+              <span>Unread</span>
+              <span
+                className={`min-w-[22px] rounded-full px-2 py-0.5 text-center text-xs font-bold ${
+                  unread > 0 ? "bg-[#a3161c] text-white" : "text-[#9a7a7a]"
+                }`}
+              >
+                {unread}
+              </span>
+            </button>
+          </div>
+
+          {items.length > 0 && (
+            <div className="mt-4 flex gap-2 border-t border-[#f1e0c4] pt-4 text-xs font-bold lg:flex-col">
+              {unread > 0 && (
+                <button
+                  onClick={readAll}
+                  className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-[#e8cfa8] px-3 py-2 text-[#9b4326] hover:bg-[#fff8ec]"
+                >
+                  <CheckCheck size={14} /> Mark all read
+                </button>
+              )}
+              <button
+                onClick={clearAll}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-full border border-red-300 px-3 py-2 text-red-600 hover:bg-red-50"
+              >
+                <Trash2 size={14} /> Clear all
               </button>
-            )}
-            <button onClick={clearAll} className="rounded-full border border-red-300 px-3 py-1.5 text-red-600">
-              Clear all
-            </button>
-          </div>
-        )}
-      </div>
+            </div>
+          )}
+        </aside>
 
-      {items.length > 0 && (
-        <p className="mt-2 text-xs text-[#9a7a7a]">
-          {items.length} notification{items.length > 1 ? "s" : ""} · {unread} unread
-        </p>
-      )}
+        {/* List */}
+        <section className="min-w-0">
+          {error && (
+            <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
+              {error}
+              <button onClick={() => void load()} className="ml-2 font-bold underline">Retry</button>
+            </div>
+          )}
 
-      {error && (
-        <div className="mt-5 rounded-xl bg-red-50 p-3 text-sm text-red-700">
-          {error}
-          <button onClick={() => void load()} className="ml-2 font-bold underline">Retry</button>
-        </div>
-      )}
+          {!error && visible.length === 0 && (
+            <div className="shop-card p-12 text-center">
+              <Bell size={36} className="mx-auto text-[#c9a98a]" />
+              <h2 className="mt-3 text-lg font-extrabold">
+                {filter === "unread" && items.length > 0 ? "You're all caught up" : "No notifications"}
+              </h2>
+              <p className="mt-1 text-sm text-[#9a7a7a]">
+                {filter === "unread" && items.length > 0
+                  ? "No unread notifications right now."
+                  : "Order updates and offers will show up here."}
+              </p>
+            </div>
+          )}
 
-      {!error && items.length === 0 && (
-        <section className="shop-card mt-8 p-10 text-center">
-          <Bell size={32} className="mx-auto text-[#c9a98a]" />
-          <h2 className="mt-3 text-lg font-extrabold">No notifications</h2>
-          <p className="mt-1 text-sm text-[#9a7a7a]">Order updates and offers will show up here.</p>
+          {visible.length > 0 && (
+            <div className="shop-card divide-y divide-[#f1e0c4] overflow-hidden">
+              {visible.map((n) => {
+                const Icon = n.type === "REVIEW_REPLY" ? MessageSquare : notificationOrderId(n) ? Package : Bell;
+                return (
+                  <div
+                    key={n._id}
+                    className={`group flex items-center gap-4 px-5 py-4 transition hover:bg-[#fffaf1] ${
+                      n.isRead ? "" : "bg-[#fffdf8] shadow-[inset_4px_0_0_#e0622d]"
+                    }`}
+                  >
+                    <div
+                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${
+                        n.isRead ? "bg-[#f6efe4] text-[#9a7a7a]" : "bg-[#fff1da] text-[#e0622d]"
+                      }`}
+                    >
+                      <Icon size={18} />
+                    </div>
+
+                    <button onClick={() => void open(n)} className="min-w-0 flex-1 text-left">
+                      <div className="flex items-center gap-2">
+                        <b className={`truncate text-sm ${n.isRead ? "font-semibold text-[#5a3a3a]" : "text-[#4a0710]"}`}>
+                          {n.title}
+                        </b>
+                        {!n.isRead && <span className="h-2 w-2 shrink-0 rounded-full bg-[#e0622d]" />}
+                      </div>
+                      <p className="mt-0.5 line-clamp-2 text-sm text-[#5a3a3a]">{n.body}</p>
+                    </button>
+
+                    <span className="hidden shrink-0 text-xs text-[#9a7a7a] sm:block">{timeAgo(n.createdAt)}</span>
+
+                    <button
+                      onClick={() => void remove(n)}
+                      aria-label="Delete notification"
+                      className="shrink-0 rounded-full p-2 text-[#9a7a7a] transition hover:bg-[#fff1da] hover:text-red-600 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            onChange={(p) => void goToPage(p)}
+            disabled={pageLoading}
+          />
         </section>
-      )}
-
-      <div className="mt-5 space-y-3">
-        {items.map((n) => (
-          <div
-            key={n._id}
-            className={`shop-card flex items-start gap-3 p-4 ${n.isRead ? "" : "border-l-4 border-[#e0622d]"}`}
-          >
-            <button onClick={() => void open(n)} className="min-w-0 flex-1 text-left">
-              <div className="flex items-center gap-2">
-                {!n.isRead && <span className="h-2 w-2 shrink-0 rounded-full bg-[#e0622d]" />}
-                <b className="text-sm">{n.title}</b>
-              </div>
-              <p className="mt-1 text-sm text-[#5a3a3a]">{n.body}</p>
-              <p className="mt-1.5 text-xs text-[#9a7a7a]">{timeAgo(n.createdAt)}</p>
-            </button>
-            <button
-              onClick={() => void remove(n)}
-              aria-label="Delete notification"
-              className="shrink-0 rounded-full p-2 text-[#9a7a7a] hover:bg-[#fff1da]"
-            >
-              <Trash2 size={16} />
-            </button>
-          </div>
-        ))}
       </div>
-
-      {page < totalPages && (
-        <button
-          onClick={() => void loadMore()}
-          disabled={loadingMore}
-          className="mx-auto mt-6 block rounded-full border border-[#e8cfa8] px-6 py-2.5 text-sm font-bold text-[#9b4326] disabled:opacity-50"
-        >
-          {loadingMore ? "Loading…" : "Load more"}
-        </button>
-      )}
     </main>
   );
 }

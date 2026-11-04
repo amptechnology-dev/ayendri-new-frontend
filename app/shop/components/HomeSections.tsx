@@ -11,6 +11,7 @@ import ProductCard from "./ProductCard";
 import DivinePicks from "./DivinePicks";
 import AboutCard from "./AboutCard";
 import { useShop } from "../shop-data";
+import { isService } from "./ServicesSection";
 
 const Pic = ({ i, className = "" }: { i: number; className?: string }) => {
   const products = useShop((s) => s.products);
@@ -212,7 +213,7 @@ function CelebrateDiwali() {
   <h3 className="text-lg font-extrabold text-[#4a0710] sm:text-2xl">Diwali puja essentials</h3>
   <Link href="/shop/category/all" className="shrink-0 whitespace-nowrap text-sm font-bold text-[#7a1118]">See all ›</Link>
 </div>
-        <Carousel itemWidth={220}>{products.map((p) => <ProductCard key={p.slug} p={p} />)}</Carousel>
+        <Carousel itemWidth={220}>{products.filter((p) => !isService(p)).map((p) => <ProductCard key={p.slug} p={p} />)}</Carousel>
       </div>
     </section>
   );
@@ -277,7 +278,7 @@ function Intention() {
         </div>
         <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#fcd7b0] px-4 py-2 text-xs font-bold text-[#7a1118] shadow sm:px-6 sm:text-sm">★ Flat 50% off on bestsellers</span>
       </div>
-      <div className="mx-auto mt-12 max-w-[1180px]"><Carousel itemWidth={220}>{products.map((p) => <ProductCard key={p.slug} p={p} />)}</Carousel></div>
+      <div className="mx-auto mt-12 max-w-[1180px]"><Carousel itemWidth={220}>{products.filter((p) => !isService(p)).map((p) => <ProductCard key={p.slug} p={p} />)}</Carousel></div>
     </section>
   );
 }

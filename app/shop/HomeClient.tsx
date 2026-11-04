@@ -11,6 +11,7 @@ import HeroCarousel from "./components/HeroCarousel";
 import Carousel from "./components/Carousel";
 import HomeSections from "./components/HomeSections";
 import HeroArt from "./components/HeroArt";
+import ServicesSection, { isService } from "./components/ServicesSection";
 
 function Reveal({ children }: { children: ReactNode; delay?: number }) {
   return <>{children}</>;
@@ -21,7 +22,8 @@ export default function ShopHome() {
   const products = useShop((s) => s.products);
   const categories = useShop((s) => s.categories);
   const t = (d?: string) => Date.parse(d ?? "") || 0;
-  const newest = [...products]
+  const physical = products.filter((p) => !isService(p));
+  const newest = [...physical]
     .sort((a, b) => t(b.createdAt) - t(a.createdAt))
     .slice(0, 8);
 
@@ -106,6 +108,9 @@ export default function ShopHome() {
           </Carousel>
         </div>
       </Reveal>
+
+      {/* SERVICES */}
+      <Reveal><ServicesSection /></Reveal>
 
       {/* Bundle & Save */}
       <Reveal>
@@ -230,7 +235,7 @@ export default function ShopHome() {
         </section>
       </Reveal>
       <div className="mx-auto grid max-w-[1300px] grid-cols-2 gap-x-5 gap-y-8 px-6 md:grid-cols-4">
-        {products.slice(0, 24).map((p) => (
+        {physical.slice(0, 24).map((p) => (
           <Reveal key={p.slug}>
             <ProductCard p={p} />
           </Reveal>

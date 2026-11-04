@@ -3,6 +3,7 @@ export type Product = {
   image: string; rating: number; reviews: number; tag?: string; description: string;
   createdAt?: string; categoryName?: string; variantId?: string;
   delivery?: any;
+  productType?: "PRODUCT" | "SERVICE";
   deliveryTime?: string;
   isMadeForProduct?: boolean;
   raw?: any;

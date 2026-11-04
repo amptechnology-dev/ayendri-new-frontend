@@ -6,7 +6,11 @@ import { useCart, bill } from "../cart";
 import { useAuth, errMsg, shopApi } from "../auth";
 import { inr } from "../data";
 import { submitPayUPayment } from "./payment";
-import { getSavedAddresses, addSavedAddress, type SavedAddress } from "../addresses";
+import {
+  getSavedAddresses,
+  addSavedAddress,
+  type SavedAddress,
+} from "../addresses";
 import OrderSuccessModal from "../components/order-success-modal";
 import { imageUrl, tierPriceFor } from "../cart-api";
 
@@ -118,12 +122,37 @@ function extractCartDetails(payload: any) {
 // delivery charge + ETA er short label
 const etaText = (o: any) =>
   `${inr(Number(o?.shippingCharge ?? 0))}${o?.etaLabel ? ` • ${o.etaLabel}` : ""}`;
+const dateText = (iso?: string) =>
+  iso
+    ? new Date(iso).toLocaleDateString("en-IN", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+      })
+    : "";
 
+const chargeText = (n?: number) =>
+  Number(n ?? 0) === 0 ? "Free" : inr(Number(n));
 // [FASTEST] ok:false store group gulor message ekshathe (duplicate bad dewa hoy)
 const badMessage = (list: any[]) =>
-  [...new Set(list.map((s) => s?.message || "Some items are not available"))].join(
-    " ",
-  );
+  [
+    ...new Set(list.map((s) => s?.message || "Some items are not available")),
+  ].join(" ");
+
+// fastest only counts if it arrives EARLIER than normal
+const isFasterOption = (opt: any) => {
+  if (!opt?.available || !opt.fastest || !opt.normal) return false;
+  const n = opt.normal;
+  const f = opt.fastest;
+  const nd = n.estimatedMaxDate ? new Date(n.estimatedMaxDate).getTime() : NaN;
+  const fd = f.estimatedMaxDate ? new Date(f.estimatedMaxDate).getTime() : NaN;
+  if (!Number.isNaN(nd) && !Number.isNaN(fd) && fd < nd) return true;
+  return Number(f.maxDays) < Number(n.maxDays);
+};
+
+const hasFasterStore = (p: any) =>
+  Array.isArray(p?.stores) &&
+  p.stores.some((s: any) => s.ok !== false && isFasterOption(s.fastestOption));
 
 export default function Checkout() {
   const cart = useCart();
@@ -132,7 +161,10 @@ export default function Checkout() {
   const [mounted, setMounted] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [success, setSuccess] = useState<{ orderId: string; message: string } | null>(null);
+  const [success, setSuccess] = useState<{
+    orderId: string;
+    message: string;
+  } | null>(null);
   const [address, setAddress] = useState<AddressForm>(EMPTY_ADDRESS);
   const [saved, setSaved] = useState<SavedAddress[]>([]);
   const [selectedId, setSelectedId] = useState("new");
@@ -198,7 +230,8 @@ export default function Checkout() {
       try {
         const cartResponse = await shopApi.get("/api/cart/");
         const { cartId, storeIds } = extractCartDetails(cartResponse.data);
-        if (!cartId || !storeIds.length) throw new Error("Cart could not be loaded.");
+        if (!cartId || !storeIds.length)
+          throw new Error("Cart could not be loaded.");
 
         const res = await shopApi.post("/order/checkout-preview", {
           cartId,
@@ -218,7 +251,10 @@ export default function Checkout() {
         const bad = groups.filter((s) => s.ok === false);
         const good = groups.filter((s) => s.ok !== false);
 
-        if (data?.success === false || (groups.length > 0 && good.length === 0)) {
+        if (
+          data?.success === false ||
+          (groups.length > 0 && good.length === 0)
+        ) {
           // [FASTEST] ekta group-o ok na hole-i tokhon pura preview fail
           setPreview(null);
           setUnavailableMsg("");
@@ -244,11 +280,19 @@ export default function Checkout() {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [token, cartCount, pin, stateName, address.country, cart.payment, fastest]);
+  }, [
+    token,
+    cartCount,
+    pin,
+    stateName,
+    address.country,
+    cart.payment,
+    fastest,
+  ]);
 
   // [FASTEST] preview ashar por jodi fastest available na hoy, toggle off kore dao
   useEffect(() => {
-    if (preview && preview.fastestAvailable !== true && fastest) {
+    if (preview && fastest && !hasFasterStore(preview)) {
       setFastest(false);
     }
   }, [preview, fastest]);
@@ -322,21 +366,24 @@ export default function Checkout() {
 
   // [FASTEST] bill er value server theke (preview thakle), nahole local
   const hasPreview = !!preview && !previewError;
-  const itemsAmount = hasPreview ? Number(preview.itemsTotal ?? 0) : subtotal.total;
+  const itemsAmount = hasPreview
+    ? Number(preview.itemsTotal ?? 0)
+    : subtotal.total;
   const shippingAmount = hasPreview ? Number(preview.totalShipping ?? 0) : null;
-  const payableTotal = hasPreview ? Number(preview.grandTotal ?? 0) : subtotal.total;
+  const payableTotal = hasPreview
+    ? Number(preview.grandTotal ?? 0)
+    : subtotal.total;
 
   // [FASTEST] shudhu ok store group gulo (same storeId onek bar ashte pare)
   const previewStores: any[] =
     hasPreview && Array.isArray(preview.stores)
       ? preview.stores.filter((s: any) => s.ok !== false)
       : [];
-  const fastestStores = previewStores.filter((s) => s.fastestOption?.available);
-  const showFastest =
-    hasPreview && preview.fastestAvailable === true && fastestStores.length > 0;
-
+  const canUseFastest = hasPreview && hasFasterStore(preview);
+  const showFastest = hasPreview && previewStores.length > 0;
   // order place kora jabe kina
-  const cannotOrder = busy || previewLoading || !!previewError || !!unavailableMsg;
+  const cannotOrder =
+    busy || previewLoading || !!previewError || !!unavailableMsg;
 
   async function submitOrder() {
     if (!token || !user) {
@@ -387,7 +434,9 @@ export default function Checkout() {
       const bookingDates = [
         ...new Set(
           cart.items
-            .map((i) => (i.bookingDate ? String(i.bookingDate).slice(0, 10) : ""))
+            .map((i) =>
+              i.bookingDate ? String(i.bookingDate).slice(0, 10) : "",
+            )
             .filter(Boolean),
         ),
       ];
@@ -445,7 +494,9 @@ export default function Checkout() {
         finalPreview.stores.some((store: any) => store.ok === false)
       ) {
         throw new Error(
-          badMessage(finalPreview.stores.filter((store: any) => store.ok === false)),
+          badMessage(
+            finalPreview.stores.filter((store: any) => store.ok === false),
+          ),
         );
       }
 
@@ -611,7 +662,12 @@ export default function Checkout() {
                 [
                   ["fullName", "Full name", true, ""],
                   ["phone", "10-digit phone number", true, ""],
-                  ["addressLine", "House number, street, address", true, "col-span-2"],
+                  [
+                    "addressLine",
+                    "House number, street, address",
+                    true,
+                    "col-span-2",
+                  ],
                   ["area", "Area / locality", false, ""],
                   ["city", "City", true, ""],
                   ["state", "State", true, ""],
@@ -629,7 +685,9 @@ export default function Checkout() {
                   }
                   placeholder={`${label}${required ? " *" : ""}`}
                   required={required}
-                  inputMode={key === "phone" || key === "pincode" ? "numeric" : "text"}
+                  inputMode={
+                    key === "phone" || key === "pincode" ? "numeric" : "text"
+                  }
                   className={`${span} w-full rounded-xl border border-[#e8cfa8] px-4 py-2.5 text-sm outline-none focus:border-[#e0622d]`}
                 />
               ))}
@@ -637,7 +695,27 @@ export default function Checkout() {
           </section>
 
           {/* [FASTEST] preview er fastestAvailable true hole-i dekhabe */}
-          {showFastest && (
+                    {/* [FASTEST] fastest only when it is really faster than normal */}
+          {showFastest && !canUseFastest && (
+            <section className="shop-card p-5">
+              <div className="flex items-start gap-3">
+                <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[#f3e8d6] text-[#9a7a7a]">
+                  ⚡
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h2 className="font-extrabold text-[#4a0710]">
+                    Fastest delivery is not available
+                  </h2>
+                  <p className="text-xs text-[#9a7a7a]">
+                    Fastest delivery is not available for your pincode. Your
+                    order will be shipped with standard delivery.
+                  </p>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {showFastest && canUseFastest && (
             <section className="shop-card space-y-3 p-5">
               <div className="flex items-center justify-between gap-3">
                 <div className="min-w-0">
@@ -665,26 +743,41 @@ export default function Checkout() {
               </div>
 
               <div className="grid gap-2 sm:grid-cols-2">
-                {fastestStores.map((s, i) => {
+                {previewStores.map((s, i) => {
                   const opt = s.fastestOption;
+                  const faster = isFasterOption(opt);
                   return (
                     <div
                       key={`${s.storeId}-${i}`}
                       className="rounded-xl border border-[#e8cfa8] p-3 text-xs"
                     >
-                      {previewStores.length > 1 && (
-                        <p className="mb-1 font-bold text-[#4a0710]">
-                          {s.storeName || "Store"}
-                          {s.totalItems ? ` · ${s.totalItems} item(s)` : ""}
+                      <p
+                        className={
+                          fastest && faster
+                            ? "text-[#9a7a7a]"
+                            : "font-bold text-[#4a0710]"
+                        }
+                      >
+                        Normal: {etaText(opt?.normal ?? s.delivery)}
+                      </p>
+                      {faster ? (
+                        <p
+                          className={
+                            fastest
+                              ? "font-bold text-[#4a0710]"
+                              : "text-[#9a7a7a]"
+                          }
+                        >
+                          Fastest: {etaText(opt.fastest)}
+                          {opt.fastest?.fixedFeeApplied
+                            ? " (fastest delivery fee)"
+                            : ""}
+                        </p>
+                      ) : (
+                        <p className="text-[#9a7a7a]">
+                          Fastest delivery not available
                         </p>
                       )}
-                      <p className={fastest ? "text-[#9a7a7a]" : "font-bold text-[#4a0710]"}>
-                        Normal: {etaText(opt.normal)}
-                      </p>
-                      <p className={fastest ? "font-bold text-[#4a0710]" : "text-[#9a7a7a]"}>
-                        Fastest: {etaText(opt.fastest)}
-                        {opt.fastest?.fixedFeeApplied ? " (fastest delivery fee)" : ""}
-                      </p>
                     </div>
                   );
                 })}
@@ -709,7 +802,10 @@ export default function Checkout() {
             <h2 className="font-extrabold">Order Info</h2>
             <div className="mt-2 max-h-[220px] space-y-3 overflow-y-auto pr-1">
               {rows.map(({ lineId, product, qty, bookingDate }, idx) => (
-                <div key={`${lineId}-${idx}`} className="flex items-center gap-3">
+                <div
+                  key={`${lineId}-${idx}`}
+                  className="flex items-center gap-3"
+                >
                   <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl">
                     <img
                       src={product.image}
@@ -739,11 +835,15 @@ export default function Checkout() {
               <span>{inr(itemsAmount)}</span>
             </div>
             <div className="flex justify-between">
-              <span>Delivery{fastest && showFastest ? " (fastest)" : ""}</span>
+              <span>
+                Delivery{fastest && canUseFastest ? " (fastest)" : ""}
+              </span>
               {previewLoading && !hasPreview ? (
                 <span className="text-[#9a7a7a]">Calculating…</span>
               ) : shippingAmount === null ? (
-                <span className="text-[#9a7a7a]">Enter address to see charge</span>
+                <span className="text-[#9a7a7a]">
+                  Enter address to see charge
+                </span>
               ) : shippingAmount === 0 ? (
                 <span className="text-green-700">Free</span>
               ) : (
@@ -796,7 +896,9 @@ export default function Checkout() {
           </section>
 
           {error && (
-            <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{error}</p>
+            <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">
+              {error}
+            </p>
           )}
 
           <button

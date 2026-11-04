@@ -59,7 +59,10 @@ export const useShop = create<ShopState>((set, get) => ({
       if (pr.status === "fulfilled") {
         const response = pr.value;
         const rawProducts = response.products ?? [];
-        const mapped: Product[] = rawProducts.map(A.mapProduct);
+        const mapped: Product[] = rawProducts.map((r: any) => ({
+          ...A.mapProduct(r),
+          productType: r.productType,
+        }));
         console.log("[shop] Raw products:", rawProducts);
         console.log("[shop] Product count:", mapped.length);
         console.log("[shop] Mapped products:", mapped);
