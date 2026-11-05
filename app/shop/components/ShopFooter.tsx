@@ -4,8 +4,10 @@ import Image from "next/image";
 import { useShop } from "../shop-data";
 import { useTerms } from "../terms-api";
 
-const linkCls = "block py-1 text-sm text-white/75 transition hover:translate-x-0.5 hover:text-[#f2b632]";
-const headCls = "mb-3 text-sm font-extrabold uppercase tracking-[.16em] text-[#f2b632]";
+const linkCls =
+  "block py-1 text-sm text-white/75 transition hover:translate-x-0.5 hover:text-[#f2b632]";
+const headCls =
+  "mb-3 text-sm font-extrabold uppercase tracking-[.16em] text-[#f2b632]";
 
 export default function ShopFooter() {
   const categories = useShop((s) => s.categories);
@@ -19,17 +21,28 @@ export default function ShopFooter() {
         {/* Brand */}
         <div>
           <Link href="/shop" className="inline-flex items-center gap-3">
-            <Image src="/img/photos/ayendri-logo.png" alt="AYENDRI" width={52} height={52} />
+            <Image
+              src="/img/photos/ayendri.png"
+              alt="AYENDRI"
+              width={52}
+              height={52}
+            />
             <div className="leading-tight">
-              <div className="text-2xl font-extrabold tracking-[.18em] text-white">AYENDRI</div>
-              <div className="text-[10px] text-white/70">Sacred · Vedic · Lifestyle</div>
+              <div className="text-2xl font-extrabold tracking-[.18em] text-white">
+                AYENDRI
+              </div>
+              <div className="text-[10px] text-white/70">
+                Sacred · Vedic · Lifestyle
+              </div>
             </div>
           </Link>
           <p className="mt-3 max-w-[280px] text-sm leading-relaxed text-white/70">
-            Sacred for a Higher You. Authentic, energised spiritual products delivered with care.
+            Sacred for a Higher You. Authentic, energised spiritual products
+            delivered with care.
           </p>
           <p className="mt-2 max-w-[280px] text-xs leading-relaxed text-white/60">
-            Green Park, 33/A, Belghoria, Kolkata, West Bengal 700056 · amptechnologyoffice@gmail.com · +91 8697972001
+            Green Park, 33/A, Belghoria, Kolkata, West Bengal 700056 ·
+            amptechnologyoffice@gmail.com · +91 8697972001
           </p>
           {/* <Link
             href="/store"
@@ -45,17 +58,27 @@ export default function ShopFooter() {
           {categories.length === 0 ? (
             <div className="space-y-2" aria-hidden>
               {[1, 2, 3, 4].map((n) => (
-                <div key={n} className="h-3.5 w-24 animate-pulse rounded bg-white/15" />
+                <div
+                  key={n}
+                  className="h-3.5 w-24 animate-pulse rounded bg-white/15"
+                />
               ))}
             </div>
           ) : (
             <>
               {categories.slice(0, 6).map((c) => (
-                <Link key={c.slug} href={`/shop/category/${c.slug}`} className={linkCls}>
+                <Link
+                  key={c.slug}
+                  href={`/shop/category/${c.slug}`}
+                  className={linkCls}
+                >
                   {c.name}
                 </Link>
               ))}
-              <Link href="/shop/category/all" className={`${linkCls} font-semibold text-[#f2b632]`}>
+              <Link
+                href="/shop/category/all"
+                className={`${linkCls} font-semibold text-[#f2b632]`}
+              >
                 View all →
               </Link>
             </>
@@ -68,14 +91,20 @@ export default function ShopFooter() {
           {loading && (
             <div className="space-y-2" aria-hidden>
               {[1, 2, 3].map((n) => (
-                <div key={n} className="h-3.5 w-32 animate-pulse rounded bg-white/15" />
+                <div
+                  key={n}
+                  className="h-3.5 w-32 animate-pulse rounded bg-white/15"
+                />
               ))}
             </div>
           )}
           {!loading && !!error && (
             <p className="text-sm text-white/70">
               Couldn't load terms.{" "}
-              <button onClick={() => void reload()} className="font-bold text-[#f2b632] underline">
+              <button
+                onClick={() => void reload()}
+                className="font-bold text-[#f2b632] underline"
+              >
                 Try again
               </button>
             </p>
@@ -84,12 +113,19 @@ export default function ShopFooter() {
             <p className="text-sm text-white/60">Nothing to show yet.</p>
           )}
           {shown.map((t) => (
-            <Link key={t._id} href={`/shop/terms/${encodeURIComponent(t._id)}`} className={linkCls}>
+            <Link
+              key={t._id}
+              href={`/shop/terms/${encodeURIComponent(t._id)}`}
+              className={linkCls}
+            >
               {t.title}
             </Link>
           ))}
           {!loading && !error && terms.length > 0 && (
-            <Link href="/shop/terms" className={`${linkCls} font-semibold text-[#f2b632]`}>
+            <Link
+              href="/shop/terms"
+              className={`${linkCls} font-semibold text-[#f2b632]`}
+            >
               {terms.length > shown.length ? "View all terms →" : "All terms →"}
             </Link>
           )}
@@ -100,7 +136,11 @@ export default function ShopFooter() {
           <h2 className={headCls}>Help</h2>
           {[
             ["Track Order", "/shop/orders"],
-            ["Shipping & Returns", "/shop/shipping-returns", "/shop/editorial-policy"],
+            [
+              "Shipping & Returns",
+              "/shop/shipping-returns",
+              "/shop/editorial-policy",
+            ],
             ["Contact Us", "/shop/contact"],
             ["About Us", "/shop/about"],
             ["Privacy Policy", "/shop/privacy-policy"],
@@ -116,9 +156,13 @@ export default function ShopFooter() {
         {/* Company */}
         <div>
           <h2 className={headCls}>Company</h2>
-          <Link href="/" className={linkCls}>Ayendri Home</Link>
+          <Link href="/" className={linkCls}>
+            Ayendri Home
+          </Link>
           {/* <Link href="/store" className={linkCls}>Find a Store</Link> */}
-          <Link href="/shop/profile" className={linkCls}>My Account</Link>
+          <Link href="/shop/profile" className={linkCls}>
+            My Account
+          </Link>
         </div>
       </div>
 

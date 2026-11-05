@@ -301,7 +301,7 @@ export default function ShopHeader() {
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:px-5 md:flex-nowrap md:gap-4">
         <Link href="/shop" className="flex items-center gap-2">
           <Image
-            src="/img/photos/ayendri-logo.png"
+            src="/img/photos/ayendri.png"
             alt="AYENDRI"
             width={44}
             height={44}
@@ -538,9 +538,7 @@ export default function ShopHeader() {
 
       {/* mega menu: sub-categories on the left, products on the right (large screens only) */}
       {active && (
-        <div
-          className="shop-mega absolute inset-x-0 top-full z-50 hidden border-t-4 border-[#f2b632] bg-[#fffaf3] text-[#2a0a0d] shadow-2xl lg:block"
-        >
+        <div className="shop-mega absolute inset-x-0 top-full z-50 hidden border-t-4 border-[#f2b632] bg-[#fffaf3] text-[#2a0a0d] shadow-2xl lg:block">
           <div className="mx-auto grid max-w-[1300px] gap-8 px-8 py-6 lg:grid-cols-[240px_1fr] xl:grid-cols-[280px_1fr]">
             <div
               className="space-y-3 self-start"
@@ -648,7 +646,7 @@ export default function ShopHeader() {
               {/* top bar: logo, account, close */}
               <div className="flex items-center gap-2 border-b border-white/15 px-4 py-3">
                 <Image
-                  src="/img/photos/ayendri-logo.png"
+                  src="/img/photos/ayendri.png"
                   alt="AYENDRI"
                   width={36}
                   height={36}

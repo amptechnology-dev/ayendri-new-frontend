@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 // Favicon: public folder er path (public/ likhte hobe na)
-const FAVICON = "/img/photos/ayendri-logo.png";
+const FAVICON = "/img/photos/ayendri.png";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ayendri.com"),
@@ -74,8 +74,6 @@ export default function RootLayout({
             <StoreProvider>{children}</StoreProvider>
           </PrimeReactProvider>
         </GoogleOAuthProvider>
-
-        
 
         {/* Footer client logic: set current year and back-to-top behavior */}
         <Script id="footer-scripts" strategy="afterInteractive">

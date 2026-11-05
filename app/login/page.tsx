@@ -415,7 +415,7 @@ export default function LoginPage() {
           <div className="relative z-10">
             <div className="flex items-center gap-3">
               <img
-                src="/img/photos/ayendri-logo.png"
+                src="/img/photos/ayendri.png"
                 alt="Logo"
                 className="h-11 w-11 rounded-xl object-contain bg-white p-1 shadow-lg"
               />
@@ -470,7 +470,7 @@ export default function LoginPage() {
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center justify-center gap-2 mb-5">
             <img
-              src="/img/photos/ayendri-logo.png"
+              src="/img/photos/ayendri.png"
               alt="Logo"
               className="h-10 w-10 rounded-xl object-contain shadow-md"
               style={{ border: `1px solid ${ORANGE_BORDER}` }}
@@ -548,7 +548,9 @@ export default function LoginPage() {
                     }}
                     onPaste={(e) => {
                       e.preventDefault();
-                      setPhone(cleanPastedPhone(e.clipboardData.getData("text")));
+                      setPhone(
+                        cleanPastedPhone(e.clipboardData.getData("text")),
+                      );
                       if (phoneError) setPhoneError("");
                     }}
                     placeholder="10-digit mobile number"
@@ -712,7 +714,9 @@ export default function LoginPage() {
                     inputMode="numeric"
                     value={otp}
                     onChange={(e) =>
-                      setOtp(e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH))
+                      setOtp(
+                        e.target.value.replace(/\D/g, "").slice(0, OTP_LENGTH),
+                      )
                     }
                     placeholder="------"
                     autoComplete="one-time-code"
@@ -801,10 +805,7 @@ export default function LoginPage() {
             </form>
           )}
 
-          <p
-            className="text-center text-xs mt-6"
-            style={{ color: TEXT_MUTED }}
-          >
+          <p className="text-center text-xs mt-6" style={{ color: TEXT_MUTED }}>
             Protected by secure login · Authorized Admin & Store access only
           </p>
         </div>
