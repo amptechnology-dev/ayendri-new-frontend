@@ -148,10 +148,9 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   const store = useShop((s) => s.store);
   const addToCart = useCart((s) => s.add);
   const userId = useAuth((s) => s.user?.id ?? null);
-  const { add: addWithBooking, modal: bookingModal } = useBookingAdd();   // <- here
+  const { add: addWithBooking, modal: bookingModal } = useBookingAdd(); // <- here
   const p = products.find((x) => x.slug === slug);
   const { terms } = useTerms();
-  
 
   // hooks must stay above the early returns
   const [bookingDate, setBookingDate] = useState(""); // "YYYY-MM-DD"
@@ -193,7 +192,13 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
     const cv = Array.isArray(r.variants)
       ? (r.variants[colorIdx] ?? r.variants[0])
       : undefined;
-    const sv = cv?.sizeVariants?.[sizeIdx] ?? cv?.sizeVariants?.[0];
+    const sv = cv?.sizeVariants?.length
+      ? (cv.sizeVariants[sizeIdx] ?? cv.sizeVariants[0])
+      : Array.isArray(r.sizeVariants) && r.sizeVariants.length
+        ? (r.sizeVariants[sizeIdx] ?? r.sizeVariants[0])
+        : !cv?.color && Array.isArray(r.variants)
+          ? (r.variants[sizeIdx] ?? r.variants[0])
+          : undefined;
     const sel: Record<string, unknown> = {
       variantId: sv?._id ?? cv?._id,
       colorVariantId: cv?._id,
@@ -223,6 +228,13 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   }
 
   const raw = (p as any).raw;
+  console.log(
+    "SERVICE RAW",
+    raw?.productType,
+    raw?.hasVariants,
+    raw?.variants,
+    raw?.sizeVariants,
+  );
   const isService = String(raw?.productType ?? "").toUpperCase() === "SERVICE";
   const needsBooking = isService || Boolean(raw?.isMadeForProduct);
 
@@ -236,7 +248,15 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   // ---- variants: color -> size ----
   const colorVariants: any[] = Array.isArray(raw?.variants) ? raw.variants : [];
   const color: any = colorVariants[colorIdx] ?? colorVariants[0];
-  const sizeVariants: any[] = color?.sizeVariants ?? [];
+  const sizeVariants: any[] = color?.sizeVariants?.length
+    ? color.sizeVariants
+    : Array.isArray(raw?.sizeVariants) && raw.sizeVariants.length
+      ? raw.sizeVariants
+      : colorVariants.some(
+            (v: any) => !v.color && (v.size || v.weight || v.height),
+          )
+        ? colorVariants
+        : [];
   const size: any = sizeVariants[sizeIdx] ?? sizeVariants[0];
   const vsrc: any = size ?? color ?? null; // size > color > product
   const sizeLabel = (s: any) =>
@@ -553,8 +573,7 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
       t: "Cancellation",
       ok: Boolean(cancelTerm),
       s:
-        termSnippet(cancelTerm) ||
-        "Cancellation rules are listed in our terms",
+        termSnippet(cancelTerm) || "Cancellation rules are listed in our terms",
     },
   ];
 
@@ -568,7 +587,9 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
       .trim();
     if (text.length <= max) return text;
     const cut = text.slice(0, max);
-    return cut.slice(0, cut.lastIndexOf(" ") > 0 ? cut.lastIndexOf(" ") : max) + "…";
+    return (
+      cut.slice(0, cut.lastIndexOf(" ") > 0 ? cut.lastIndexOf(" ") : max) + "…"
+    );
   };
   const policyTerms = terms
     .filter((t: any) =>
@@ -705,7 +726,7 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
             </div>
           )}
 
-          {colorVariants.length > 0 && (
+          {(colorVariants.length > 0 || sizeVariants.length > 0) && (
             <div className="mt-5 space-y-4">
               {colorVariants.some((v: any) => v.color) && (
                 <div>
@@ -1035,7 +1056,7 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
                 </p>
               ))}
 
-                        {tab === "policies" && (
+            {tab === "policies" && (
               <div className="space-y-5">
                 {policyTerms.length ? (
                   policyTerms.map((t) => (
@@ -1057,7 +1078,10 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
                 ) : (
                   <p className="text-sm text-[#9a7a7a]">
                     No policies available.{" "}
-                    <Link href="/shop/terms" className="font-bold text-[#a3161c] underline">
+                    <Link
+                      href="/shop/terms"
+                      className="font-bold text-[#a3161c] underline"
+                    >
                       View terms and conditions
                     </Link>
                   </p>
@@ -1088,8 +1112,6 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
           </div>
         )}
       </section>
-
-      
 
       {/* ---------- Ratings & Reviews ---------- */}
       <div id="reviews" className="mt-12 scroll-mt-24">
@@ -1132,11 +1154,11 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
                     {inr(x.price)}
                   </span>
                   <button
-  onClick={() => addToCart(x.slug, 1)}      // <- old
-  className="rounded-full border border-[#a3161c] px-4 py-1 text-xs font-extrabold text-[#a3161c]"
->
-  ADD
-</button>
+                    onClick={() => addToCart(x.slug, 1)} // <- old
+                    className="rounded-full border border-[#a3161c] px-4 py-1 text-xs font-extrabold text-[#a3161c]"
+                  >
+                    ADD
+                  </button>
                 </div>
               </div>
             ))}
