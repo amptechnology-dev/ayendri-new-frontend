@@ -372,6 +372,15 @@ const Badge = ({
   </span>
 );
 
+// [CAT TYPE] Product / Service badge
+function TypeBadge({ p }: { p: ProductRow }) {
+  return p.productType === "SERVICE" ? (
+    <Badge className="bg-purple-100 text-purple-800">Service</Badge>
+  ) : (
+    <Badge className="bg-blue-100 text-blue-800">Product</Badge>
+  );
+}
+
 function StatusBadges({ p }: { p: ProductRow }) {
   return (
     <div className="flex flex-wrap gap-1">
@@ -481,6 +490,7 @@ function PreviewBody({
 
   const details: { label: string; value: React.ReactNode }[] = [
     { label: "Code", value: product.productCode || "-" },
+    { label: "Type", value: <TypeBadge p={product} /> }, // [CAT TYPE]
     { label: "Category", value: product.category?.name || "-" },
     { label: "Store", value: product.store?.storeName || "-" },
     { label: "Unit", value: product.unit || "-" },
@@ -1202,6 +1212,8 @@ function Page() {
                       )}
 
                       <div className="flex flex-wrap gap-1">
+                        {/* [CAT TYPE] */}
+                        <TypeBadge p={p} />
                         {colors > 0 && (
                           <Badge className="bg-purple-100 text-purple-800">
                             {colors} color{colors > 1 ? "s" : ""}
@@ -1319,6 +1331,11 @@ function Page() {
               style={{ width: "55px" }}
             />
             <Column header="Product" body={productCell} />
+            {/* [CAT TYPE] */}
+            <Column
+              header="Type"
+              body={(row: ProductRow) => <TypeBadge p={row} />}
+            />
             <Column
               header="Category"
               body={(row: ProductRow) => row.category?.name || "-"}

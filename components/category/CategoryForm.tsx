@@ -6,6 +6,7 @@ import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Dropdown } from "primereact/dropdown";
 import { Button } from "primereact/button";
+import { SelectButton } from "primereact/selectbutton"; // [CAT TYPE]
 import { toast } from "react-toastify";
 import axiosInstance from "@/service/axios.service";
 import {
@@ -25,6 +26,14 @@ type CategoryFormData = {
   description: string;
   icon: string;
 };
+
+// [CAT TYPE]
+type CategoryType = "PRODUCT" | "SERVICE";
+
+const CATEGORY_TYPE_OPTIONS = [
+  { label: "Product", value: "PRODUCT" },
+  { label: "Service", value: "SERVICE" },
+];
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2MB
 
@@ -51,6 +60,9 @@ function CategoryForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
   const isEditMode = !!categoryId;
+
+  // [CAT TYPE] category PRODUCT er na SERVICE er
+  const [type, setType] = useState<CategoryType>("PRODUCT");
 
   // image state
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -89,6 +101,8 @@ function CategoryForm({
       setValue("description", cat.description || "");
       setValue("icon", cat.icon || "");
       setExistingImage(cat.image || "");
+      // [CAT TYPE]
+      setType(cat.type === "SERVICE" ? "SERVICE" : "PRODUCT");
     } catch (err: any) {
       toast.error(err.response?.data?.message || "Failed to fetch category");
       onClose();
@@ -137,6 +151,7 @@ function CategoryForm({
       formData.append("name", data.name.trim());
       formData.append("description", data.description?.trim() || "");
       formData.append("icon", data.icon || "");
+      formData.append("type", type); // [CAT TYPE]
 
       if (!isEditMode && storeId) {
         formData.append("storeId", storeId);
@@ -193,6 +208,29 @@ function CategoryForm({
             Category Information
           </h3>
 
+          {/* [CAT TYPE] Category type */}
+          <div className="space-y-1">
+            <label className="text-sm font-semibold text-gray-700">
+              Category Type <span className="text-red-500">*</span>
+            </label>
+            <div>
+              <SelectButton
+                value={type}
+                options={CATEGORY_TYPE_OPTIONS}
+                onChange={(e) => e.value && setType(e.value)}
+                allowEmpty={false}
+                disabled={isEditMode}
+              />
+            </div>
+            <small className="text-gray-500">
+              {isEditMode
+                ? "Category type cannot be changed after it is created."
+                : type === "SERVICE"
+                  ? "This category will be available only for services."
+                  : "This category will be available only for products."}
+            </small>
+          </div>
+
           {/* Name */}
           <div className="space-y-1">
             <label className="text-sm font-semibold text-gray-700">
@@ -204,7 +242,9 @@ function CategoryForm({
               </span>
               <InputText
                 className="w-full"
-                placeholder="e.g. Groceries"
+                placeholder={
+                  type === "SERVICE" ? "e.g. Salon" : "e.g. Groceries"
+                }
                 {...register("name", {
                   required: "Category name is required",
                 })}
