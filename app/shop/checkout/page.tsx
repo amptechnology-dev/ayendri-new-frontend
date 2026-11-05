@@ -1,7 +1,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element */
 import { useRouter } from "next/navigation";
-import { Truck, Zap, Check } from "lucide-react";
+import { Truck, Zap, Check, MapPin } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useCart, bill } from "../cart";
 import { useAuth, errMsg, shopApi } from "../auth";
@@ -9,9 +9,12 @@ import { inr } from "../data";
 import { submitPayUPayment } from "./payment";
 import {
   getSavedAddresses,
+  saveAddressStrict,
   addSavedAddress,
+  sameAddress,
   type SavedAddress,
 } from "../addresses";
+import { detectCurrentAddress } from "../location";
 import OrderSuccessModal from "../components/order-success-modal";
 import { imageUrl, tierPriceFor } from "../cart-api";
 
@@ -170,6 +173,12 @@ export default function Checkout() {
   const [saved, setSaved] = useState<SavedAddress[]>([]);
   const [selectedId, setSelectedId] = useState("new");
   const [redirecting, setRedirecting] = useState(false);
+  const [locating, setLocating] = useState(false);
+  const [savingAddr, setSavingAddr] = useState(false);
+  const [addrNote, setAddrNote] = useState<{
+    ok: boolean;
+    text: string;
+  } | null>(null);
 
   // [FASTEST] user er choice + server theke asha preview
   const [fastest, setFastest] = useState(false);
@@ -386,6 +395,74 @@ export default function Checkout() {
   const cannotOrder =
     busy || previewLoading || !!previewError || !!unavailableMsg;
 
+  async function useMyLocation() {
+    setLocating(true);
+    setAddrNote(null);
+    try {
+      const found = await detectCurrentAddress();
+      setSelectedId("new");
+      setAddress((p) => ({
+        ...p,
+        ...found,
+        fullName: p.fullName || user?.name || "",
+        phone: p.phone || (user?.phone ?? "").replace(/\D/g, "").slice(-10),
+      }));
+      setAddrNote({
+        ok: true,
+        text: "Location detected. Please add your house number/flat and check the details.",
+      });
+    } catch (e) {
+      setAddrNote({
+        ok: false,
+        text: errMsg(e, "Could not detect your location."),
+      });
+    } finally {
+      setLocating(false);
+    }
+  }
+
+  async function onSaveAddress() {
+    if (!token || !user) {
+      router.push("/shop/login?next=/shop/checkout");
+      return;
+    }
+    if (
+      !address.addressLine.trim() ||
+      !address.city.trim() ||
+      !address.state.trim() ||
+      !/^\d{6}$/.test(address.pincode.trim())
+    ) {
+      setAddrNote({
+        ok: false,
+        text: "Fill address, city, state and a valid 6-digit pincode to save.",
+      });
+      return;
+    }
+    setSavingAddr(true);
+    setAddrNote(null);
+    try {
+      const result = await saveAddressStrict(address);
+      const list = await getSavedAddresses({
+        fullName: user?.name,
+        phone: user?.phone,
+      });
+      setSaved(list);
+      const match = list.find((a) => sameAddress(a, address));
+      if (match?._id) setSelectedId(match._id);
+      setAddrNote({
+        ok: true,
+        text:
+          result === "duplicate"
+            ? "This address is already saved."
+            : "Address saved.",
+      });
+    } catch (e) {
+      setAddrNote({ ok: false, text: errMsg(e, "Could not save address.") });
+    } finally {
+      setSavingAddr(false);
+    }
+  }
+
   async function submitOrder() {
     if (!token || !user) {
       router.push("/shop/login?next=/shop/checkout");
@@ -513,7 +590,17 @@ export default function Checkout() {
       });
 
       const orderPayload = unwrapResponse(orderResponse.data);
-      void addSavedAddress(deliveryAddress);
+
+      // save the address only if it isn't already in the saved list
+      const alreadySaved = saved.some((a) => sameAddress(a, deliveryAddress));
+      if (!alreadySaved) {
+        try {
+          await addSavedAddress(deliveryAddress);
+        } catch (e) {
+          // order is already placed, so don't block it, but show the real reason
+          console.warn("Save address failed:", (e as any)?.response?.data ?? e);
+        }
+      }
 
       const created = extractCreatedOrders(orderPayload);
       const orderIds = created.length
@@ -657,6 +744,16 @@ export default function Checkout() {
               </div>
             )}
 
+            <button
+              type="button"
+              onClick={useMyLocation}
+              disabled={locating}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#e0622d] bg-orange-50 px-4 py-2.5 text-sm font-bold text-[#9b4326] disabled:opacity-60"
+            >
+              <MapPin size={16} />
+              {locating ? "Detecting location…" : "Use my current location"}
+            </button>
+
             {/* form: 2-column grid; wide fields span both columns */}
             <div className="grid grid-cols-2 gap-3">
               {(
@@ -693,6 +790,25 @@ export default function Checkout() {
                 />
               ))}
             </div>
+                        {addrNote && (
+              <p
+                className={`rounded-xl p-2 text-xs ${
+                  addrNote.ok
+                    ? "bg-green-50 text-green-700"
+                    : "bg-red-50 text-red-700"
+                }`}
+              >
+                {addrNote.text}
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={onSaveAddress}
+              disabled={savingAddr}
+              className="rounded-full border border-[#7a1118] px-5 py-2 text-sm font-bold text-[#7a1118] disabled:opacity-60"
+            >
+              {savingAddr ? "Saving…" : "Save address"}
+            </button>
           </section>
 
           {/* [FASTEST] preview er fastestAvailable true hole-i dekhabe */}
