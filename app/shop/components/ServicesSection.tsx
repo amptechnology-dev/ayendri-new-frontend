@@ -24,7 +24,7 @@ export default function ServicesSection() {
         <div className="text-center">
           <div className="text-xs font-bold tracking-[.45em] text-[#f2b632] sm:text-sm">✦ AYENDRI ✦</div>
           <h2 className="mt-1 font-serif text-5xl font-bold text-[#ffd66b] sm:text-6xl md:text-7xl [text-shadow:0_2px_12px_rgba(242,182,50,.45)]">
-            Services
+            Crafted for Devotion
           </h2>
           <div className="mx-auto mt-3 flex items-center justify-center gap-3 text-[#f2b632]">
             <span className="h-px w-12 bg-gradient-to-r from-transparent to-[#f2b632] sm:w-20" />
