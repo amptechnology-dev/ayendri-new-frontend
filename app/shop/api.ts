@@ -87,6 +87,7 @@ export const mapCategory = (c: any): Category => ({
   name: c.name,
   sub: [],
   image: imgUrl(c.image) || undefined,
+  type: c.type === "SERVICE" ? "SERVICE" : "PRODUCT",
 });
 
 export const mapProduct = (p: any): Product => {

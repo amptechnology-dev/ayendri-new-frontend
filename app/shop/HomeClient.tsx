@@ -6,7 +6,7 @@ import { ArrowRight } from "lucide-react";
 
 import { useShop } from "./shop-data";
 import ProductCard from "./components/ProductCard";
-import Countdown from "./components/Countdown";
+
 import HeroCarousel from "./components/HeroCarousel";
 import Carousel from "./components/Carousel";
 import HomeSections from "./components/HomeSections";
@@ -21,11 +21,9 @@ export default function ShopHome() {
   const offers = useShop((s) => s.offerBanners);
   const products = useShop((s) => s.products);
   const categories = useShop((s) => s.categories);
-  const t = (d?: string) => Date.parse(d ?? "") || 0;
+
   const physical = products.filter((p) => !isService(p));
-  const newest = [...physical]
-    .sort((a, b) => t(b.createdAt) - t(a.createdAt))
-    .slice(0, 8);
+  const serviceCats = categories.filter((c) => c.type === "SERVICE");
 
   return (
     <>
@@ -47,70 +45,108 @@ export default function ShopHome() {
         <div className="shop-scallop mt-6" />
       </section>
 
-      {/* For You + store circles */}
-      <Reveal>
-        <section className="shop-scroll mx-auto flex max-w-[1300px] items-start gap-3 overflow-x-auto px-4 pt-4 sm:gap-5 sm:px-6 sm:pt-6">
-          <div className="flex shrink-0 flex-col items-center gap-1 text-center text-[10px] font-semibold leading-tight sm:text-xs">
-            <div className="grid h-12 w-12 place-items-center rounded-full border-2 border-[#f7a04b] bg-[#fff1da] text-lg sm:h-16 sm:w-16 sm:text-2xl">
-              🏪
+      {/* SERVICE CATEGORIES */}
+      {serviceCats.length > 0 && (
+        <>
+          <Reveal>
+            <section className="mx-auto flex max-w-[1300px] flex-col items-start gap-3 px-4 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-8">
+              <div>
+                <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.3em] text-[#d99a1e]">
+                  ✦ Sacred Services
+                </p>
+                <h2 className="flex items-center gap-2 text-2xl font-black text-[#a3161c] sm:gap-3 sm:text-3xl">
+                  <span className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-[#e0262d]" />
+                  Book a Blessing, Begin with Faith
+                </h2>
+                <p className="mt-1 text-sm font-medium text-[#7a1118]">
+                  Pujas, rituals and guidance by trusted pandits, booked in a
+                  few taps
+                </p>
+                <Link
+                  href="/shop/category/all"
+                  className="mt-2 inline-flex items-center gap-1 font-semibold text-[#7a1118]"
+                >
+                  Explore all <ArrowRight size={15} />
+                </Link>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {["Verified pandits", "Easy booking", "Pan-India"].map((b) => (
+                  <span
+                    key={b}
+                    className="rounded-full border border-[#f1dfb6] bg-[#fff8e6] px-3 py-1 text-xs font-bold text-[#8a1024]"
+                  >
+                    ✦ {b}
+                  </span>
+                ))}
+              </div>
+            </section>
+          </Reveal>
+          <Reveal>
+            <div className="mx-auto max-w-[1300px] px-6">
+              <Carousel itemWidth={220}>
+                {serviceCats.map((c, i) => {
+                  const count = products.filter(
+                    (p) => p.category === c.slug,
+                  ).length;
+                  return (
+                    <Link
+                      key={c.slug}
+                      href={`/shop/category/${c.slug}`}
+                      className="group relative block overflow-hidden rounded-2xl border border-[#f1dfb6] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                    >
+                      <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-[#fff4dc] to-[#f6d9a8]">
+                        <img
+                          src={
+                            c.image ||
+                            (products.length
+                              ? products[i % products.length]?.image
+                              : undefined) ||
+                            "/img/photos/product-puja.jpg"
+                          }
+                          alt={c.name}
+                          loading="lazy"
+                          decoding="async"
+                          className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
+                        />
+                        <span className="absolute left-2 top-2 rounded-full bg-[#7a1118] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#f6c453]">
+                          Service
+                        </span>
+                      </div>
+                      <div className="p-3 text-center">
+                        <h3 className="line-clamp-1 text-[15px] font-extrabold text-[#1a1013]">
+                          {c.name}
+                        </h3>
+                        <p className="mt-0.5 text-xs text-[#8a7f7f]">
+                          {count
+                            ? `${count} ${count === 1 ? "service" : "services"}`
+                            : "Coming soon"}
+                        </p>
+                        <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-[#f6c453] bg-[#fff8e6] px-4 py-1 text-xs font-bold text-[#8a1024] transition group-hover:bg-[#f6c453] group-hover:text-[#5a0612]">
+                          Book now <ArrowRight size={12} />
+                        </span>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </Carousel>
             </div>
-            For You
+          </Reveal>
+          <div className="mx-auto mb-10 mt-6 flex max-w-[1300px] items-center gap-4 px-6">
+            <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#e9c46a]" />
+            <span className="text-lg text-[#d99a1e]">🪔</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#8a1024]">
+              Our Featured Services
+            </span>
+            <span className="text-lg text-[#d99a1e]">🪔</span>
+            <span className="h-px flex-1 bg-gradient-to-l from-transparent to-[#e9c46a]" />
           </div>
-          {categories.slice(0, 5).map((c, i) => (
-            <Link
-              key={c.slug}
-              href={`/shop/category/${c.slug}`}
-              className="group flex shrink-0 flex-col items-center gap-1 text-center text-[10px] font-semibold leading-tight sm:text-xs"
-            >
-              <span className="relative h-12 w-12 overflow-hidden rounded-full border-2 border-[#f2b632] bg-white transition group-hover:scale-110 sm:h-16 sm:w-16">
-                <img
-                  src={
-                    c.image ||
-                    (products.length ? products[i % products.length]?.image : undefined) ||
-                    "/img/photos/product-puja.jpg"
-                  }
-                  alt={c.name}
-                  loading="lazy"
-                  decoding="async"
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-              </span>
-              <span className="max-w-[80px] sm:max-w-[96px]">{c.name}</span>
-            </Link>
-          ))}
-        </section>
-      </Reveal>
-
-      {/* DEALS LIVE */}
-      <Reveal>
-        <section className="mx-auto flex max-w-[1300px] flex-col items-start gap-3 px-4 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-8">
-          <div>
-            <h2 className="flex items-center gap-2 whitespace-nowrap text-2xl font-black text-[#a3161c] sm:gap-3 sm:text-3xl">
-              <span className="h-3 w-3 shrink-0 animate-pulse rounded-full bg-[#e0262d]" />{" "}
-              DEALS LIVE NOW
-            </h2>
-            <Link
-              href="/shop/category/all"
-              className="mt-1 inline-flex items-center gap-1 font-semibold text-[#7a1118]"
-            >
-              Explore all <ArrowRight size={15} />
-            </Link>
-          </div>
-          <Countdown />
-        </section>
-      </Reveal>
-      <Reveal>
-        <div className="mx-auto max-w-[1300px] px-6">
-          <Carousel>
-            {newest.map((p) => (
-              <ProductCard key={p.slug} p={p} />
-            ))}
-          </Carousel>
-        </div>
-      </Reveal>
+        </>
+      )}
 
       {/* SERVICES */}
-      <Reveal><ServicesSection /></Reveal>
+      <Reveal>
+        <ServicesSection />
+      </Reveal>
 
       {/* Bundle & Save */}
       <Reveal>
@@ -164,40 +200,7 @@ export default function ShopHome() {
 
       <HomeSections />
 
-      {/* CATEGORIES */}
-      <Reveal>
-        <section className="mx-auto max-w-[1300px] px-4 py-6 sm:px-6">
-  <h2 className="mb-4 text-xl font-extrabold text-[#4a0710] sm:mb-6 sm:text-2xl">
-    Shop by Category
-  </h2>
-  <div className="grid grid-cols-3 gap-2.5 sm:gap-4 md:grid-cols-5 lg:grid-cols-9">
-            {categories.map((c, i) => (
-              <Link
-                key={c.slug}
-                href={`/shop/category/${c.slug}`}
-                className="shop-card flex min-w-0 flex-col items-center gap-2 px-1.5 py-3 text-center sm:gap-3 sm:p-4"
-              >
-                <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-full border-2 border-[#f2b632] sm:h-16 sm:w-16">
-                  <img
-                    src={
-                      c.image ||
-                      (products.length
-                        ? products[i % products.length]?.image
-                        : undefined) ||
-                      "/img/photos/product-puja.jpg"
-                    }
-                    alt={c.name}
-                    loading="lazy"
-                    decoding="async"
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                </span>
-                <span className="w-full break-words text-[11px] font-bold leading-tight sm:text-xs">{c.name}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      </Reveal>
+      
 
       {/* TRUST STRIP */}
       <section className="shop-hero-bg">

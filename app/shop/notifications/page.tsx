@@ -38,9 +38,9 @@ export default function NotificationsPage() {
   const [items, setItems] = useState<AppNotification[]>([]);
   const [unread, setUnread] = useState(0);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
+  const PAGE_SIZE = 5;
   const [loading, setLoading] = useState(true);
-  const [pageLoading, setPageLoading] = useState(false);
+
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"all" | "unread">("all");
   const setGlobalUnread = useNotifications((s) => s.setUnread);
@@ -60,11 +60,15 @@ export default function NotificationsPage() {
     setError("");
     try {
       const d = await fetchNotifications(token, 1, storeMongoId || undefined);
-      const list = filterNotificationsForStore(d.notifications ?? [], [storeMongoId]);
+      let all = d.notifications ?? [];
+      for (let p = 2; p <= (d.totalPages ?? 1); p++) {
+        const more = await fetchNotifications(token, p, storeMongoId || undefined);
+        all = all.concat(more.notifications ?? []);
+      }
+      const list = filterNotificationsForStore(all, [storeMongoId]);
       setItems(list);
       setUnread(d.unreadCount ?? list.filter((n) => !n.isRead).length);
       setPage(1);
-      setTotalPages(d.totalPages ?? 1);
     } catch {
       setError("Unable to load notifications. Please try again.");
     } finally {
@@ -76,24 +80,7 @@ export default function NotificationsPage() {
     if (ready) void load();
   }, [ready, load]);
 
-  const goToPage = async (p: number) => {
-    if (!token || pageLoading || p < 1 || p > totalPages || p === page) return;
-    setPageLoading(true);
-    setError("");
-    try {
-      const d = await fetchNotifications(token, p, storeMongoId || undefined);
-      const list = filterNotificationsForStore(d.notifications ?? [], [storeMongoId]);
-      setItems(list);
-      setPage(p);
-      setTotalPages(d.totalPages ?? totalPages);
-      if (typeof d.unreadCount === "number") setUnread(d.unreadCount);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    } catch {
-      setError("Unable to load this page. Please try again.");
-    } finally {
-      setPageLoading(false);
-    }
-  };
+  
 
   const open = async (n: AppNotification) => {
     if (token && !n.isRead) {
@@ -150,6 +137,9 @@ export default function NotificationsPage() {
     () => (filter === "unread" ? items.filter((n) => !n.isRead) : items),
     [items, filter]
   );
+  const totalPages = Math.max(1, Math.ceil(visible.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const pageItems = visible.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   if (!ready || loading) {
     return <p className="py-20 text-center text-sm text-[#9a7a7a]">Loading notifications…</p>;
@@ -176,15 +166,15 @@ export default function NotificationsPage() {
     <main className="mx-auto w-full max-w-[1100px] px-4 py-8 sm:px-6 lg:py-10">
       <h1 className="text-2xl font-black text-[#4a0710] lg:text-3xl">Notifications</h1>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-start">
+      <div className="mt-6 grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-stretch">
         {/* Sidebar */}
-        <aside className="shop-card p-4 lg:sticky lg:top-24">
+        <aside className="shop-card p-4">
           <div className="flex gap-2 lg:flex-col lg:gap-1">
-            <button onClick={() => setFilter("all")} className={tabClass(filter === "all")}>
+            <button onClick={() => { setFilter("all"); setPage(1); }} className={tabClass(filter === "all")}>
               <span>All</span>
               <span className="text-xs font-semibold text-[#9a7a7a]">{items.length}</span>
             </button>
-            <button onClick={() => setFilter("unread")} className={tabClass(filter === "unread")}>
+            <button onClick={() => { setFilter("unread"); setPage(1); }} className={tabClass(filter === "unread")}>
               <span>Unread</span>
               <span
                 className={`min-w-[22px] rounded-full px-2 py-0.5 text-center text-xs font-bold ${
@@ -217,7 +207,7 @@ export default function NotificationsPage() {
         </aside>
 
         {/* List */}
-        <section className="min-w-0">
+        <section className="flex min-w-0 flex-col">
           {error && (
             <div className="mb-4 rounded-xl bg-red-50 p-3 text-sm text-red-700">
               {error}
@@ -240,8 +230,8 @@ export default function NotificationsPage() {
           )}
 
           {visible.length > 0 && (
-            <div className="shop-card divide-y divide-[#f1e0c4] overflow-hidden">
-              {visible.map((n) => {
+            <div className="shop-card flex flex-1 flex-col divide-y divide-[#f1e0c4] overflow-hidden">
+              {pageItems.map((n) => {
                 const Icon = n.type === "REVIEW_REPLY" ? MessageSquare : notificationOrderId(n) ? Package : Bell;
                 return (
                   <div
@@ -280,15 +270,15 @@ export default function NotificationsPage() {
                   </div>
                 );
               })}
+              <div className="mt-auto flex justify-center bg-[#fffdf8] px-5 py-4">
+                <Pagination
+                  page={currentPage}
+                  totalPages={totalPages}
+                  onChange={(p) => setPage(p)}
+                />
+              </div>
             </div>
           )}
-
-          <Pagination
-            page={page}
-            totalPages={totalPages}
-            onChange={(p) => void goToPage(p)}
-            disabled={pageLoading}
-          />
         </section>
       </div>
     </main>

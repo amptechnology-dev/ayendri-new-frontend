@@ -100,7 +100,7 @@ const MONTHS = [
 ];
 const DAY_MS = 24 * 60 * 60 * 1000;
 const CANCEL_WINDOW_DAYS = 10;
-const PAGE_SIZE = 5; // order cards per page
+const PAGE_SIZE = 2; // order cards per page
 const money = (n: number) => `₹${n.toFixed(2)}`;
 
 const textValue = (v: unknown, fallback: string) =>
@@ -441,7 +441,7 @@ function AccountSidebar({
     TABS.find((t) => t.key === activeTab)?.label ?? "Select Any";
 
   return (
-    <aside className="overflow-hidden rounded-xl bg-white shadow-sm">
+    <aside className="flex flex-col overflow-hidden rounded-xl bg-white shadow-sm">
       <div className="p-3 pb-0 sm:p-5 sm:pb-0">
         <div className="rounded-xl border border-[#e5e7eb] p-4 sm:p-5">
           <div className="flex items-start justify-between gap-3">
@@ -548,7 +548,7 @@ function AccountSidebar({
       {signedIn && (
         <button
           onClick={onLogout}
-          className="flex w-full items-center gap-3 border-t border-[#e5e7eb] px-4 py-4 text-left text-base font-medium text-[#c8161d] sm:px-6 sm:py-8 sm:text-lg"
+          className="mt-auto flex w-full items-center gap-3 border-t border-[#e5e7eb] px-4 py-4 text-left text-base font-medium text-[#c8161d] sm:px-6 sm:py-8 sm:text-lg"
         >
           <LogOut size={20} />
           Logout
@@ -750,7 +750,7 @@ export default function OrdersPage() {
 
   return (
     <main className="min-h-screen bg-[#e5e7eb] px-3 py-4 sm:px-4 sm:py-8 md:px-8">
-      <div className="mx-auto grid max-w-[1240px] gap-4 sm:gap-5 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-start">
+      <div className="mx-auto grid max-w-[1240px] gap-4 sm:gap-5 lg:grid-cols-[360px_minmax(0,1fr)] lg:items-stretch">
         <AccountSidebar
           onLogout={() => void onLogout()}
           user={auth?.user}
@@ -764,7 +764,7 @@ export default function OrdersPage() {
         />
 
         {/* Right panel */}
-        <section className="min-w-0 rounded-xl bg-white p-3 shadow-sm sm:p-5 md:p-6 lg:min-h-[700px]">
+        <section className="flex min-w-0 flex-col rounded-xl bg-white p-3 shadow-sm sm:p-5 md:p-6 lg:min-h-[640px]">
           <h1 className="text-xl font-semibold text-[#1f2430] sm:text-2xl">My Orders</h1>
 
           {reviewNotice && (
@@ -1138,7 +1138,9 @@ export default function OrdersPage() {
           </div>
 
           {token && !loading && !error && (
-            <Pagination page={safePage} totalPages={totalPages} onChange={changePage} />
+            <div className="mt-auto flex justify-center pt-6">
+              <Pagination page={safePage} totalPages={totalPages} onChange={changePage} />
+            </div>
           )}
         </section>
       </div>

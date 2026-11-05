@@ -184,14 +184,12 @@ function GroupTile({
 /* ---------- 4. Celebrate Diwali ---------- */
 function CelebrateDiwali() {
   const products = useShop((s) => s.products);
-  const tiles: [string, string[]][] = [
-    ["Dhanteras pujas", ["dhanteras", "puja"]],
-    ["Diwali pujas", ["diwali", "puja"]],
-    ["Kali Puja", ["kali"]],
-    ["Deep daan", ["deep", "diya"]],
-    ["Lakshmi & Ganesh idols", ["idol", "lakshmi", "ganesh"]],
-    ["Diyas & lamps", ["diya", "lamp"]],
-  ];
+  const categories = useShop((s) => s.categories);
+  const productCats = categories.filter((c) => c.type !== "SERVICE");
+  const catA = productCats[0];
+  const catB = productCats[1];
+  const listA = catA ? products.filter((p) => p.category === catA.slug && !isService(p)) : [];
+  const listB = catB ? products.filter((p) => p.category === catB.slug && !isService(p)) : [];
   return (
     <section className="px-3 py-10 sm:px-6 sm:py-14">
       <div className="relative mx-auto max-w-[1180px] rounded-[32px] bg-[#fdeaa8] px-3 pb-6 pt-8 text-center sm:rounded-[44px] sm:px-6 sm:pb-8 sm:pt-10">
@@ -201,20 +199,29 @@ function CelebrateDiwali() {
         <span className="mt-2 inline-block rounded-full border border-[#e3c36a] bg-white px-4 py-1.5 text-xs font-bold sm:px-5 sm:text-sm">🪔 Dhanteras 6 Nov · Lakshmi Puja 8 Nov</span>
         <div className="mt-5 rounded-3xl border border-dashed border-[#e3c36a] bg-[#fff7e0] p-3 sm:mt-6 sm:p-5">
           <div className="grid grid-cols-3 gap-2.5 sm:gap-4 md:grid-cols-6">
-            {tiles.map(([t, kw], i) => (
-              <GroupTile key={t} name={t} keywords={kw} fallbackIndex={i + 2}
-                className="shop-arch mx-auto aspect-[3/4] w-full max-w-[190px] border-2 border-[#d9a13a] [&_img]:transition [&_img]:duration-700 group-hover:[&_img]:scale-110" />
+            {listA.slice(0, 6).map((p) => (
+              <Link key={p.slug} href={`/shop/product/${p.slug}`} className="group block min-w-0">
+                <div className="shop-arch relative mx-auto aspect-[3/4] w-full max-w-[190px] overflow-hidden border-2 border-[#d9a13a]">
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    loading="lazy"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-110"
+                  />
+                </div>
+                <div className="mt-2 line-clamp-2 break-words text-center text-[11px] font-bold leading-tight sm:text-base">{p.name}</div>
+              </Link>
             ))}
           </div>
         </div>
       </div>
       <div className="mx-auto mt-10 max-w-[1180px]">
         <div className="mb-4 flex items-end justify-between gap-3">
-  <h3 className="text-lg font-extrabold text-[#4a0710] sm:text-2xl">Diwali puja essentials</h3>
-  <Link href="/shop/category/all" className="shrink-0 whitespace-nowrap text-sm font-bold text-[#7a1118]">See all ›</Link>
+  <h3 className="text-lg font-extrabold text-[#4a0710] sm:text-2xl">{catB?.name ?? "More to explore"}</h3>
+  <Link href={catB ? `/shop/category/${catB.slug}` : "/shop/category/all"} className="shrink-0 whitespace-nowrap text-sm font-bold text-[#7a1118]">See all ›</Link>
 </div>
-        <Carousel itemWidth={220}>{products.filter((p) => !isService(p)).map((p) => <ProductCard key={p.slug} p={p} />)}</Carousel>
-      </div>
+<Carousel itemWidth={220}>{listB.map((p) => <ProductCard key={p.slug} p={p} />)}</Carousel>      </div>
     </section>
   );
 }
@@ -257,12 +264,8 @@ function FestivalBanner() {
 /* ---------- 6. Shop by Intention ---------- */
 function Intention() {
   const products = useShop((s) => s.products);
-  const items: [string, string[], number][] = [
-    ["Wealth", ["pyrite", "wealth"], 5],
-    ["Health", ["rudraksha", "health"], 1],
-    ["Protection", ["karungali", "protection"], 3],
-    ["Peace", ["idol", "mala", "peace"], 6],
-  ];
+  const serviceItems = products.filter((p) => isService(p)).slice(0, 4);
+  if (!serviceItems.length) return null;
   return (
     <section className="px-3 py-10 sm:px-6 sm:py-14">
       <div className="relative mx-auto max-w-[1180px] rounded-t-[70px] rounded-b-3xl bg-gradient-to-b from-[#f9b85a] to-[#ee7d22] px-3 pb-12 pt-8 text-center sm:rounded-t-[90px] sm:px-5 sm:pt-10">
@@ -270,15 +273,25 @@ function Intention() {
         <h2 className="text-[40px] font-black leading-tight text-[#4a0710] min-[400px]:text-5xl sm:text-6xl md:text-7xl">PURITY</h2>
         <div className="mt-5 rounded-3xl border border-dashed border-[#f0c88a] bg-[#fffaf0] p-3 sm:mt-6 sm:p-6">
           <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-4">
-            {items.map(([n, kw, i]) => (
-              <GroupTile key={n} name={n} keywords={kw} fallbackIndex={i} showPrice showName={false}
-                className="shop-arch mx-auto aspect-[3/4] w-full max-w-[190px] border-2 border-[#d9a13a] [&_img]:transition [&_img]:duration-700 group-hover:[&_img]:scale-110" />
+            {serviceItems.map((p) => (
+              <Link key={p.slug} href={`/shop/product/${p.slug}`} className="group block min-w-0">
+                <div className="shop-arch relative mx-auto aspect-[3/4] w-full max-w-[190px] overflow-hidden border-2 border-[#d9a13a]">
+                  <img
+                    src={p.image}
+                    alt={p.name}
+                    loading="lazy"
+                    decoding="async"
+                    className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-110"
+                  />
+                </div>
+                <div className="mt-2 line-clamp-1 text-center text-sm font-bold text-[#4a0710]">{p.name}</div>
+                <div className="text-center text-xs font-bold text-[#a3161c] sm:text-sm">{inr(p.price)}</div>
+              </Link>
             ))}
           </div>
         </div>
         <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#fcd7b0] px-4 py-2 text-xs font-bold text-[#7a1118] shadow sm:px-6 sm:text-sm">★ Flat 50% off on bestsellers</span>
       </div>
-      <div className="mx-auto mt-12 max-w-[1180px]"><Carousel itemWidth={220}>{products.filter((p) => !isService(p)).map((p) => <ProductCard key={p.slug} p={p} />)}</Carousel></div>
     </section>
   );
 }

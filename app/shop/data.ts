@@ -13,7 +13,7 @@ export type Product = {
     user?: { name?: string } | null;
   } | null;
 };
-export type Category = { slug: string; name: string; sub: string[]; image?: string };
+export type Category = { slug: string; name: string; sub: string[]; image?: string; type?: "PRODUCT" | "SERVICE" };
 
 export const categories: Category[] = [
   { slug: "karungali", name: "Karungali", sub: ["Mala", "Bracelets", "Pendants"] },

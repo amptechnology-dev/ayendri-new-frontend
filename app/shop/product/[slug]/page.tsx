@@ -1089,52 +1089,7 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
         )}
       </section>
 
-      {/* ---------- Ratings & Reviews ---------- */}
-      <section className="mt-12 rounded-3xl border border-[#f0dcc0] bg-white p-4 shadow-sm sm:p-6">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="flex items-center gap-2 text-xl font-black text-[#4a0710]">
-            <ShieldCheck size={22} className="text-[#a3161c]" /> Policies
-          </h2>
-          <Link
-            href={
-              cancelTerm
-                ? `/shop/terms/${encodeURIComponent(cancelTerm._id)}`
-                : "/shop/terms"
-            }
-            className="text-sm font-bold text-[#a3161c] hover:underline"
-          >
-            View full terms →
-          </Link>
-        </div>
-        <p className="mt-1 text-sm text-[#9a7a7a]">
-          A quick summary for {p.name}
-        </p>
-
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {policies.map(({ I, t, s, ok }) => (
-            <div
-              key={t}
-              className={`rounded-2xl border p-4 ${
-                ok
-                  ? "border-[#f0dcc0] bg-[#fffaf0]"
-                  : "border-[#eee] bg-[#f8f8f8] opacity-80"
-              }`}
-            >
-              <span
-                className={`grid h-10 w-10 place-items-center rounded-full ${
-                  ok ? "bg-[#fdecec] text-[#a3161c]" : "bg-[#eee] text-[#9a9a9a]"
-                }`}
-              >
-                <I size={18} />
-              </span>
-              <div className="mt-2 text-sm font-extrabold text-[#4a0710]">
-                {t}
-              </div>
-              <p className="mt-1 text-xs leading-relaxed text-[#6b4a4a]">{s}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      
 
       {/* ---------- Ratings & Reviews ---------- */}
       <div id="reviews" className="mt-12 scroll-mt-24">
