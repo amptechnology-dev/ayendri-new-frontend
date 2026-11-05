@@ -221,7 +221,7 @@ function CelebrateDiwali() {
   <h3 className="text-lg font-extrabold text-[#4a0710] sm:text-2xl">{catB?.name ?? "More to explore"}</h3>
   <Link href={catB ? `/shop/category/${catB.slug}` : "/shop/category/all"} className="shrink-0 whitespace-nowrap text-sm font-bold text-[#7a1118]">See all ›</Link>
 </div>
-<Carousel itemWidth={220}>{listB.map((p) => <ProductCard key={p.slug} p={p} />)}</Carousel>      </div>
+<div className="flex flex-wrap justify-center gap-6">{listB.map((p) => <ProductCard key={p.slug} p={p} />)}</div>      </div>
     </section>
   );
 }

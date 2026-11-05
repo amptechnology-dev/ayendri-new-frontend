@@ -83,7 +83,7 @@ export default function ShopHome() {
           </Reveal>
           <Reveal>
             <div className="mx-auto max-w-[1300px] px-6">
-              <Carousel itemWidth={220}>
+              <div className="flex flex-wrap justify-center gap-6">
                 {serviceCats.map((c, i) => {
                   const count = products.filter(
                     (p) => p.category === c.slug,
@@ -92,7 +92,7 @@ export default function ShopHome() {
                     <Link
                       key={c.slug}
                       href={`/shop/category/${c.slug}`}
-                      className="group relative block overflow-hidden rounded-2xl border border-[#f1dfb6] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
+                      className="group relative block w-full max-w-[300px] overflow-hidden rounded-2xl border border-[#f1dfb6] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg sm:w-[300px]"
                     >
                       <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-[#fff4dc] to-[#f6d9a8]">
                         <img
@@ -113,22 +113,20 @@ export default function ShopHome() {
                         </span>
                       </div>
                       <div className="p-3 text-center">
-                        <h3 className="line-clamp-1 text-[15px] font-extrabold text-[#1a1013]">
-                          {c.name}
-                        </h3>
-                        <p className="mt-0.5 text-xs text-[#8a7f7f]">
+                        <h3 className="line-clamp-1 text-lg font-extrabold text-[#1a1013]">{c.name}</h3>
+                        <p className="mt-1 text-sm text-[#8a7f7f]">
                           {count
                             ? `${count} ${count === 1 ? "service" : "services"}`
                             : "Coming soon"}
                         </p>
-                        <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-[#f6c453] bg-[#fff8e6] px-4 py-1 text-xs font-bold text-[#8a1024] transition group-hover:bg-[#f6c453] group-hover:text-[#5a0612]">
+                        <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#f6c453] bg-[#fff8e6] px-5 py-1.5 text-sm font-bold text-[#8a1024] transition group-hover:bg-[#f6c453] group-hover:text-[#5a0612]">
                           Book now <ArrowRight size={12} />
                         </span>
                       </div>
                     </Link>
                   );
                 })}
-              </Carousel>
+              </div>
             </div>
           </Reveal>
           <div className="mx-auto mb-10 mt-6 flex max-w-[1300px] items-center gap-4 px-6">
