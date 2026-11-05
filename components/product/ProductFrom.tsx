@@ -1361,28 +1361,22 @@ function PickupAddressBlock({
   );
 }
 
-function ProductPolicyBlock({
-  productType,
-  policy,
-  onTypeChange,
-  onPolicyChange,
+// ===============================================================
+// [CAT TYPE] Product / Service selector (form er shobar upore)
+// ===============================================================
+function ProductTypeSelector({
+  value,
+  onChange,
 }: {
-  productType: ProductType;
-  policy: PolicyState;
-  onTypeChange: (t: ProductType) => void;
-  onPolicyChange: (patch: Partial<PolicyState>) => void;
+  value: ProductType;
+  onChange: (t: ProductType) => void;
 }) {
-  const isService = productType === "SERVICE";
-  const rows = isService
-    ? POLICY_ROWS.filter((r) => r.flag === "isRefundable")
-    : POLICY_ROWS;
-
-  const typeBtn = (value: ProductType, label: string, icon: string) => (
+  const btn = (v: ProductType, label: string, icon: string) => (
     <button
       type="button"
-      onClick={() => onTypeChange(value)}
+      onClick={() => onChange(v)}
       className={`flex-1 flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
-        productType === value
+        value === v
           ? "border-blue-500 bg-blue-50 text-blue-800"
           : "border-gray-200 text-gray-600 hover:bg-gray-50"
       }`}
@@ -1393,21 +1387,44 @@ function ProductPolicyBlock({
   );
 
   return (
+    <div className="space-y-1.5">
+      <label className="text-sm font-semibold text-gray-700">
+        Type <span className="text-red-500">*</span>
+      </label>
+      <div className="flex gap-2">
+        {btn("PRODUCT", "Product", "pi-box")}
+        {btn("SERVICE", "Service", "pi-calendar")}
+      </div>
+      <p className="text-[11px] text-gray-500">
+        {value === "SERVICE"
+          ? "Service: the customer chooses a booking date when ordering. Only service categories are shown below."
+          : "Product: the customer pays directly, no booking date is needed. Only product categories are shown below."}
+      </p>
+    </div>
+  );
+}
+
+// [CAT TYPE] type selector ekhon alada, tai ekhane shudhu returns & refunds
+function ProductPolicyBlock({
+  productType,
+  policy,
+  onPolicyChange,
+}: {
+  productType: ProductType;
+  policy: PolicyState;
+  onPolicyChange: (patch: Partial<PolicyState>) => void;
+}) {
+  const isService = productType === "SERVICE";
+  const rows = isService
+    ? POLICY_ROWS.filter((r) => r.flag === "isRefundable")
+    : POLICY_ROWS;
+
+  return (
     <div className="space-y-2">
       <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
         <i className="pi pi-replay text-blue-600"></i>
-        Type, Returns &amp; Refunds
+        Returns &amp; Refunds
       </h3>
-
-      <div className="flex gap-2">
-        {typeBtn("PRODUCT", "Product", "pi-box")}
-        {typeBtn("SERVICE", "Service", "pi-calendar")}
-      </div>
-      <p className="text-[11px] text-gray-500">
-        {isService
-          ? "Service: the customer chooses a booking date when ordering."
-          : "Product: the customer pays directly, no booking date is needed."}
-      </p>
 
       <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-2.5 space-y-2">
         {rows.map((row) => {
@@ -1647,27 +1664,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   const [customPickup, setCustomPickup] = useState(false);
   const [pickup, setPickup] = useState<PickupAddress>(EMPTY_PICKUP);
 
-  const handleTypeChange = (t: ProductType) => {
-    setProductType(t);
-    if (t === "SERVICE") {
-      setFastestDelivery(false);
-      setPolicy((p) => ({
-        ...p,
-        isReturnable: false,
-        returnDays: null,
-        isReplaceable: false,
-        replaceDays: null,
-        refundDays: null,
-      }));
-    } else {
-      setDailyBookingLimit(null);
-    }
-  };
-
-  const stockEnabled = isEditMode
-    ? editStockManaged
-    : businessType === "RETAIL" || (businessType === "BOTH" && !madeForProduct);
-
   // Both toggles are real state and only change when the user clicks them.
   // hasColor = color variants on/off
   // hasSize  = global size/weight/height toggle (per-color toggles don't change it)
@@ -1706,6 +1702,30 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       variants: [],
     },
   });
+
+  // [CAT TYPE] type change hole category clear hobe (category purono type er chhilo)
+  const handleTypeChange = (t: ProductType) => {
+    if (t === productType) return;
+    setProductType(t);
+    setValue("categoryId", undefined as any, { shouldValidate: false });
+    if (t === "SERVICE") {
+      setFastestDelivery(false);
+      setPolicy((p) => ({
+        ...p,
+        isReturnable: false,
+        returnDays: null,
+        isReplaceable: false,
+        replaceDays: null,
+        refundDays: null,
+      }));
+    } else {
+      setDailyBookingLimit(null);
+    }
+  };
+
+  const stockEnabled = isEditMode
+    ? editStockManaged
+    : businessType === "RETAIL" || (businessType === "BOTH" && !madeForProduct);
 
   const control = typedControl as unknown as Control<any>;
 
@@ -2073,14 +2093,38 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [productId]);
 
+  // [CAT TYPE] store + product type onujayi category load.
+  // Edit mode e product load hole type bodlay, tai purono response ignore (cancelled)
   useEffect(() => {
-    if (isValidObjectId(selectedStoreId)) {
-      fetchCategories(selectedStoreId as string);
-    } else {
+    if (!isValidObjectId(selectedStoreId)) {
       setCategories([]);
+      return;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedStoreId]);
+    let cancelled = false;
+
+    (async () => {
+      try {
+        setCategoriesLoading(true);
+        const res = await axiosInstance.get("/api/category", {
+          params: { storeId: selectedStoreId, type: productType },
+        });
+        if (!cancelled) setCategories(res.data?.categories || []);
+      } catch (err: any) {
+        if (!cancelled) {
+          toast.error(
+            err?.response?.data?.message || "Failed to fetch categories",
+          );
+          setCategories([]);
+        }
+      } finally {
+        if (!cancelled) setCategoriesLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedStoreId, productType]);
 
   // [STOCK] create mode: selected store er stock management setting load
   useEffect(() => {
@@ -2292,21 +2336,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
     }
   };
 
-  const fetchCategories = async (storeId: string) => {
-    try {
-      setCategoriesLoading(true);
-      const res = await axiosInstance.get("/api/category", {
-        params: { storeId },
-      });
-      setCategories(res.data?.categories || []);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to fetch categories");
-      setCategories([]);
-    } finally {
-      setCategoriesLoading(false);
-    }
-  };
-
   // ---------- Validation ----------
   // MRP ekhon optional. Offer price > MRP check shudhu duita-i thakle.
   const priceError = (label: string, mrp: any, offer: any): string | null => {
@@ -2329,6 +2358,11 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
     // validate the real form values (not zod-parsed data)
     const values = getValues();
     const variants = (values.variants || []) as any[];
+
+    // [CAT TYPE] category select kora thakte hobe
+    if (!values.categoryId) {
+      return `Please select a ${productType.toLowerCase()} category`;
+    }
 
     // ---- [GST] product level ----
     const topGstErr = validateGstFields("", (values as any).gst);
@@ -2753,6 +2787,12 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
             Basic Information
           </h3>
 
+          {/* [CAT TYPE] age type select, tarpor oi type er category dropdown e ashbe */}
+          <ProductTypeSelector
+            value={productType}
+            onChange={handleTypeChange}
+          />
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
             <div className="space-y-1">
               <label className="text-sm font-semibold text-gray-700">
@@ -2776,7 +2816,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                         : categoriesLoading
                           ? "Loading categories..."
                           : categories.length === 0
-                            ? "No categories found"
+                            ? `No ${productType.toLowerCase()} categories found. Add one first.`
                             : "Select category"
                     }
                     className="w-full border-blue-200"
@@ -2796,12 +2836,17 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
 
             <div className="space-y-1">
               <label className="text-sm font-semibold text-gray-700">
-                Product Name <span className="text-red-500">*</span>
+                {productType === "SERVICE" ? "Service Name" : "Product Name"}{" "}
+                <span className="text-red-500">*</span>
               </label>
               <InputText
                 className="w-full"
                 {...register("name")}
-                placeholder="Enter product name"
+                placeholder={
+                  productType === "SERVICE"
+                    ? "Enter service name"
+                    : "Enter product name"
+                }
               />
               {errors.name && (
                 <small className="text-red-500 flex items-center gap-1">
@@ -2842,7 +2887,11 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
               className="w-full"
               rows={2}
               {...register("description")}
-              placeholder="Product description"
+              placeholder={
+                productType === "SERVICE"
+                  ? "Service description"
+                  : "Product description"
+              }
             />
             {errors.description && (
               <small className="text-red-500">
@@ -2911,14 +2960,14 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
           <p className="text-[11px] text-gray-400">{MEDIA_HINT}</p>
         </div>
 
+        {/* [CAT TYPE] type selector upore giyeche, ekhane shudhu returns & refunds */}
         <ProductPolicyBlock
           productType={productType}
           policy={policy}
-          onTypeChange={handleTypeChange}
           onPolicyChange={(patch) => setPolicy((p) => ({ ...p, ...patch }))}
         />
 
-                {/* [BOOKING LIMIT] shudhu SERVICE e */}
+        {/* [BOOKING LIMIT] shudhu SERVICE e */}
         {productType === "SERVICE" && (
           <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-2.5 space-y-1.5">
             <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">

@@ -14,6 +14,9 @@ import { formatDate } from "@/helper/DateTime";
 import { Dialog } from "primereact/dialog";
 import CategoryForm from "@/components/category/CategoryForm";
 import { ConfirmDialog, confirmDialog } from "primereact/confirmdialog";
+import { SelectButton } from "primereact/selectbutton"; // [CAT TYPE]
+
+type CategoryType = "PRODUCT" | "SERVICE";
 
 type CategoryRow = {
   _id: string;
@@ -25,14 +28,24 @@ type CategoryRow = {
   isActive?: boolean;
   createdAt?: string;
   updatedAt?: string;
+  type?: CategoryType; // [CAT TYPE]
 };
 
-const EmptyState = () => (
+// [CAT TYPE]
+const TYPE_FILTER_OPTIONS = [
+  { label: "All", value: "ALL" },
+  { label: "Product", value: "PRODUCT" },
+  { label: "Service", value: "SERVICE" },
+];
+
+const EmptyState = ({ filter }: { filter: "ALL" | CategoryType }) => (
   <div className="flex flex-col items-center justify-center h-full text-center py-12 px-4">
     <div className="text-6xl mb-4">🗂️</div>
     <h2 className="text-xl font-semibold text-gray-700">No Categories Found</h2>
     <p className="text-gray-500 mt-2 max-w-md">
-      You haven't added any categories yet.
+      {filter === "ALL"
+        ? "You haven't added any categories yet."
+        : `You haven't added any ${filter.toLowerCase()} categories yet.`}
     </p>
   </div>
 );
@@ -47,6 +60,8 @@ function Page() {
   const [debouncedSearch, setDebouncedSearch] = useState("");
   const [visible, setVisible] = useState(false);
   const [editCategoryId, setEditCategoryId] = useState<string | null>(null);
+  // [CAT TYPE]
+  const [typeFilter, setTypeFilter] = useState<"ALL" | CategoryType>("ALL");
 
   useEffect(() => {
     fetchProfile();
@@ -69,11 +84,13 @@ function Page() {
     }
   }, [profile]);
 
+  // [CAT TYPE] storeId + type filter
   const categoryDataGet = async () => {
     try {
       setLoading(true);
-      const params =
-        profile?.role === "STORE" && myStoreId ? { storeId: myStoreId } : {};
+      const params: Record<string, string> = {};
+      if (profile?.role === "STORE" && myStoreId) params.storeId = myStoreId;
+      if (typeFilter !== "ALL") params.type = typeFilter;
       const res = await axiosInstance.get("/api/category", { params });
       setCategoryData(res.data.categories || []);
     } catch (error: any) {
@@ -112,7 +129,8 @@ function Page() {
     if (!profile) return;
     if (profile.role === "STORE" && !myStoreId) return;
     categoryDataGet();
-  }, [profile, myStoreId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, myStoreId, typeFilter]); // [CAT TYPE] typeFilter change hole abar fetch
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchInput.trim()), 500);
@@ -153,6 +171,19 @@ function Page() {
       <span className="text-gray-400">-</span>
     );
 
+  // [CAT TYPE]
+  const typeTemplate = (rowData: CategoryRow) => (
+    <span
+      className={`px-2 py-1 rounded-full text-xs font-medium ${
+        rowData.type === "SERVICE"
+          ? "bg-purple-100 text-purple-800"
+          : "bg-blue-100 text-blue-800"
+      }`}
+    >
+      {rowData.type === "SERVICE" ? "Service" : "Product"}
+    </span>
+  );
+
   const statusTemplate = (rowData: CategoryRow) => (
     <span
       className={`px-2 py-1 rounded-full text-xs font-medium ${
@@ -178,6 +209,15 @@ function Page() {
       </div>
 
       <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 items-stretch sm:items-center w-full sm:w-auto">
+        {/* [CAT TYPE] type filter */}
+        <SelectButton
+          value={typeFilter}
+          options={TYPE_FILTER_OPTIONS}
+          onChange={(e) => e.value && setTypeFilter(e.value)}
+          allowEmpty={false}
+          className="w-full sm:w-auto"
+        />
+
         <IconField
           iconPosition="left"
           className="w-full sm:w-auto flex-1 sm:flex-none"
@@ -211,7 +251,7 @@ function Page() {
         <Button
           label="Refresh"
           icon="pi pi-refresh"
-          onClick={categoryDataGet}
+          onClick={() => categoryDataGet()}
           className="w-full sm:w-auto"
           style={{
             background: "#fff",
@@ -228,7 +268,9 @@ function Page() {
       <div className="w-full bg-white rounded-lg shadow p-2 sm:p-4">
         {header}
 
-        {filteredCategories.length === 0 && !loading && <EmptyState />}
+        {filteredCategories.length === 0 && !loading && (
+          <EmptyState filter={typeFilter} />
+        )}
 
         {filteredCategories.length > 0 && (
           <div className="mt-3 overflow-hidden rounded-lg border border-blue-100">
@@ -260,6 +302,8 @@ function Page() {
                 style={{ width: "80px" }}
               />
               <Column field="name" header="Name" sortable />
+              {/* [CAT TYPE] */}
+              <Column header="Type" body={typeTemplate} style={{ width: "110px" }} />
               <Column
                 field="description"
                 header="Description"
