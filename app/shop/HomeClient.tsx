@@ -49,7 +49,7 @@ export default function ShopHome() {
       {serviceCats.length > 0 && (
         <>
           <Reveal>
-            <section className="mx-auto flex max-w-[1300px] flex-col items-start gap-3 px-4 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-8">
+            <section className="mx-auto flex max-w-[1500px] flex-col items-start gap-3 px-4 py-6 sm:flex-row sm:items-center sm:justify-between sm:px-3 sm:py-8">
               <div>
                 <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.3em] text-[#d99a1e]">
                   ✦ Sacred Services
@@ -82,7 +82,7 @@ export default function ShopHome() {
             </section>
           </Reveal>
           <Reveal>
-            <div className="mx-auto max-w-[1300px] px-6">
+            <div className="mx-auto max-w-[1500px] px-3">
               <div className="flex flex-wrap justify-center gap-6">
                 {serviceCats.map((c, i) => {
                   const count = products.filter(
@@ -129,7 +129,7 @@ export default function ShopHome() {
               </div>
             </div>
           </Reveal>
-          <div className="mx-auto mb-10 mt-6 flex max-w-[1300px] items-center gap-4 px-6">
+          <div className="mx-auto mb-10 mt-6 flex max-w-[1500px] items-center gap-4 px-3">
             <span className="h-px flex-1 bg-gradient-to-r from-transparent to-[#e9c46a]" />
             <span className="text-lg text-[#d99a1e]">🪔</span>
             <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#8a1024]">
@@ -148,7 +148,7 @@ export default function ShopHome() {
 
       {/* Bundle & Save */}
       <Reveal>
-        <section className="mx-auto max-w-[1300px] px-6 py-8">
+        <section className="mx-auto max-w-[1500px] px-3 py-8">
           {offers.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2">
               {offers.map((o) => (
@@ -202,7 +202,7 @@ export default function ShopHome() {
 
       {/* TRUST STRIP */}
       <section className="shop-hero-bg">
-        <div className="mx-auto grid max-w-[1300px] grid-cols-2 gap-6 px-6 py-8 text-center text-white md:grid-cols-4">
+        <div className="mx-auto grid max-w-[1500px] grid-cols-2 gap-6 px-3 py-8 text-center text-white md:grid-cols-4">
           {[
             "100% Certified & Energised",
             "Free Shipping above ₹499",
@@ -221,7 +221,7 @@ export default function ShopHome() {
 
       {/* MORE PRODUCTS */}
       <Reveal>
-        <section className="mx-auto max-w-[1300px] px-6 pt-10">
+        <section className="mx-auto max-w-[1500px] px-3 pt-10">
           <div className="mb-6 flex items-end justify-between">
             <h2 className="text-2xl font-extrabold text-[#4a0710]">
               More Products
@@ -235,7 +235,7 @@ export default function ShopHome() {
           </div>
         </section>
       </Reveal>
-      <div className="mx-auto grid max-w-[1300px] grid-cols-2 gap-x-5 gap-y-8 px-6 md:grid-cols-4">
+      <div className="mx-auto grid max-w-[1500px] grid-cols-2 gap-x-5 gap-y-8 px-3 md:grid-cols-4">
         {physical.slice(0, 24).map((p) => (
           <Reveal key={p.slug}>
             <ProductCard p={p} />

@@ -76,6 +76,18 @@ const Svg = ({ children, className = "h-4 w-4" }: { children: React.ReactNode; c
 const IconChat = ({ className }: { className?: string }) => (
   <Svg className={className}><path d="M21 15a2 2 0 0 1-2 2H8l-5 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></Svg>
 );
+const IconBot = ({ className }: { className?: string }) => (
+  <Svg className={className}>
+    <path d="M12 3v3" />
+    <circle cx="12" cy="2.5" r="0.8" />
+    <rect x="4" y="6" width="16" height="12" rx="3.5" />
+    <circle cx="9" cy="11.5" r="1.3" />
+    <circle cx="15" cy="11.5" r="1.3" />
+    <path d="M9.5 15h5" />
+    <path d="M2 11v3M22 11v3" />
+    <path d="M9 18v2.5M15 18v2.5" />
+  </Svg>
+);
 const IconClose = ({ className }: { className?: string }) => (
   <Svg className={className}><path d="M18 6 6 18M6 6l12 12" /></Svg>
 );
@@ -267,9 +279,12 @@ export default function ChatBotWidget() {
           type="button"
           aria-label="Open AYENDRI chat"
           onClick={() => setOpen(true)}
-          className="fixed bottom-24 right-4 z-50 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-[#6b1f2a] text-white shadow-lg shadow-black/20 transition hover:scale-105 focus:outline-none focus:ring-2 focus:ring-[#6b1f2a]/40 md:bottom-8 md:right-8"
+          className="fixed bottom-24 right-4 z-50 flex h-14 w-14 items-center justify-center rounded-full border border-[#f2b632]/70 bg-[#6b1f2a] text-white shadow-[0_0_18px_rgba(242,182,50,.55)] transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-[#f2b632]/60 md:bottom-8 md:right-8 md:h-16 md:w-16"
         >
-          <IconChat className="h-5 w-5" />
+          <span className="pointer-events-none absolute inset-0 animate-ping rounded-full bg-[#f2b632]/40" />
+          <span className="pointer-events-none absolute -inset-1.5 animate-pulse rounded-full border-2 border-[#f2b632]/50" />
+          <IconBot className="relative h-8 w-8 md:h-9 md:w-9" />
+          <span className="absolute right-0.5 top-0.5 h-3.5 w-3.5 rounded-full bg-green-500 ring-2 ring-white" />
         </button>
       )}
 

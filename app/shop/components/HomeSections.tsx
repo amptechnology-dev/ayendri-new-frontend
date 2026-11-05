@@ -71,8 +71,8 @@ export function LegacyPicks() {
   const low = (cheap.length ? cheap : [...products].sort((a, b) => a.price - b.price)).slice(0, 3);
   const tiles: [string, string, number][] = [["Puja Samagri", "Starts at ₹179", 4], ["Puja Kits", "Starts at ₹349", 7], ["Agarbatti", "Up to 75% off", 6], ["Daily Use", "Up to 75% off", 3]];
   return (
-    <section className="bg-[#fdeedd] px-6 py-14">
-      <div className="mx-auto max-w-[1300px]">
+    <section className="bg-[#fdeedd] px-3 py-14">
+      <div className="mx-auto max-w-[1500px]">
         <h2 className="text-center text-4xl font-black text-[#7a1118] md:text-5xl">
           Divine Picks, <span className="relative text-[#a3161c]">Best Prices
             <svg className="absolute -bottom-3 left-0 w-full" viewBox="0 0 200 10" preserveAspectRatio="none"><path d="M2 7 Q100 0 198 5" stroke="#d99a1e" strokeWidth="3" fill="none" strokeLinecap="round" /></svg>
@@ -115,14 +115,14 @@ export function DharmaSale() {
   if (!t) return null;
   const cats = [{ up: 74, t: "Karungali", a: 0, b: 1 }, { up: 90, t: "Rudraksha", a: 1, b: 2 }, { up: 73, t: "Pyrite for wealth", a: 5, b: 6 }, { up: 67, t: "Idols for your mandir", a: 2, b: 3 }];
   return (
-    <section className="relative bg-gradient-to-b from-[#ffe08a] to-[#f6a93a] px-6 pb-16 pt-12">
+    <section className="relative bg-gradient-to-b from-[#ffe08a] to-[#f6a93a] px-3 pb-16 pt-12">
       <div className="text-center">
         <div className="text-sm font-extrabold tracking-[.4em] text-[#4a0710]">THE GREAT</div>
         <h2 className="text-6xl font-black tracking-wide text-white md:text-8xl" style={{ WebkitTextStroke: "3px #4a0710", paintOrder: "stroke fill" }}>🪔 DHARMA 🪔</h2>
         <span className="mt-2 inline-block rounded-full border-2 border-[#f2b632] bg-[#6e0d18] px-8 py-2 text-lg font-extrabold tracking-[.3em] text-[#f2b632]">FESTIVAL SALE</span>
         <p className="mt-3 font-bold text-[#4a0710]">Flat 50% off on bestsellers · Up to 70% off on combos</p>
       </div>
-      <div className="mx-auto mt-8 grid max-w-[1350px] gap-4 md:grid-cols-5">
+      <div className="mx-auto mt-8 grid max-w-[1500px] gap-4 md:grid-cols-5">
         <Link href={`/shop/product/${t.slug}`} className="flex flex-col items-center overflow-hidden rounded-3xl bg-[#fff4dc] p-5 text-center shadow-lg transition hover:-translate-y-1">
           <div className="text-4xl font-black text-[#7a1118]">TOP</div><div className="text-xs font-bold tracking-[.4em]">DEAL</div>
           <s className="mt-2 rounded-md bg-[#4a0710] px-2 text-xs text-white">{inr(t.mrp)}</s>
@@ -139,7 +139,7 @@ export function DharmaSale() {
           </Link>
         ))}
       </div>
-      <Link href="/shop/category/all" className="mx-auto mt-5 flex max-w-[1350px] items-center gap-4 rounded-2xl bg-[#fff4dc] p-4 shadow-lg">
+      <Link href="/shop/category/all" className="mx-auto mt-5 flex max-w-[1500px] items-center gap-4 rounded-2xl bg-[#fff4dc] p-4 shadow-lg">
         <div className="flex"><Pic i={3} className="h-14 w-14 -rotate-6 rounded-lg" /><Pic i={4} className="-ml-4 h-14 w-14 rotate-6 rounded-lg" /></div>
         <div className="flex-1"><b className="text-xl text-[#4a0710]">Diwali gifting</b><div className="text-sm text-[#6b4a4a]">Up to 73% off on gifts for family and friends</div></div>
         <ChevronRight />
@@ -191,8 +191,8 @@ function CelebrateDiwali() {
   const listA = catA ? products.filter((p) => p.category === catA.slug && !isService(p)) : [];
   const listB = catB ? products.filter((p) => p.category === catB.slug && !isService(p)) : [];
   return (
-    <section className="px-3 py-10 sm:px-6 sm:py-14">
-      <div className="relative mx-auto max-w-[1180px] rounded-[32px] bg-[#fdeaa8] px-3 pb-6 pt-8 text-center sm:rounded-[44px] sm:px-6 sm:pb-8 sm:pt-10">
+    <section className="px-1 py-10 sm:px-3 sm:py-14">
+      <div className="relative mx-auto max-w-[1400px] rounded-[32px] bg-[#fdeaa8] px-3 pb-6 pt-8 text-center sm:rounded-[44px] sm:px-6 sm:pb-8 sm:pt-10">
         <span className="absolute -left-2 -top-4 -rotate-12 text-4xl sm:-left-3 sm:-top-5 sm:text-6xl">🪷</span><span className="absolute -right-2 -top-4 rotate-12 text-4xl sm:-right-3 sm:-top-5 sm:text-6xl">🪷</span>
         <div className="text-xs font-bold tracking-[.45em] text-[#4a0710] sm:text-sm">CELEBRATE</div>
         <h2 className="font-serif text-5xl font-bold text-[#7a1118] sm:text-6xl md:text-7xl">Diwali</h2>
@@ -216,12 +216,18 @@ function CelebrateDiwali() {
           </div>
         </div>
       </div>
-      <div className="mx-auto mt-10 max-w-[1180px]">
+      <div className="mx-auto mt-10 max-w-[1400px]">
         <div className="mb-4 flex items-end justify-between gap-3">
   <h3 className="text-lg font-extrabold text-[#4a0710] sm:text-2xl">{catB?.name ?? "More to explore"}</h3>
   <Link href={catB ? `/shop/category/${catB.slug}` : "/shop/category/all"} className="shrink-0 whitespace-nowrap text-sm font-bold text-[#7a1118]">See all ›</Link>
 </div>
-<div className="flex flex-wrap justify-center gap-6">{listB.map((p) => <ProductCard key={p.slug} p={p} />)}</div>      </div>
+<div className="shop-scroll -mx-1 flex snap-x gap-3 overflow-x-auto px-1 pb-2 sm:mx-0 sm:gap-5 sm:px-0">
+  {listB.map((p) => (
+    <div key={p.slug} className="w-[160px] shrink-0 snap-start sm:w-[220px]">
+      <ProductCard p={p} />
+    </div>
+  ))}
+</div>      </div>
     </section>
   );
 }
@@ -232,7 +238,7 @@ function FestivalBanner() {
   return (
     <section className="shop-pattern overflow-hidden text-center">
       <div className="shop-band" />
-      <div className="px-4 py-8 sm:px-6 md:py-12">
+      <div className="px-2 py-8 sm:px-3 md:py-12">
         <h2 className="text-3xl font-extrabold leading-tight !text-white [text-shadow:0_2px_10px_rgba(0,0,0,.55)] sm:text-5xl md:text-7xl">
           ये दिवाली राम राज्य वाली!
         </h2>
@@ -242,7 +248,7 @@ function FestivalBanner() {
         <p className="mt-2 text-xs font-semibold !text-[#fff1c2] [text-shadow:0_1px_6px_rgba(0,0,0,.55)] sm:text-sm">
           Lowest price ever on Karungali, Rudraksha, Rashi stones and more
         </p>
-        <div className="mx-auto mt-6 grid max-w-[1300px] grid-cols-1 gap-4 md:mt-8 md:grid-cols-3 md:gap-5">
+        <div className="mx-auto mt-6 grid max-w-[1500px] grid-cols-1 gap-4 md:mt-8 md:grid-cols-3 md:gap-5">
           {cards.map(([k, t, s, b, h]) => (
             <div key={t} className="rounded-3xl border border-[#f2b632] bg-gradient-to-b from-[#fff4dc] to-[#ffe2b8] px-5 py-7 shadow-xl transition hover:-translate-y-1.5 md:px-4 md:py-10 lg:px-6">
               <div className="text-xs font-bold tracking-widest !text-[#a3161c]">{k}</div>
@@ -267,8 +273,8 @@ function Intention() {
   const serviceItems = products.filter((p) => isService(p)).slice(0, 4);
   if (!serviceItems.length) return null;
   return (
-    <section className="px-3 py-10 sm:px-6 sm:py-14">
-      <div className="relative mx-auto max-w-[1180px] rounded-t-[70px] rounded-b-3xl bg-gradient-to-b from-[#f9b85a] to-[#ee7d22] px-3 pb-12 pt-8 text-center sm:rounded-t-[90px] sm:px-5 sm:pt-10">
+    <section className="px-1 py-10 sm:px-3 sm:py-14">
+      <div className="relative mx-auto max-w-[1400px] rounded-t-[70px] rounded-b-3xl bg-gradient-to-b from-[#f9b85a] to-[#ee7d22] px-3 pb-12 pt-8 text-center sm:rounded-t-[90px] sm:px-5 sm:pt-10">
         <div className="text-xs font-bold tracking-[.4em] text-[#4a0710] sm:text-sm">SHOP WITH</div>
         <h2 className="text-[40px] font-black leading-tight text-[#4a0710] min-[400px]:text-5xl sm:text-6xl md:text-7xl">PURITY</h2>
         <div className="mt-5 rounded-3xl border border-dashed border-[#f0c88a] bg-[#fffaf0] p-3 sm:mt-6 sm:p-6">

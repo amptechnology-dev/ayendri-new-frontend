@@ -282,6 +282,23 @@ export default function ShopHeader() {
     <header
       data-scrolled={scrolled}
       className="shop-header shop-hero-bg sticky top-0 z-40 text-white shadow-lg"
+      style={
+        scrolled
+          ? {
+              background: "rgba(255, 248, 234, 0.45)",
+              backdropFilter: "blur(16px) saturate(160%)",
+              WebkitBackdropFilter: "blur(16px) saturate(160%)",
+              color: "#4a0710",
+              borderBottom: "1px solid rgba(242, 182, 50, 0.6)",
+              transition: "background .3s ease, backdrop-filter .3s ease",
+            }
+          : {
+              background: "linear-gradient(180deg,#fff8ea 0%,#fde7c8 100%)",
+              color: "#4a0710",
+              borderBottom: "3px solid #f2b632",
+              transition: "background .3s ease",
+            }
+      }
     >
       <HeaderArt />
       {/* announcement strip (desktop only, collapses on scroll) */}
@@ -299,24 +316,15 @@ export default function ShopHeader() {
       </div>
 
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:px-5 md:flex-nowrap md:gap-4">
-        <Link href="/shop" className="flex items-center gap-2">
+        <Link href="/shop" className="flex shrink-0 items-center pl-3 sm:pl-5 md:pl-8" aria-label="AYENDRI home">
           <Image
             src="/img/photos/ayendri.png"
             alt="AYENDRI"
-            width={44}
-            height={44}
+            width={400}
+            height={160}
             priority
-            className="h-9 w-9 sm:h-11 sm:w-11"
+            className="relative z-10 -mb-[6px] -mt-[22px] h-16 w-auto object-contain min-[380px]:-mb-2 min-[380px]:-mt-6 min-[380px]:h-[72px] sm:-mb-3 sm:-mt-6 sm:h-20 md:-mb-4 md:-mt-9 md:h-24"
           />
-          {/* brand text hides on very small phones so the icons never wrap */}
-          <div className="leading-tight max-[339px]:hidden">
-            <div className="text-base font-extrabold tracking-[.12em] sm:text-xl sm:tracking-[.18em]">
-              AYENDRI
-            </div>
-            <div className="hidden text-[10px] opacity-80 sm:block">
-              Sacred · Vedic · Lifestyle
-            </div>
-          </div>
         </Link>
 
         {/* search with rotating placeholder (desktop only) */}
@@ -326,16 +334,12 @@ export default function ShopHeader() {
             router.push(`/shop/search?q=${encodeURIComponent(val)}`);
           }}
           className="shop-search max-md:hidden relative order-last flex h-12 w-full basis-full items-center gap-3 rounded-full border border-white/50 bg-white/20 px-4 md:order-none md:mx-auto md:max-w-[580px] md:basis-auto md:px-5 shadow-[0_2px_10px_rgba(0,0,0,.25)] backdrop-blur transition focus-within:border-[#f6c453] focus-within:bg-white/25"
-          style={
-            scrolled
-              ? { background: "#ffffff", borderColor: "#e8cfa8" }
-              : undefined
-          }
+          style={{ background: "#ffffff", borderColor: "#e8cfa8" }}
         >
           <Search
             size={20}
             className="shrink-0 text-white"
-            style={scrolled ? { color: "#7a1118" } : undefined}
+            style={{ color: "#7a1118" }}
           />
           <div className="relative flex-1 overflow-hidden">
             <input
@@ -343,18 +347,14 @@ export default function ShopHeader() {
               onChange={(e) => setVal(e.target.value)}
               onFocus={() => !val && router.push("/shop/search")}
               className="relative z-10 h-12 w-full bg-transparent text-base text-white outline-none md:text-sm"
-              style={
-                scrolled
-                  ? { color: "#4a0710", caretColor: "#4a0710" }
-                  : undefined
-              }
+              style={{ color: "#4a0710", caretColor: "#4a0710" }}
               aria-label="Search"
             />
             {!val && (
               <span
                 key={hint}
                 className="shop-ph pointer-events-none absolute inset-0 flex items-center text-base text-white/90 md:text-sm"
-                style={scrolled ? { color: "#6b4a4a" } : undefined}
+                style={{ color: "#6b4a4a" }}
               >
                 <span className="truncate">
                   {listening ? (
@@ -403,7 +403,7 @@ export default function ShopHeader() {
 
           <Link
             href="/shop/wishlist"
-            className={ICON_BTN}
+            className={`${ICON_BTN} ${BTN_SCROLLED}`}
             aria-label="Wishlist"
           >
             <Heart size={20} />
@@ -425,7 +425,7 @@ export default function ShopHeader() {
             )}
           </Link>
 
-          <Link href="/shop/cart" className={ICON_BTN} aria-label="Cart">
+          <Link href="/shop/cart" className={`${ICON_BTN} ${BTN_SCROLLED}`} aria-label="Cart">
             <ShoppingCart size={20} />
             <span className="sr-only">Cart</span>
             <span className={`${bump ? "shop-bump" : ""} ${BADGE}`}>
@@ -433,14 +433,14 @@ export default function ShopHeader() {
             </span>
           </Link>
 
-          <AccountMenu scrolled={scrolled} />
+          <AccountMenu scrolled />
         </div>
 
         {/* mobile only: search icon + menu button */}
         <div className="ml-auto flex items-center gap-2 md:hidden">
           <Link
             href="/shop/search"
-            className={`${ICON_BTN} ${scrolled ? BTN_SCROLLED : ""}`}
+            className={`${ICON_BTN} ${BTN_SCROLLED}`}
             aria-label="Search"
           >
             <Search size={20} />
@@ -481,7 +481,7 @@ export default function ShopHeader() {
         <Link
           href="/shop/category/all"
           onMouseEnter={() => setOpen(null)}
-          className={`${GLASS_PILL} px-4 py-2.5 font-extrabold`}
+          className={`${GLASS_PILL} px-4 py-2.5 font-extrabold !border-[#7a1118]/40 !bg-white/70 !text-[#4a0710]`}
         >
           Shop All
         </Link>
@@ -511,7 +511,7 @@ export default function ShopHeader() {
               className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,.25)] transition duration-200 active:scale-95 ${
                 open === c.slug
                   ? "border-[#fff1c2] bg-[#fffaf3] !text-[#4a0710]"
-                  : "border-white/40 bg-white/15 text-white hover:border-[#f6c453] hover:bg-white/25"
+                  : "border-[#7a1118]/40 bg-white/70 !text-[#4a0710] hover:border-[#f2b632] hover:bg-white"
               }`}
             >
               {c.image ? (
