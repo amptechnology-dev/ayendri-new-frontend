@@ -175,9 +175,8 @@ const flattenUnits = (p: ProductRow): Unit[] => {
   return units;
 };
 
-// stock management off hole ba stock data na thakle null
 const getStockInfo = (p: ProductRow) => {
-  if (!p.hasStockManagement) return null;
+  if (p.productType === "SERVICE" || !p.hasStockManagement) return null;
 
   let units: { currentStock: number; lowStockThreshold: number }[];
   if (p.variants && p.variants.length > 0) {
@@ -486,6 +485,8 @@ function PreviewBody({
   const media = useMemo(() => getMediaList(product), [product]);
   const units = useMemo(() => flattenUnits(product), [product]);
   const [active, setActive] = useState(0);
+  const showStock =
+    product.productType !== "SERVICE" && !!product.hasStockManagement;
   const current = media[active];
 
   const details: { label: string; value: React.ReactNode }[] = [
@@ -524,7 +525,9 @@ function PreviewBody({
           },
         ]
       : []),
-    { label: "Stock", value: <StockBadge p={product} /> },
+    ...(showStock
+      ? [{ label: "Stock", value: <StockBadge p={product} /> }]
+      : []),
     { label: "Status", value: <StatusBadges p={product} /> },
     { label: "Created", value: formatDate(product.createdAt || "") },
   ];
@@ -667,7 +670,7 @@ function PreviewBody({
                   <th className="text-left px-3 py-2">Variant</th>
                   <th className="text-left px-3 py-2">MRP</th>
                   <th className="text-left px-3 py-2">Offer</th>
-                  {product.hasStockManagement && (
+                  {showStock && (
                     <th className="text-left px-3 py-2">Stock</th>
                   )}
                 </tr>
@@ -691,7 +694,7 @@ function PreviewBody({
                       <td className="px-3 py-2 font-semibold">
                         {money(u.offerPrice ?? u.mrp)}
                       </td>
-                      {product.hasStockManagement && (
+                      {showStock && (
                         <td className="px-3 py-2">
                           <span
                             className={
@@ -712,7 +715,7 @@ function PreviewBody({
                     {u.tiers && u.tiers.length > 0 && (
                       <tr>
                         <td
-                          colSpan={product.hasStockManagement ? 4 : 3}
+                          colSpan={showStock ? 4 : 3}
                           className="px-3 pb-2"
                         >
                           <TierChips tiers={u.tiers} />
@@ -1253,7 +1256,8 @@ function Page() {
                             Made for product
                           </Badge>
                         )}
-                        {p.hasStockManagement && <StockBadge p={p} />}
+                        {p.productType !== "SERVICE" &&
+                          p.hasStockManagement && <StockBadge p={p} />}
                       </div>
 
                       <StatusBadges p={p} />

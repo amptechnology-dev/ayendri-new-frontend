@@ -1034,9 +1034,6 @@ function QuotePanel({
   );
 }
 
-// ===============================================================
-// Return / Replace / Refund requests (store side)
-// ===============================================================
 type RequestRow = {
   _id: string;
   requestNumber: string;
@@ -1057,6 +1054,18 @@ type RequestRow = {
   storeNote?: string | null;
   referenceNo?: string | null;
   completeNote?: string | null;
+
+  // [RETURN PICKUP] courier return pickup er info (approve korar por backend set kore)
+  returnShipment?: {
+    status: "CREATED" | "FAILED" | string;
+    note?: string | null;
+    shipmentId?: string | number | null;
+    awb?: string | null;
+    courierName?: string | null;
+    trackingUrl?: string | null;
+    createdAt?: string | null;
+  } | null;
+
   createdAt: string;
 };
 
@@ -1146,7 +1155,7 @@ function OrderRequestsCard({
       setError("Reason is required (at least 3 characters)");
       return;
     }
-    if (dialog.mode === "COMPLETE" && row.type === "REFUND" && !refNo.trim()) {
+    if (dialog.mode === "COMPLETE" && row.refundAmount > 0 && !refNo.trim()) {
       setError("Payment reference (UTR / transaction ID) is required");
       return;
     }
@@ -1203,7 +1212,7 @@ function OrderRequestsCard({
               <span className="font-semibold">Customer reason:</span> {r.reason}
             </p>
 
-            {r.type === "REFUND" && (
+            {r.refundAmount > 0 && (
               <div className="text-xs space-y-1">
                 <KV label="Refund amount">{money(r.refundAmount)}</KV>
                 {r.bankDetails?.upiId && (
@@ -1228,6 +1237,19 @@ function OrderRequestsCard({
 
             {r.storeNote && (
               <p className="text-xs text-gray-500">Store note: {r.storeNote}</p>
+            )}
+            {r.returnShipment && (
+              <p
+                className={`text-xs ${
+                  r.returnShipment.status === "CREATED"
+                    ? "text-green-700"
+                    : "text-amber-700"
+                }`}
+              >
+                {r.returnShipment.status === "CREATED"
+                  ? "Courier return pickup created"
+                  : `Return pickup: ${r.returnShipment.note || r.returnShipment.status}`}
+              </p>
             )}
             {r.status === "COMPLETED" && (
               <p className="text-xs text-green-700">
@@ -1259,7 +1281,7 @@ function OrderRequestsCard({
             {r.status === "APPROVED" && (
               <Button
                 label={
-                  r.type === "REFUND"
+                  r.refundAmount > 0
                     ? "Mark refund as paid"
                     : "Mark as completed"
                 }
@@ -1277,7 +1299,7 @@ function OrderRequestsCard({
         header={
           dialog.mode === "REJECT"
             ? "Reject Request"
-            : dRow?.type === "REFUND"
+            : (dRow?.refundAmount ?? 0) > 0
               ? "Confirm Refund Payment"
               : "Complete Request"
         }
@@ -1286,7 +1308,7 @@ function OrderRequestsCard({
         onHide={closeDialog}
         draggable={false}
       >
-        {dialog.mode === "COMPLETE" && dRow?.type === "REFUND" && (
+        {dialog.mode === "COMPLETE" && dRow && dRow.refundAmount > 0 && (
           <div className="mb-3 space-y-2">
             <p className="text-sm text-gray-600">
               Pay <b>{money(dRow.refundAmount)}</b> to the customer, then enter
