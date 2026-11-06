@@ -334,9 +334,6 @@ function MediaThumb({
   );
 }
 
-// ===============================================================
-// Collapsible Packaging Details block
-// ===============================================================
 function PackagingFieldsBlock({
   control,
   basePath,
@@ -357,12 +354,13 @@ function PackagingFieldsBlock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packagingValue]);
 
-  const fieldsMeta: { name: string; label: string }[] = [
-    { name: "expectedDeliveryDays", label: "Delivery Days" },
-    { name: "length", label: "Length (cm)" },
-    { name: "breadth", label: "Breadth (cm)" },
-    { name: "height", label: "Height (cm)" },
-    { name: "weight", label: "Weight (kg)" },
+  // [CHANGE] decimal: true hole point (1.2) deoya jay
+  const fieldsMeta: { name: string; label: string; decimal?: boolean }[] = [
+    // { name: "expectedDeliveryDays", label: "Delivery Days" },
+    { name: "length", label: "Length (cm)", decimal: true },
+    { name: "breadth", label: "Breadth (cm)", decimal: true },
+    { name: "height", label: "Height (cm)", decimal: true },
+    { name: "weight", label: "Weight (kg)", decimal: true },
   ];
 
   return (
@@ -381,7 +379,7 @@ function PackagingFieldsBlock({
         ></i>
       </button>
       {open && (
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 p-2 pt-0">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2 pt-0">
           {fieldsMeta.map((f) => (
             <div key={f.name} className="space-y-1 min-w-0">
               <label className="text-[10px] font-medium text-gray-500">
@@ -398,6 +396,9 @@ function PackagingFieldsBlock({
                     inputClassName="w-full text-xs p-1.5"
                     min={0}
                     useGrouping={false}
+                    mode="decimal"
+                    minFractionDigits={0}
+                    maxFractionDigits={f.decimal ? 3 : 0}
                   />
                 )}
               />
@@ -1703,13 +1704,16 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
     },
   });
 
-  // [CAT TYPE] type change hole category clear hobe (category purono type er chhilo)
   const handleTypeChange = (t: ProductType) => {
     if (t === productType) return;
     setProductType(t);
     setValue("categoryId", undefined as any, { shouldValidate: false });
     if (t === "SERVICE") {
       setFastestDelivery(false);
+      // [SERVICE] stock values clear
+      setValue("openingStock", 0);
+      setValue("lowStockThreshold" as any, 0);
+      setMadeForProduct(false);
       setPolicy((p) => ({
         ...p,
         isReturnable: false,
@@ -1723,9 +1727,13 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
     }
   };
 
-  const stockEnabled = isEditMode
-    ? editStockManaged
-    : businessType === "RETAIL" || (businessType === "BOTH" && !madeForProduct);
+  const stockEnabled =
+    productType === "SERVICE"
+      ? false
+      : isEditMode
+        ? editStockManaged
+        : businessType === "RETAIL" ||
+          (businessType === "BOTH" && !madeForProduct);
 
   const control = typedControl as unknown as Control<any>;
 
@@ -2552,8 +2560,9 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
         formData.append(
           "isMadeForProduct",
           String(
-            businessType === "MADE_FOR_PRODUCT" ||
-              (businessType === "BOTH" && madeForProduct),
+            productType !== "SERVICE" &&
+              (businessType === "MADE_FOR_PRODUCT" ||
+                (businessType === "BOTH" && madeForProduct)),
           ),
         );
       }
@@ -3060,24 +3069,26 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
           </div>
         </div>
 
-        {!isEditMode && businessType === "BOTH" && (
-          <div className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50/50 p-2.5">
-            <div>
-              <p className="text-sm font-semibold text-gray-800">
-                Made for product
-              </p>
-              <p className="text-xs text-gray-500">
-                Turn on if this product is made after the customer orders it. No
-                quantity needs to be entered. This cannot be changed after the
-                product is created.
-              </p>
+        {!isEditMode &&
+          businessType === "BOTH" &&
+          productType !== "SERVICE" && (
+            <div className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50/50 p-2.5">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">
+                  Made for product
+                </p>
+                <p className="text-xs text-gray-500">
+                  Turn on if this product is made after the customer orders it.
+                  No quantity needs to be entered. This cannot be changed after
+                  the product is created.
+                </p>
+              </div>
+              <InputSwitch
+                checked={madeForProduct}
+                onChange={(e) => setMadeForProduct(!!e.value)}
+              />
             </div>
-            <InputSwitch
-              checked={madeForProduct}
-              onChange={(e) => setMadeForProduct(!!e.value)}
-            />
-          </div>
-        )}
+          )}
 
         {/* PRICING & STOCK: values entered here fill every variant below */}
         <div className="space-y-2">

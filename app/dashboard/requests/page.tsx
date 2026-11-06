@@ -270,7 +270,11 @@ function RequestsPage() {
       setError("Reason is required (at least 3 characters)");
       return;
     }
-    if (dialog.mode === "COMPLETE" && row.type === "REFUND" && !refNo.trim()) {
+    if (
+      dialog.mode === "COMPLETE" &&
+      Number(row.refundAmount) > 0 &&
+      !refNo.trim()
+    ) {
       setError("Payment reference (UTR / transaction ID) is required");
       return;
     }
@@ -305,12 +309,16 @@ function RequestsPage() {
         )}
       </div>
 
-      {r.type === "REFUND" && (
+      {Number(r.refundAmount) > 0 && (
         <div className="space-y-1.5 bg-white border border-gray-100 rounded-md p-2">
           <p className="text-xs font-semibold text-gray-700">
             Refund to customer • {money(r.refundAmount)}
           </p>
-          <DetailRow label="UPI ID" value={r.bankDetails?.upiId} copy={!isAdmin} />
+          <DetailRow
+            label="UPI ID"
+            value={r.bankDetails?.upiId}
+            copy={!isAdmin}
+          />
           <DetailRow
             label="Account holder"
             value={r.bankDetails?.accountHolder}
@@ -496,7 +504,7 @@ function RequestsPage() {
               <Column
                 header="Refund amount"
                 body={(r: RequestRow) =>
-                  r.type === "REFUND" ? (
+                  Number(r.refundAmount) > 0 ? (
                     <span className="font-semibold text-gray-800">
                       {money(r.refundAmount)}
                     </span>
@@ -550,7 +558,7 @@ function RequestsPage() {
                       return (
                         <Button
                           label={
-                            r.type === "REFUND"
+                            Number(r.refundAmount) > 0
                               ? "Mark refund as paid"
                               : "Mark as completed"
                           }
@@ -573,7 +581,7 @@ function RequestsPage() {
               header={
                 dialog.mode === "REJECT"
                   ? "Reject Request"
-                  : dRow?.type === "REFUND"
+                  : Number(dRow?.refundAmount ?? 0) > 0
                     ? "Confirm Refund Payment"
                     : "Complete Request"
               }
@@ -582,23 +590,25 @@ function RequestsPage() {
               onHide={closeDialog}
               draggable={false}
             >
-              {dialog.mode === "COMPLETE" && dRow?.type === "REFUND" && (
-                <div className="mb-3 space-y-2">
-                  <p className="text-sm text-gray-600">
-                    Pay <b>{money(dRow.refundAmount)}</b> to the customer, then
-                    enter the payment reference.
-                  </p>
-                  <InputText
-                    value={refNo}
-                    onChange={(e) => {
-                      setRefNo(e.target.value);
-                      if (error) setError("");
-                    }}
-                    placeholder="UTR / transaction ID *"
-                    className="w-full"
-                  />
-                </div>
-              )}
+              {dialog.mode === "COMPLETE" &&
+                dRow &&
+                Number(dRow.refundAmount) > 0 && (
+                  <div className="mb-3 space-y-2">
+                    <p className="text-sm text-gray-600">
+                      Pay <b>{money(dRow.refundAmount)}</b> to the customer,
+                      then enter the payment reference.
+                    </p>
+                    <InputText
+                      value={refNo}
+                      onChange={(e) => {
+                        setRefNo(e.target.value);
+                        if (error) setError("");
+                      }}
+                      placeholder="UTR / transaction ID *"
+                      className="w-full"
+                    />
+                  </div>
+                )}
 
               <InputTextarea
                 value={note}
