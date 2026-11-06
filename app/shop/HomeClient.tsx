@@ -83,7 +83,7 @@ export default function ShopHome() {
           </Reveal>
           <Reveal>
             <div className="mx-auto max-w-[1500px] px-3">
-              <div className="flex flex-wrap justify-center gap-6">
+              <div className="shop-scroll -mx-3 flex snap-x gap-2 overflow-x-auto px-3 pb-3 sm:mx-0 sm:flex-wrap sm:justify-center sm:gap-6 sm:overflow-visible sm:px-0 sm:pb-0">
                 {serviceCats.map((c, i) => {
                   const count = products.filter(
                     (p) => p.category === c.slug,
@@ -92,7 +92,7 @@ export default function ShopHome() {
                     <Link
                       key={c.slug}
                       href={`/shop/category/${c.slug}`}
-                      className="group relative block w-full max-w-[300px] overflow-hidden rounded-2xl border border-[#f1dfb6] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg sm:w-[300px]"
+                      className="group relative block w-[calc((100vw-2.5rem)/3)] shrink-0 snap-start overflow-hidden rounded-2xl border border-[#f1dfb6] bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg sm:w-[300px] sm:max-w-[300px]"
                     >
                       <div className="relative aspect-square overflow-hidden bg-gradient-to-br from-[#fff4dc] to-[#f6d9a8]">
                         <img
@@ -108,18 +108,18 @@ export default function ShopHome() {
                           decoding="async"
                           className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105"
                         />
-                        <span className="absolute left-2 top-2 rounded-full bg-[#7a1118] px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#f6c453]">
+                        <span className="absolute left-1 top-1 rounded-full bg-[#7a1118] px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wide text-[#f6c453] sm:left-2 sm:top-2 sm:px-2.5 sm:text-[10px] sm:tracking-wider">
                           Service
                         </span>
                       </div>
-                      <div className="p-3 text-center">
-                        <h3 className="line-clamp-1 text-lg font-extrabold text-[#1a1013]">{c.name}</h3>
-                        <p className="mt-1 text-sm text-[#8a7f7f]">
+                      <div className="p-2 text-center sm:p-3">
+                        <h3 className="line-clamp-1 text-xs font-extrabold text-[#1a1013] sm:text-lg">{c.name}</h3>
+                        <p className="mt-0.5 text-[10px] text-[#8a7f7f] sm:mt-1 sm:text-sm">
                           {count
                             ? `${count} ${count === 1 ? "service" : "services"}`
                             : "Coming soon"}
                         </p>
-                        <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-[#f6c453] bg-[#fff8e6] px-5 py-1.5 text-sm font-bold text-[#8a1024] transition group-hover:bg-[#f6c453] group-hover:text-[#5a0612]">
+                        <span className="mt-2 inline-flex items-center gap-1 rounded-full border border-[#f6c453] bg-[#fff8e6] px-2.5 py-1 text-[11px] font-bold text-[#8a1024] transition group-hover:bg-[#f6c453] group-hover:text-[#5a0612] sm:mt-3 sm:gap-1.5 sm:px-5 sm:py-1.5 sm:text-sm">
                           Book now <ArrowRight size={12} />
                         </span>
                       </div>

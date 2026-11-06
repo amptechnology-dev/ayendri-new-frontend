@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useShop } from "../../shop-data";
 import WishlistButton from "../../components/WishlistButton";
-import PageArt from "../../components/PageArt";
+
 // Adjust these two to your real routes
 const CATEGORY_BASE = "/shop/category";
 const PRODUCT_BASE = "/shop/product";
@@ -28,7 +28,7 @@ function Tile({ p }: { p: any }) {
   const img = imgOf(p);
   const price = priceOf(p);
   return (
-    <div className="group relative w-[130px] shrink-0 text-center sm:w-[147px]">
+    <div className="group relative w-[150px] shrink-0 text-center sm:w-[200px] lg:w-[220px]">
       <Link
         href={`${PRODUCT_BASE}/${encodeURIComponent(p.slug)}`}
         className="block"
@@ -45,10 +45,10 @@ function Tile({ p }: { p: any }) {
             />
           )}
         </div>
-        <p className="mt-3 line-clamp-2 text-[15px] font-bold leading-snug text-[#1a1013]">
+        <p className="mt-3 line-clamp-2 text-base font-bold leading-snug text-[#1a1013] sm:text-[17px]">
           {nameOf(p)}
         </p>
-        {price && <p className="mt-1 text-xs text-[#8a7f7f]">{price}</p>}
+        {price && <p className="mt-1 text-sm text-[#8a7f7f]">{price}</p>}
       </Link>
       <WishlistButton
         productId={p.slug}
@@ -71,6 +71,11 @@ export default function Category() {
 
   // Opening a single category link (e.g. a service) selects its matching tab
   useEffect(() => {
+    // the header "Pujas" button links to /shop/category/services
+    if (slug === "services") {
+      setType("SERVICE");
+      return;
+    }
     const ct = categories.find((c) => c.slug === slug)?.type;
     if (ct) setType(ct);
   }, [slug, categories]);
@@ -96,25 +101,19 @@ export default function Category() {
   const total = sections.reduce((n, s) => n + s.list.length, 0);
 
   return (
-    <div className="relative isolate pb-24">
-      <PageArt />
+    <div className="relative pb-24">
       {/* HERO */}
       <section className="mx-auto mt-6 max-w-[1140px] px-4">
         <div
-          className="relative overflow-hidden rounded-[32px] px-6 pb-16 pt-12 text-center shadow-[0_20px_40px_-20px_rgba(90,8,20,0.6)]"
+          className="relative overflow-hidden rounded-[32px] px-6 py-6 text-center shadow-[0_20px_40px_-20px_rgba(90,8,20,0.6)]"
           style={{
             background:
               "radial-gradient(circle at 1px 1px, rgba(255,255,255,0.07) 1.5px, transparent 0) 0 0/34px 34px, linear-gradient(180deg,#5a0612 0%,#7d0b1e 55%,#8f1025 100%)",
           }}
         >
-          <p className="text-[11px] font-bold uppercase tracking-[0.3em] text-[#f6c453]">
-            Divine Hindu
-          </p>
-          <h1 className="mt-2 text-4xl font-black text-white md:text-5xl">
-            {isAll ? (type === "SERVICE" ? "Services" : "Products") : cat!.name}
-          </h1>
 
-          <div className="mx-auto mt-7 flex max-w-[534px] items-center gap-3 rounded-full bg-white px-5 py-3 shadow-lg">
+
+          <div className="mx-auto flex max-w-[534px] items-center gap-3 rounded-full bg-white px-5 py-3 shadow-lg">
             <svg
               width="18"
               height="18"
@@ -141,35 +140,9 @@ export default function Category() {
 
           
 
-          <div className="mt-5 flex flex-wrap justify-center gap-2.5">
-            {visibleCats.map((c) => (
-              <Link
-                key={c.slug}
-                href={`${CATEGORY_BASE}/${c.slug}`}
-                className={`rounded-full border px-4 py-1.5 text-sm font-bold transition ${
-                  c.slug === slug
-                    ? "border-[#f6c453] bg-[#f6c453] !text-[#5a0612]"
-                    : "border-white/30 bg-white/10 !text-white hover:bg-white/20"
-                }`}
-              >
-                {c.name}
-              </Link>
-            ))}
-          </div>
 
-          {/* gold zig-zag edge */}
-          <svg
-            className="absolute inset-x-0 bottom-3 h-5 w-full"
-            preserveAspectRatio="none"
-            viewBox="0 0 400 20"
-          >
-            <path
-              d="M0 10 Q5 0 10 10 T20 10 T30 10 T40 10 T50 10 T60 10 T70 10 T80 10 T90 10 T100 10 T110 10 T120 10 T130 10 T140 10 T150 10 T160 10 T170 10 T180 10 T190 10 T200 10 T210 10 T220 10 T230 10 T240 10 T250 10 T260 10 T270 10 T280 10 T290 10 T300 10 T310 10 T320 10 T330 10 T340 10 T350 10 T360 10 T370 10 T380 10 T390 10 T400 10"
-              fill="none"
-              stroke="#f6c453"
-              strokeWidth="1.4"
-            />
-          </svg>
+
+          
         </div>
       </section>
 
@@ -238,7 +211,7 @@ export default function Category() {
                   </Link>
                 )}
               </div>
-              <div className="flex flex-wrap gap-x-[17px] gap-y-8">
+              <div className="flex flex-wrap gap-x-5 gap-y-10">
                 {shown.map((p) => (
                   <Tile key={p.slug} p={p} />
                 ))}

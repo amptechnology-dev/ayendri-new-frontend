@@ -5,12 +5,14 @@ import axiosInstance from "@/service/axios.service";
 const noCreds = { withCredentials: false } as const;
 
 export type RequestType = "RETURN" | "REPLACEMENT" | "REFUND";
-export type BankDetails = {
-  accountHolderName: string;
+export type BankAccountDetails = {
+  accountHolder: string;
   accountNumber: string;
-  ifscCode: string;
+  ifsc: string;
   bankName: string;
 };
+export type UpiDetails = { upiId: string };
+export type BankDetails = BankAccountDetails | UpiDetails;
 export type Policy = {
   returnable: boolean;
   replaceable: boolean;
@@ -145,14 +147,20 @@ export function eligibleTypes({
   return results;
 }
 
-export function validateBank(details: BankDetails): string | null {
-  if (!details.accountHolderName.trim()) {
+export function validateUpi(upiId: string): string | null {
+  return /^[\w.\-]{2,256}@[a-zA-Z]{2,64}$/.test(upiId.trim())
+    ? null
+    : "Enter a valid UPI ID (for example name@okhdfcbank).";
+}
+
+export function validateBank(details: BankAccountDetails): string | null {
+  if (!details.accountHolder.trim()) {
     return "Enter the account holder's name.";
   }
   if (!/^\d{8,20}$/.test(details.accountNumber.trim())) {
     return "Enter a valid bank account number.";
   }
-  if (!/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(details.ifscCode.trim())) {
+  if (!/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(details.ifsc.trim())) {
     return "Enter a valid IFSC code.";
   }
   if (!details.bankName.trim()) {

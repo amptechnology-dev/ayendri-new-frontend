@@ -1,7 +1,12 @@
 "use client";
 import { useState } from "react";
 import { X } from "lucide-react";
-import { validateBank, type BankDetails } from "../order-requests";
+import {
+  validateBank,
+  validateUpi,
+  type BankAccountDetails,
+  type BankDetails,
+} from "../order-requests";
 import {
   ACTION_LABEL,
   CANCEL_REASONS,
@@ -25,10 +30,12 @@ export default function ReasonSheet({
   const reasons = kind === "CANCEL" ? CANCEL_REASONS : REQUEST_REASONS;
   const [reason, setReason] = useState("");
   const [details, setDetails] = useState("");
-  const [bank, setBank] = useState<BankDetails>({
-    accountHolderName: "",
+  const [mode, setMode] = useState<"BANK" | "UPI">("BANK");
+  const [upiId, setUpiId] = useState("");
+  const [bank, setBank] = useState<BankAccountDetails>({
+    accountHolder: "",
     accountNumber: "",
-    ifscCode: "",
+    ifsc: "",
     bankName: "",
   });
   const [busy, setBusy] = useState(false);
@@ -47,13 +54,15 @@ export default function ReasonSheet({
           : reason;
     if (!reason) return setErr("Please choose a reason.");
     if (!finalReason) return setErr("Please add a few details.");
+    let payout: BankDetails | undefined;
     if (needsBank) {
-      const problem = validateBank(bank);
+      const problem = mode === "UPI" ? validateUpi(upiId) : validateBank(bank);
       if (problem) return setErr(problem);
+      payout = mode === "UPI" ? { upiId: upiId.trim() } : bank;
     }
     setBusy(true);
     try {
-      await onSubmit(finalReason, needsBank ? bank : undefined);
+      await onSubmit(finalReason, payout);
     } catch (e: any) {
       setErr(
         e?.response?.data?.errors?.[0]?.message ??
@@ -108,9 +117,25 @@ export default function ReasonSheet({
         {needsBank && (
           <div className="mt-4 space-y-3 rounded-2xl bg-[#fff7ec] p-4">
             <p className="text-sm font-bold">Where should we send your refund?</p>
+            <div className="flex gap-2">
+              {(["BANK", "UPI"] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setMode(m)}
+                  className={`rounded-full border px-4 py-1.5 text-xs font-bold ${
+                    mode === m ? "border-[#e0622d] bg-orange-50" : "bg-white"
+                  }`}
+                >
+                  {m === "BANK" ? "Bank account" : "UPI"}
+                </button>
+              ))}
+            </div>
+            {mode === "BANK" ? (
+              <>
             <label className="block text-xs font-bold text-[#4a0710]">
               Account holder name
-              <input className={input} value={bank.accountHolderName} onChange={(e) => setBank({ ...bank, accountHolderName: e.target.value })} />
+              <input className={input} value={bank.accountHolder} onChange={(e) => setBank({ ...bank, accountHolder: e.target.value })} />
             </label>
             <label className="block text-xs font-bold text-[#4a0710]">
               Account number
@@ -118,12 +143,25 @@ export default function ReasonSheet({
             </label>
             <label className="block text-xs font-bold text-[#4a0710]">
               IFSC code
-              <input className={input} value={bank.ifscCode} onChange={(e) => setBank({ ...bank, ifscCode: e.target.value.toUpperCase() })} />
+              <input className={input} value={bank.ifsc} onChange={(e) => setBank({ ...bank, ifsc: e.target.value.toUpperCase() })} />
             </label>
             <label className="block text-xs font-bold text-[#4a0710]">
               Bank name
               <input className={input} value={bank.bankName} onChange={(e) => setBank({ ...bank, bankName: e.target.value })} />
             </label>
+              </>
+            ) : (
+              <label className="block text-xs font-bold text-[#4a0710]">
+                UPI ID
+                <input
+                  className={input}
+                  placeholder="name@okhdfcbank"
+                  autoCapitalize="none"
+                  value={upiId}
+                  onChange={(e) => setUpiId(e.target.value)}
+                />
+              </label>
+            )}
           </div>
         )}
 
