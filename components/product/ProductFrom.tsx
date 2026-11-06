@@ -170,8 +170,7 @@ const genUiKey = () =>
     : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
 
 // ---------- [TIER] quantity based price helpers ----------
-// minQty ekhon user likhe na: 1st tier = 1, porer tier = ager tier er maxQty + 1.
-// Eta diye form e edit korle min/max mismatch hoy na.
+// minQty user likhe na: 1st tier = 1, porer tier = ager tier er maxQty + 1.
 const cleanTiers = (tiers: any) => {
   if (!Array.isArray(tiers)) return [];
   const out: { minQty: number | null; maxQty: number | null; price: any }[] =
@@ -286,6 +285,207 @@ const firstErrorMessage = (errs: any): string | null => {
 };
 
 // ===============================================================
+// SMALL UI HELPERS
+// ===============================================================
+
+// Numbered card. Every part of the form lives inside one of these.
+function FormSection({
+  step,
+  icon,
+  title,
+  description,
+  badge,
+  children,
+}: {
+  step: number;
+  icon: string;
+  title: string;
+  description?: string;
+  badge?: "Required" | "Optional";
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <header className="flex items-start gap-3 px-3.5 py-2.5 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-white">
+        <span className="h-7 w-7 shrink-0 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center">
+          {step}
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold text-blue-900 flex items-center gap-2">
+            <i className={`pi ${icon} text-xs text-blue-600`}></i>
+            {title}
+            {badge && (
+              <span
+                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full ${
+                  badge === "Required"
+                    ? "bg-red-50 text-red-600"
+                    : "bg-gray-100 text-gray-500"
+                }`}
+              >
+                {badge}
+              </span>
+            )}
+          </h3>
+          {description && (
+            <p className="text-[11px] text-gray-500 mt-0.5">{description}</p>
+          )}
+        </div>
+      </header>
+      <div className="p-3.5 space-y-3">{children}</div>
+    </section>
+  );
+}
+
+// Label + input + hint + error in one place
+function Field({
+  label,
+  required,
+  hint,
+  error,
+  className = "",
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  error?: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={`space-y-1 min-w-0 ${className}`}>
+      <label className="text-xs font-semibold text-gray-700">
+        {label}
+        {required && <span className="text-red-500"> *</span>}
+      </label>
+      {children}
+      {hint && !error && <p className="text-[10px] text-gray-400">{hint}</p>}
+      {error && (
+        <small className="text-red-500 flex items-center gap-1">
+          <i className="pi pi-exclamation-circle"></i>
+          {error}
+        </small>
+      )}
+    </div>
+  );
+}
+
+// On/off row used for switches
+function ToggleRow({
+  icon,
+  iconClass = "text-blue-600",
+  title,
+  description,
+  checked,
+  onChange,
+  tone = "blue",
+}: {
+  icon?: string;
+  iconClass?: string;
+  title: string;
+  description: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  tone?: "blue" | "orange" | "green";
+}) {
+  const toneCls = {
+    blue: "border-blue-100 bg-blue-50/40",
+    orange: "border-orange-200 bg-orange-50/50",
+    green: "border-green-100 bg-green-50/40",
+  }[tone];
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${toneCls}`}
+    >
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+          {icon && <i className={`pi ${icon} ${iconClass}`}></i>}
+          {title}
+        </p>
+        <p className="text-[11px] text-gray-500">{description}</p>
+      </div>
+      <InputSwitch checked={checked} onChange={(e) => onChange(!!e.value)} />
+    </div>
+  );
+}
+
+// Decimal price input wired to react-hook-form
+function MoneyField({
+  control,
+  name,
+  label,
+  placeholder = "Optional",
+}: {
+  control: Control<any>;
+  name: string;
+  label: string;
+  placeholder?: string;
+}) {
+  return (
+    <div className="space-y-1 min-w-0">
+      <label className="text-[11px] font-semibold text-gray-600">{label}</label>
+      <Controller
+        name={name as any}
+        control={control}
+        render={({ field }) => (
+          <InputNumber
+            value={field.value ?? null}
+            onValueChange={(e) => field.onChange(e.value)}
+            className="w-full"
+            inputClassName="w-full p-inputtext-sm"
+            min={0}
+            mode="decimal"
+            minFractionDigits={2}
+            maxFractionDigits={2}
+            useGrouping={false}
+            placeholder={placeholder}
+          />
+        )}
+      />
+    </div>
+  );
+}
+
+// Whole number input (stock) wired to react-hook-form
+function IntField({
+  control,
+  name,
+  label,
+  required,
+  placeholder,
+}: {
+  control: Control<any>;
+  name: string;
+  label: string;
+  required?: boolean;
+  placeholder?: string;
+}) {
+  return (
+    <div className="space-y-1 min-w-0">
+      <label className="text-[11px] font-semibold text-gray-600">
+        {label}
+        {required && <span className="text-red-500"> *</span>}
+      </label>
+      <Controller
+        name={name as any}
+        control={control}
+        render={({ field }) => (
+          <InputNumber
+            value={field.value ?? 0}
+            onValueChange={(e) => field.onChange(e.value)}
+            className="w-full"
+            inputClassName="w-full p-inputtext-sm"
+            min={0}
+            useGrouping={false}
+            placeholder={placeholder}
+          />
+        )}
+      />
+    </div>
+  );
+}
+
+// ===============================================================
 // Media thumbnail (image / gif / video) with remove button
 // ===============================================================
 function MediaThumb({
@@ -334,12 +534,17 @@ function MediaThumb({
   );
 }
 
+// ===============================================================
+// Package size & weight (used by couriers to calculate shipping)
+// ===============================================================
 function PackagingFieldsBlock({
   control,
   basePath,
+  title = "Package size & weight",
 }: {
   control: Control<any>;
   basePath: string;
+  title?: string;
 }) {
   const packagingValue = useWatch({ control, name: basePath as any });
 
@@ -354,9 +559,7 @@ function PackagingFieldsBlock({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packagingValue]);
 
-  // [CHANGE] decimal: true hole point (1.2) deoya jay
   const fieldsMeta: { name: string; label: string; decimal?: boolean }[] = [
-    // { name: "expectedDeliveryDays", label: "Delivery Days" },
     { name: "length", label: "Length (cm)", decimal: true },
     { name: "breadth", label: "Breadth (cm)", decimal: true },
     { name: "height", label: "Height (cm)", decimal: true },
@@ -364,7 +567,7 @@ function PackagingFieldsBlock({
   ];
 
   return (
-    <div className="mt-1.5 border border-dashed border-blue-200 rounded-lg bg-white">
+    <div className="border border-dashed border-blue-200 rounded-lg bg-white">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -372,38 +575,47 @@ function PackagingFieldsBlock({
       >
         <span className="flex items-center gap-1.5">
           <i className="pi pi-inbox text-blue-500"></i>
-          Packaging Details
+          {title}
+          <span className="text-[10px] font-normal text-gray-400">
+            (optional)
+          </span>
         </span>
         <i
           className={`pi ${open ? "pi-chevron-up" : "pi-chevron-down"} text-[10px]`}
         ></i>
       </button>
       {open && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-2 pt-0">
-          {fieldsMeta.map((f) => (
-            <div key={f.name} className="space-y-1 min-w-0">
-              <label className="text-[10px] font-medium text-gray-500">
-                {f.label}
-              </label>
-              <Controller
-                name={`${basePath}.${f.name}` as any}
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    value={field.value ?? null}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    className="w-full"
-                    inputClassName="w-full text-xs p-1.5"
-                    min={0}
-                    useGrouping={false}
-                    mode="decimal"
-                    minFractionDigits={0}
-                    maxFractionDigits={f.decimal ? 3 : 0}
-                  />
-                )}
-              />
-            </div>
-          ))}
+        <div className="p-2 pt-0 space-y-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {fieldsMeta.map((f) => (
+              <div key={f.name} className="space-y-1 min-w-0">
+                <label className="text-[10px] font-medium text-gray-500">
+                  {f.label}
+                </label>
+                <Controller
+                  name={`${basePath}.${f.name}` as any}
+                  control={control}
+                  render={({ field }) => (
+                    <InputNumber
+                      value={field.value ?? null}
+                      onValueChange={(e) => field.onChange(e.value)}
+                      className="w-full"
+                      inputClassName="w-full text-xs p-1.5"
+                      min={0}
+                      useGrouping={false}
+                      mode="decimal"
+                      minFractionDigits={0}
+                      maxFractionDigits={f.decimal ? 3 : 0}
+                    />
+                  )}
+                />
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-gray-400">
+            Used to calculate courier charges. Accurate values give accurate
+            shipping rates.
+          </p>
         </div>
       )}
     </div>
@@ -417,13 +629,15 @@ function PackagingFieldsBlock({
 function GstFieldsBlock({
   control,
   basePath,
-  title = "GST (optional)",
+  title = "GST rates (optional)",
   hint,
+  defaultOpen = false,
 }: {
   control: Control<any>;
   basePath: string;
   title?: string;
   hint?: string;
+  defaultOpen?: boolean;
 }) {
   const value = useWatch({ control, name: basePath as any });
 
@@ -431,7 +645,7 @@ function GstFieldsBlock({
     !!v &&
     Object.values(v).some((x) => x !== undefined && x !== null && x !== "");
 
-  const [open, setOpen] = useState(() => hasValue(value));
+  const [open, setOpen] = useState(() => defaultOpen || hasValue(value));
 
   useEffect(() => {
     if (hasValue(value)) setOpen(true);
@@ -501,7 +715,7 @@ function GstFieldsBlock({
 }
 
 // ===============================================================
-// [TIER] Quantity based price tiers (1-4 => ₹20, 5-10 => ₹40, 50+ => ₹200)
+// [TIER] Bulk pricing (1-4 => ₹20, 5-10 => ₹40, 50+ => ₹200)
 // Min Qty auto-calculated (read-only): 1st = 1, next = previous Max Qty + 1
 // ===============================================================
 function PriceTiersBlock({
@@ -518,7 +732,6 @@ function PriceTiersBlock({
   const rows = (useWatch({ control, name: name as any }) || []) as any[];
   const enabled = fields.length > 0;
 
-  // row i er min qty (auto)
   const minOf = (i: number): number | null => {
     if (i === 0) return 1;
     const prevMax = rows[i - 1]?.maxQty;
@@ -542,11 +755,17 @@ function PriceTiersBlock({
 
   return (
     <div className="mt-1.5 border border-dashed border-purple-200 rounded-lg bg-white p-2">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-center justify-between gap-2">
+        <div className="min-w-0">
           <p className="text-xs font-semibold text-purple-700 flex items-center gap-1.5">
             <i className="pi pi-sort-amount-up"></i>
-            Quantity based pricing
+            Bulk pricing (price by quantity)
+            <span className="text-[10px] font-normal text-gray-400">
+              (optional)
+            </span>
+          </p>
+          <p className="text-[10px] text-gray-400">
+            Example: 1-4 pcs ₹20, 5-10 pcs ₹18, 11+ pcs ₹15.
           </p>
         </div>
         <InputSwitch
@@ -571,7 +790,7 @@ function PriceTiersBlock({
               >
                 <div className="space-y-1 min-w-0">
                   <label className="text-[10px] font-medium text-gray-500">
-                    Min Qty (auto)
+                    From qty (auto)
                   </label>
                   <InputNumber
                     value={min}
@@ -584,7 +803,7 @@ function PriceTiersBlock({
                 </div>
                 <div className="space-y-1 min-w-0">
                   <label className="text-[10px] font-medium text-gray-500">
-                    Max Qty
+                    Up to qty
                   </label>
                   <Controller
                     name={`${name}.${i}.maxQty` as any}
@@ -636,7 +855,7 @@ function PriceTiersBlock({
           })}
           <Button
             type="button"
-            label="Add Tier"
+            label="Add tier"
             icon="pi pi-plus"
             size="small"
             outlined
@@ -667,31 +886,33 @@ function SizeVariantRow({
   onRemove: () => void;
   canRemove: boolean;
   showRemove: boolean;
-  // [STOCK] stock management off hole Opening Stock / Low Stock Alert lukiye jay
   showStock: boolean;
 }) {
   return (
-    <div className="border border-blue-100 rounded-lg p-2 bg-blue-50/40 relative">
+    <div className="border border-blue-100 rounded-lg p-2.5 bg-blue-50/40 relative space-y-2">
       {showRemove && canRemove && (
         <button
           type="button"
           onClick={onRemove}
-          className="absolute top-1.5 right-1.5 text-red-500 hover:text-red-700 text-[11px] flex items-center gap-1"
+          title="Remove this option"
+          className="absolute top-2 right-2 text-red-500 hover:text-red-700 text-xs flex items-center gap-1"
         >
           <i className="pi pi-times-circle"></i>
         </button>
       )}
-      <p className="text-[10px] text-gray-500 mb-1.5">
-        Fill at least one of Size, Weight or Height{" "}
-        <span className="text-red-500">*</span>
-      </p>
-      <div
-        className={`grid grid-cols-2 sm:grid-cols-3 gap-2 ${
-          showStock ? "lg:grid-cols-7" : "lg:grid-cols-6"
-        }`}
-      >
+
+      <div>
+        <p className="text-[11px] font-semibold text-gray-700">
+          Option details <span className="text-red-500">*</span>
+        </p>
+        <p className="text-[10px] text-gray-500">
+          Fill at least one of Size, Weight or Height.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <div className="space-y-1 min-w-0">
-          <label className="text-[10px] font-semibold text-gray-600">
+          <label className="text-[11px] font-semibold text-gray-600">
             Size
           </label>
           <InputText
@@ -701,7 +922,7 @@ function SizeVariantRow({
           />
         </div>
         <div className="space-y-1 min-w-0">
-          <label className="text-[10px] font-semibold text-gray-600">
+          <label className="text-[11px] font-semibold text-gray-600">
             Weight
           </label>
           <InputText
@@ -711,7 +932,7 @@ function SizeVariantRow({
           />
         </div>
         <div className="space-y-1 min-w-0">
-          <label className="text-[10px] font-semibold text-gray-600">
+          <label className="text-[11px] font-semibold text-gray-600">
             Height
           </label>
           <InputText
@@ -720,99 +941,37 @@ function SizeVariantRow({
             placeholder="e.g. 6ft"
           />
         </div>
-        <div className="space-y-1 min-w-0">
-          {/* MRP ekhon optional, tai red * nei */}
-          <label className="text-[10px] font-semibold text-gray-600">MRP</label>
-          <Controller
-            name={`${basePath}.mrp` as any}
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                value={field.value ?? null}
-                onValueChange={(e) => field.onChange(e.value)}
-                className="w-full"
-                inputClassName="w-full p-inputtext-sm"
-                min={0}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                useGrouping={false}
-                placeholder="Optional"
-              />
-            )}
-          />
-        </div>
-        <div className="space-y-1 min-w-0">
-          <label className="text-[10px] font-semibold text-gray-600">
-            Offer Price
-          </label>
-          <Controller
-            name={`${basePath}.offerPrice` as any}
-            control={control}
-            render={({ field }) => (
-              <InputNumber
-                value={field.value ?? null}
-                onValueChange={(e) => field.onChange(e.value)}
-                className="w-full"
-                inputClassName="w-full p-inputtext-sm"
-                min={0}
-                mode="decimal"
-                minFractionDigits={2}
-                maxFractionDigits={2}
-                useGrouping={false}
-                placeholder="Optional"
-              />
-            )}
-          />
-        </div>
+      </div>
 
-        {/* [STOCK] Opening Stock + Low Stock Alert shudhu stock on thakle */}
+      <div
+        className={`grid grid-cols-2 gap-2 ${
+          showStock ? "sm:grid-cols-5" : "sm:grid-cols-3"
+        }`}
+      >
+        <MoneyField control={control} name={`${basePath}.mrp`} label="MRP" />
+        <MoneyField
+          control={control}
+          name={`${basePath}.offerPrice`}
+          label="Selling price"
+        />
         {showStock && (
           <>
-            <div className="space-y-1 min-w-0">
-              <label className="text-[10px] font-semibold text-gray-600">
-                Opening Stock<span className="text-red-500">*</span>
-              </label>
-              <Controller
-                name={`${basePath}.openingStock` as any}
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    value={field.value ?? 0}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    className="w-full"
-                    inputClassName="w-full p-inputtext-sm"
-                    min={0}
-                    useGrouping={false}
-                  />
-                )}
-              />
-            </div>
-            <div className="space-y-1 min-w-0">
-              <label className="text-[10px] font-semibold text-gray-600">
-                Low Stock Alert
-              </label>
-              <Controller
-                name={`${basePath}.lowStockThreshold` as any}
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    value={field.value ?? 0}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    className="w-full"
-                    inputClassName="w-full p-inputtext-sm"
-                    min={0}
-                    useGrouping={false}
-                    placeholder="0 = off"
-                  />
-                )}
-              />
-            </div>
+            <IntField
+              control={control}
+              name={`${basePath}.openingStock`}
+              label="Opening stock"
+              required
+            />
+            <IntField
+              control={control}
+              name={`${basePath}.lowStockThreshold`}
+              label="Low stock alert"
+              placeholder="0 = off"
+            />
           </>
         )}
-
-        <div className="space-y-1 min-w-0 col-span-2 sm:col-span-1">
-          <label className="text-[10px] font-semibold text-gray-600">SKU</label>
+        <div className="space-y-1 min-w-0">
+          <label className="text-[11px] font-semibold text-gray-600">SKU</label>
           <InputText
             className="w-full p-inputtext-sm"
             {...register(`${basePath}.sku`)}
@@ -820,12 +979,12 @@ function SizeVariantRow({
           />
         </div>
       </div>
+
       <PriceTiersBlock control={control} name={`${basePath}.priceTiers`} />
-      {/* [GST] size level override */}
       <GstFieldsBlock
         control={control}
         basePath={`${basePath}.gst`}
-        title="GST override (optional)"
+        title="GST override for this option (optional)"
         hint="If left empty, the color or product GST will be used."
       />
       <PackagingFieldsBlock
@@ -862,7 +1021,6 @@ function ColorVariantBlock({
   onRemoveImage: (index: number, isExisting: boolean) => void;
   onOpenCamera: () => void;
   getDefaults: () => Defaults;
-  // [STOCK] stock management off hole stock field lukiye jay
   showStock: boolean;
 }) {
   const {
@@ -878,14 +1036,17 @@ function ColorVariantBlock({
     on ? appendSize(buildEmptySizeVariant(getDefaults())) : replaceSizes([]);
 
   return (
-    <div className="border border-blue-100 rounded-xl p-2.5 bg-white shadow-sm">
-      <div className="flex items-start justify-between gap-2 mb-2">
+    <div className="border border-blue-100 rounded-xl p-3 bg-white shadow-sm space-y-3">
+      {/* Color header */}
+      <div className="flex items-center justify-between gap-2">
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <i className="pi pi-palette text-blue-500"></i>
+          <span className="h-6 w-6 shrink-0 rounded-full bg-blue-100 text-blue-700 text-[11px] font-bold flex items-center justify-center">
+            {colorIndex + 1}
+          </span>
           <InputText
-            className="w-full max-w-[220px] p-inputtext-sm font-semibold"
+            className="w-full max-w-[240px] p-inputtext-sm font-semibold"
             {...register(`variants.${colorIndex}.color`)}
-            placeholder="Color name e.g. Red *"
+            placeholder="Color name, e.g. Red *"
           />
         </div>
         {canRemoveColor && (
@@ -899,33 +1060,35 @@ function ColorVariantBlock({
         )}
       </div>
 
-      {/* Color media (image / gif / video) - required */}
-      <div className="space-y-1.5 mb-2.5">
+      {/* Color media */}
+      <div className="space-y-1.5">
         <label className="text-[11px] font-semibold text-gray-600">
-          Color Images / Videos <span className="text-red-500">*</span>
+          Photos / videos of this color <span className="text-red-500">*</span>
         </label>
-        <div className="flex gap-2 flex-wrap">
-          {imgState.existing.map((url, i) => (
-            <MediaThumb
-              key={`ex-${i}`}
-              src={url}
-              isVideo={isVideoUrl(url)}
-              sizeClass="w-14 h-14"
-              removeBtnClass="top-0.5 right-0.5 text-[9px] w-4 h-4"
-              onRemove={() => onRemoveImage(i, true)}
-            />
-          ))}
-          {imgState.previews.map((src, i) => (
-            <MediaThumb
-              key={`new-${i}`}
-              src={src}
-              isVideo={isVideoFile(imgState.files[i])}
-              sizeClass="w-14 h-14"
-              removeBtnClass="top-0.5 right-0.5 text-[9px] w-4 h-4"
-              onRemove={() => onRemoveImage(i, false)}
-            />
-          ))}
-        </div>
+        {(imgState.existing.length > 0 || imgState.previews.length > 0) && (
+          <div className="flex gap-2 flex-wrap">
+            {imgState.existing.map((url, i) => (
+              <MediaThumb
+                key={`ex-${i}`}
+                src={url}
+                isVideo={isVideoUrl(url)}
+                sizeClass="w-14 h-14"
+                removeBtnClass="top-0.5 right-0.5 text-[9px] w-4 h-4"
+                onRemove={() => onRemoveImage(i, true)}
+              />
+            ))}
+            {imgState.previews.map((src, i) => (
+              <MediaThumb
+                key={`new-${i}`}
+                src={src}
+                isVideo={isVideoFile(imgState.files[i])}
+                sizeClass="w-14 h-14"
+                removeBtnClass="top-0.5 right-0.5 text-[9px] w-4 h-4"
+                onRemove={() => onRemoveImage(i, false)}
+              />
+            ))}
+          </div>
+        )}
         <div className="flex gap-2 items-center">
           <input
             type="file"
@@ -946,38 +1109,27 @@ function ColorVariantBlock({
             onClick={onOpenCamera}
           />
         </div>
-        <p className="text-[10px] text-gray-400">{MEDIA_HINT}</p>
       </div>
 
-      {/* Per-color size toggle (independent of the global toggle) */}
-      <div className="flex items-center justify-between bg-blue-50/60 border border-blue-100 rounded-lg px-2.5 py-1.5 mb-2">
-        <div>
-          <p className="text-xs font-semibold text-gray-700">
-            Size / Weight / Height options for this color
-          </p>
-          <p className="text-[10px] text-gray-500">
-            Turn on to add separate size options for this color.
-          </p>
-        </div>
-        <InputSwitch
-          checked={sizeMode}
-          onChange={(e) => toggleSizeMode(!!e.value)}
-        />
-      </div>
+      {/* Size options toggle for this color */}
+      <ToggleRow
+        title="This color has size / weight / height options"
+        description="Turn on to add separate options (and prices) for this color."
+        checked={sizeMode}
+        onChange={toggleSizeMode}
+      />
 
-      {/* [GST] color level GST (size on/off duitai te kaj kore, size row e override kora jay) */}
-      <div className="mb-2">
-        <GstFieldsBlock
-          control={control}
-          basePath={`variants.${colorIndex}.gst`}
-          title="GST for this color (optional)"
-          hint={
-            sizeMode
-              ? "Default GST for this color's size options. To use a different GST for a size, set a GST override on that size."
-              : "If left empty, the product GST will be used."
-          }
-        />
-      </div>
+      {/* Color-level GST */}
+      <GstFieldsBlock
+        control={control}
+        basePath={`variants.${colorIndex}.gst`}
+        title="GST for this color (optional)"
+        hint={
+          sizeMode
+            ? "Default GST for this color's options. To use a different GST for one option, set a GST override on that option."
+            : "If left empty, the product GST will be used."
+        }
+      />
 
       {sizeMode ? (
         <div className="space-y-2">
@@ -996,7 +1148,7 @@ function ColorVariantBlock({
           ))}
           <Button
             type="button"
-            label="Add Size Option"
+            label="Add another option"
             icon="pi pi-plus"
             size="small"
             outlined
@@ -1004,107 +1156,40 @@ function ColorVariantBlock({
           />
         </div>
       ) : (
-        <div className="border border-blue-100 rounded-lg p-2 bg-blue-50/30">
+        <div className="border border-blue-100 rounded-lg p-2.5 bg-blue-50/30 space-y-2">
           <div
             className={`grid grid-cols-2 gap-2 ${
               showStock ? "sm:grid-cols-5" : "sm:grid-cols-3"
             }`}
           >
-            <div className="space-y-1 min-w-0">
-              {/* MRP ekhon optional, tai red * nei */}
-              <label className="text-[10px] font-semibold text-gray-600">
-                MRP
-              </label>
-              <Controller
-                name={`variants.${colorIndex}.mrp` as any}
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    value={field.value ?? null}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    className="w-full"
-                    inputClassName="w-full p-inputtext-sm"
-                    min={0}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    useGrouping={false}
-                    placeholder="Optional"
-                  />
-                )}
-              />
-            </div>
-            <div className="space-y-1 min-w-0">
-              <label className="text-[10px] font-semibold text-gray-600">
-                Offer Price
-              </label>
-              <Controller
-                name={`variants.${colorIndex}.offerPrice` as any}
-                control={control}
-                render={({ field }) => (
-                  <InputNumber
-                    value={field.value ?? null}
-                    onValueChange={(e) => field.onChange(e.value)}
-                    className="w-full"
-                    inputClassName="w-full p-inputtext-sm"
-                    min={0}
-                    mode="decimal"
-                    minFractionDigits={2}
-                    maxFractionDigits={2}
-                    useGrouping={false}
-                    placeholder="Optional"
-                  />
-                )}
-              />
-            </div>
-
-            {/* [STOCK] Opening Stock + Low Stock Alert shudhu stock on thakle */}
+            <MoneyField
+              control={control}
+              name={`variants.${colorIndex}.mrp`}
+              label="MRP"
+            />
+            <MoneyField
+              control={control}
+              name={`variants.${colorIndex}.offerPrice`}
+              label="Selling price"
+            />
             {showStock && (
               <>
-                <div className="space-y-1 min-w-0">
-                  <label className="text-[10px] font-semibold text-gray-600">
-                    Opening Stock<span className="text-red-500">*</span>
-                  </label>
-                  <Controller
-                    name={`variants.${colorIndex}.openingStock` as any}
-                    control={control}
-                    render={({ field }) => (
-                      <InputNumber
-                        value={field.value ?? 0}
-                        onValueChange={(e) => field.onChange(e.value)}
-                        className="w-full"
-                        inputClassName="w-full p-inputtext-sm"
-                        min={0}
-                        useGrouping={false}
-                      />
-                    )}
-                  />
-                </div>
-                <div className="space-y-1 min-w-0">
-                  <label className="text-[10px] font-semibold text-gray-600">
-                    Low Stock Alert
-                  </label>
-                  <Controller
-                    name={`variants.${colorIndex}.lowStockThreshold` as any}
-                    control={control}
-                    render={({ field }) => (
-                      <InputNumber
-                        value={field.value ?? 0}
-                        onValueChange={(e) => field.onChange(e.value)}
-                        className="w-full"
-                        inputClassName="w-full p-inputtext-sm"
-                        min={0}
-                        useGrouping={false}
-                        placeholder="0 = off"
-                      />
-                    )}
-                  />
-                </div>
+                <IntField
+                  control={control}
+                  name={`variants.${colorIndex}.openingStock`}
+                  label="Opening stock"
+                  required
+                />
+                <IntField
+                  control={control}
+                  name={`variants.${colorIndex}.lowStockThreshold`}
+                  label="Low stock alert"
+                  placeholder="0 = off"
+                />
               </>
             )}
-
             <div className="space-y-1 min-w-0">
-              <label className="text-[10px] font-semibold text-gray-600">
+              <label className="text-[11px] font-semibold text-gray-600">
                 SKU
               </label>
               <InputText
@@ -1129,7 +1214,7 @@ function ColorVariantBlock({
 }
 
 // ===============================================================
-// [POLICY] Product type + Returnable / Replaceable / Refundable
+// [POLICY] Returnable / Replaceable / Refundable
 // ===============================================================
 type ProductType = "PRODUCT" | "SERVICE";
 
@@ -1219,7 +1304,6 @@ const EMPTY_PICKUP: PickupAddress = {
   country: "India",
 };
 
-// [CHANGE] email ekhon required (pickup contact ke mail jabe)
 const validatePickup = (p: PickupAddress): string | null => {
   if (!p.contactName.trim()) return "Pickup contact name is required";
   if (!/^\d{10}$/.test(p.phone.trim()))
@@ -1248,7 +1332,6 @@ const cleanPickup = (p: PickupAddress) => ({
   country: p.country.trim() || "India",
 });
 
-// [CHANGE] isService prop: PRODUCT ar SERVICE duitar-i pickup address deoya jay
 function PickupAddressBlock({
   enabled,
   onToggle,
@@ -1305,24 +1388,21 @@ function PickupAddressBlock({
   const kind = isService ? "service" : "product";
 
   return (
-    <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-2.5 space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-            <i className="pi pi-map-marker text-blue-600"></i>
-            Pickup address for this {kind}
-          </p>
-          <p className="text-xs text-gray-500">
-            {isService
-              ? "Turn on to add the address and contact person for this service."
-              : "Turn on if the courier should pick this product up from a different address. When off, your store's default pickup address is used."}
-          </p>
-        </div>
-        <InputSwitch checked={enabled} onChange={(e) => onToggle(!!e.value)} />
-      </div>
+    <div className="space-y-2">
+      <ToggleRow
+        icon="pi-map-marker"
+        title={`Use a different pickup address for this ${kind}`}
+        description={
+          isService
+            ? "Turn on to add the address and contact person for this service."
+            : "Turn on if the courier should pick this product up from a different address. When off, your store's default pickup address is used."
+        }
+        checked={enabled}
+        onChange={onToggle}
+      />
 
       {enabled && (
-        <>
+        <div className="rounded-lg border border-blue-100 bg-blue-50/30 p-2.5 space-y-2">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {fields.map((f) => (
               <div
@@ -1356,14 +1436,14 @@ function PickupAddressBlock({
             {!isService &&
               " Shipping charge and delivery time are calculated from this pincode. Products with different pickup addresses are placed as separate orders. Local (own) delivery is not available for products with a custom pickup address."}
           </p>
-        </>
+        </div>
       )}
     </div>
   );
 }
 
 // ===============================================================
-// [CAT TYPE] Product / Service selector (form er shobar upore)
+// [CAT TYPE] Product / Service selector
 // ===============================================================
 function ProductTypeSelector({
   value,
@@ -1372,40 +1452,52 @@ function ProductTypeSelector({
   value: ProductType;
   onChange: (t: ProductType) => void;
 }) {
-  const btn = (v: ProductType, label: string, icon: string) => (
+  const btn = (v: ProductType, label: string, sub: string, icon: string) => (
     <button
       type="button"
       onClick={() => onChange(v)}
-      className={`flex-1 flex items-center justify-center gap-2 rounded-lg border px-3 py-2 text-sm font-semibold transition-colors ${
+      className={`flex-1 flex items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition-colors ${
         value === v
-          ? "border-blue-500 bg-blue-50 text-blue-800"
-          : "border-gray-200 text-gray-600 hover:bg-gray-50"
+          ? "border-blue-500 bg-blue-50 ring-1 ring-blue-200"
+          : "border-gray-200 hover:bg-gray-50"
       }`}
     >
-      <i className={`pi ${icon}`}></i>
-      {label}
+      <span
+        className={`h-9 w-9 rounded-lg flex items-center justify-center ${
+          value === v ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-500"
+        }`}
+      >
+        <i className={`pi ${icon}`}></i>
+      </span>
+      <span className="min-w-0">
+        <span
+          className={`block text-sm font-semibold ${
+            value === v ? "text-blue-800" : "text-gray-700"
+          }`}
+        >
+          {label}
+        </span>
+        <span className="block text-[11px] text-gray-500">{sub}</span>
+      </span>
     </button>
   );
 
   return (
     <div className="space-y-1.5">
-      <label className="text-sm font-semibold text-gray-700">
-        Type <span className="text-red-500">*</span>
-      </label>
-      <div className="flex gap-2">
-        {btn("PRODUCT", "Product", "pi-box")}
-        {btn("SERVICE", "Service", "pi-calendar")}
+      <div className="flex flex-col sm:flex-row gap-2">
+        {btn("PRODUCT", "Product", "Physical item, delivered to the customer", "pi-box")}
+        {btn("SERVICE", "Service", "Customer picks a booking date", "pi-calendar")}
       </div>
       <p className="text-[11px] text-gray-500">
         {value === "SERVICE"
-          ? "Service: the customer chooses a booking date when ordering. Only service categories are shown below."
-          : "Product: the customer pays directly, no booking date is needed. Only product categories are shown below."}
+          ? "Only service categories are shown below."
+          : "Only product categories are shown below."}
       </p>
     </div>
   );
 }
 
-// [CAT TYPE] type selector ekhon alada, tai ekhane shudhu returns & refunds
+// Returns & refunds
 function ProductPolicyBlock({
   productType,
   policy,
@@ -1422,87 +1514,80 @@ function ProductPolicyBlock({
 
   return (
     <div className="space-y-2">
-      <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-        <i className="pi pi-replay text-blue-600"></i>
-        Returns &amp; Refunds
-      </h3>
+      {rows.map((row) => {
+        const on = policy[row.flag];
+        const showDays = !isService;
+        return (
+          <div
+            key={row.flag}
+            className={`rounded-lg border p-2.5 transition-colors ${
+              on ? "border-blue-200 bg-blue-50/40" : "border-gray-100 bg-white"
+            }`}
+          >
+            <div className="flex items-start gap-2.5">
+              <Checkbox
+                inputId={row.flag}
+                checked={on}
+                onChange={(e) =>
+                  onPolicyChange({
+                    [row.flag]: !!e.checked,
+                    ...(e.checked ? {} : { [row.days]: null }),
+                  } as Partial<PolicyState>)
+                }
+              />
+              <div className="min-w-0 flex-1">
+                <label
+                  htmlFor={row.flag}
+                  className="text-sm font-semibold text-gray-800 cursor-pointer"
+                >
+                  {row.title}
+                </label>
+                <p className="text-[11px] text-gray-500">
+                  {isService
+                    ? "Customer can cancel and get a refund before the booking date. No refund on or after the booking date."
+                    : row.hint}
+                </p>
+              </div>
+            </div>
 
-      <div className="rounded-xl border border-blue-100 bg-blue-50/40 p-2.5 space-y-2">
-        {rows.map((row) => {
-          const on = policy[row.flag];
-          const showDays = !isService;
-          return (
-            <div
-              key={row.flag}
-              className="rounded-lg border border-gray-100 bg-white p-2"
-            >
-              <div className="flex items-start gap-2.5">
-                <Checkbox
-                  inputId={row.flag}
-                  checked={on}
-                  onChange={(e) =>
+            {on && showDays && (
+              <div className="mt-2 sm:w-1/2">
+                <label className="text-[10px] font-medium text-gray-500">
+                  Within how many days
+                  {row.daysRequired && <span className="text-red-500"> *</span>}
+                </label>
+                <InputNumber
+                  value={policy[row.days]}
+                  onValueChange={(e) =>
                     onPolicyChange({
-                      [row.flag]: !!e.checked,
-                      ...(e.checked ? {} : { [row.days]: null }),
+                      [row.days]: e.value ?? null,
                     } as Partial<PolicyState>)
                   }
+                  min={1}
+                  max={365}
+                  suffix=" days"
+                  useGrouping={false}
+                  placeholder={
+                    row.daysRequired ? "Required" : "Delivery agent decides"
+                  }
+                  className="w-full"
+                  inputClassName="w-full p-inputtext-sm"
                 />
-                <div className="min-w-0 flex-1">
-                  <label
-                    htmlFor={row.flag}
-                    className="text-sm font-semibold text-gray-800 cursor-pointer"
-                  >
-                    {row.title}
-                  </label>
-                  <p className="text-[11px] text-gray-500">
-                    {isService
-                      ? "Customer can cancel and get a refund before the booking date. No refund on or after the booking date."
-                      : row.hint}
-                  </p>
-                </div>
               </div>
-
-              {on && showDays && (
-                <div className="mt-2 sm:w-1/2">
-                  <label className="text-[10px] font-medium text-gray-500">
-                    Within how many days
-                    {row.daysRequired && (
-                      <span className="text-red-500"> *</span>
-                    )}
-                  </label>
-                  <InputNumber
-                    value={policy[row.days]}
-                    onValueChange={(e) =>
-                      onPolicyChange({
-                        [row.days]: e.value ?? null,
-                      } as Partial<PolicyState>)
-                    }
-                    min={1}
-                    max={365}
-                    suffix=" days"
-                    useGrouping={false}
-                    placeholder={
-                      row.daysRequired ? "Required" : "Delivery agent decides"
-                    }
-                    className="w-full"
-                    inputClassName="w-full p-inputtext-sm"
-                  />
-                </div>
-              )}
-            </div>
-          );
-        })}
-        <p className="text-[10px] text-gray-500">
-          Customers must give a reason for every return, replacement, refund or
-          cancellation. You can reject a request if the reason is not valid.
-        </p>
-      </div>
+            )}
+          </div>
+        );
+      })}
+      <p className="text-[10px] text-gray-500">
+        Customers must give a reason for every return, replacement, refund or
+        cancellation. You can reject a request if the reason is not valid.
+      </p>
     </div>
   );
 }
 
 // ===============================================================
-// [SETTINGS] Payment option (Store Settings er moto, product form theke-o change kora jay)
+// [SETTINGS] Payment option (same as Store Settings)
 // ===============================================================
 const PAYMENT_CHOICES: {
   value: PaymentMode;
@@ -1564,7 +1649,6 @@ function PaymentModeBlock({ storeId }: { storeId?: string | null }) {
       setSaving(true);
       await updateStoreSettings(storeId as string, { paymentMode: next });
       toast.success("Payment option updated");
-      // sidebar menu refresh
       window.dispatchEvent(new Event("storeSettingsChanged"));
     } catch (err: any) {
       setMode(prev);
@@ -1579,19 +1663,11 @@ function PaymentModeBlock({ storeId }: { storeId?: string | null }) {
   if (!mode) return null;
 
   return (
-    <div className="rounded-xl border border-blue-100 p-2.5 space-y-2">
-      <div className="flex items-center justify-between">
-        <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-          <i className="pi pi-credit-card text-blue-600"></i>
-          Payment options
-        </p>
-        {saving && (
-          <i className="pi pi-spin pi-spinner text-blue-500 text-sm"></i>
-        )}
-      </div>
-      <p className="text-[11px] text-gray-500">
-        This is your store payment setting. Changing it here also changes it in
-        Store Settings for all products of this store.
+    <div className="space-y-2">
+      <p className="text-[11px] text-gray-500 flex items-center gap-2">
+        This is a store-wide setting. Changing it here also changes it in Store
+        Settings for all products of this store.
+        {saving && <i className="pi pi-spin pi-spinner text-blue-500"></i>}
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         {PAYMENT_CHOICES.map((opt) => {
@@ -1604,7 +1680,7 @@ function PaymentModeBlock({ storeId }: { storeId?: string | null }) {
               onClick={() => change(opt.value)}
               className={`text-left rounded-lg border p-2.5 transition-all disabled:opacity-60 ${
                 active
-                  ? "border-blue-500 bg-blue-50"
+                  ? "border-blue-500 bg-blue-50 ring-1 ring-blue-200"
                   : "border-gray-200 hover:bg-gray-50"
               }`}
             >
@@ -1647,9 +1723,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   // video 15s er beshi hole trim dialog khule (prepareFiles), trimDialog form er baire render hoy
   const { prepareFiles, trimDialog } = useVideoTrimmer();
 
-  // [STOCK] create: store settings theke, edit: product er nijer hasStockManagement flag theke.
-  // false hole main product, color variant, size variant, kothao stock field dekhabe na.
-  // [STORE TYPE] create: store type + toggle theke, edit: product er nijer snapshot flag theke
   const [businessType, setBusinessType] =
     useState<StoreBusinessType>("MADE_FOR_PRODUCT");
   const [madeForProduct, setMadeForProduct] = useState(false); // shudhu BOTH type e user choose kore
@@ -1665,9 +1738,8 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   const [customPickup, setCustomPickup] = useState(false);
   const [pickup, setPickup] = useState<PickupAddress>(EMPTY_PICKUP);
 
-  // Both toggles are real state and only change when the user clicks them.
   // hasColor = color variants on/off
-  // hasSize  = global size/weight/height toggle (per-color toggles don't change it)
+  // hasSize  = global size/weight/height toggle
   const [hasColor, setHasColor] = useState(false);
   const [hasSize, setHasSize] = useState(false);
   const hasVariants = hasColor || hasSize;
@@ -1817,7 +1889,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   };
 
   // ---------- Main product media (image / gif / video) ----------
-  // video 15s er beshi hole prepareFiles trim dialog dekhay, user skip korle oi file bad
   const addImageFiles = async (files: File[]) => {
     const valid = filterMediaFiles(files);
     if (!valid.length) return;
@@ -1942,8 +2013,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   };
 
   // ---------- Global size toggle ----------
-  // color ON : applies size on/off to every existing color (colors/images stay)
-  // color OFF: plain size variants on/off
   const toggleSize = (value: boolean) => {
     setHasSize(value);
     const d = getDefaults();
@@ -2102,7 +2171,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   }, [productId]);
 
   // [CAT TYPE] store + product type onujayi category load.
-  // Edit mode e product load hole type bodlay, tai purono response ignore (cancelled)
   useEffect(() => {
     if (!isValidObjectId(selectedStoreId)) {
       setCategories([]);
@@ -2195,7 +2263,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
         Array.isArray(v?.sizeVariants) && v.sizeVariants.length > 0;
 
       setHasColor(productHasColor);
-      // initial global size state (after this only the user changes it)
       setHasSize(
         productHasColor
           ? rawVariants.length > 0 && rawVariants.every(isSized)
@@ -2203,17 +2270,14 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       );
 
       if (rawVariants.length === 0) {
-        // MRP optional: nai hole 0 na boshiye faka rakhi
         setValue("mrp", product.mrp ?? undefined);
         setValue("offerPrice", product.offerPrice ?? undefined);
         setValue("openingStock", product.openingStock ?? 0);
         setValue("lowStockThreshold" as any, product.lowStockThreshold ?? 0);
-        // [TIER] simple product er tiers
         setValue("priceTiers" as any, (product.priceTiers || []) as any);
         setCurrentStockInfo(product.currentStock ?? null);
         replaceVariants([]);
       } else {
-        // global values start from the first row
         const first = rawVariants[0];
         const firstRow = isSized(first) ? first.sizeVariants[0] : first;
         setValue("mrp", firstRow?.mrp ?? undefined);
@@ -2221,7 +2285,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
         setValue("openingStock", firstRow?.openingStock ?? 0);
         setValue("lowStockThreshold" as any, firstRow?.lowStockThreshold ?? 0);
         setValue("sku" as any, (firstRow?.sku || "") as any);
-        // [TIER] variant product e top-level tier lagbe na
         setValue("priceTiers" as any, [] as any);
 
         if (productHasColor) {
@@ -2345,10 +2408,9 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   };
 
   // ---------- Validation ----------
-  // MRP ekhon optional. Offer price > MRP check shudhu duita-i thakle.
   const priceError = (label: string, mrp: any, offer: any): string | null => {
     if (!isNil(mrp) && !isNil(offer) && Number(offer) > Number(mrp))
-      return `${label}Offer price cannot be greater than MRP`;
+      return `${label}Selling price cannot be greater than MRP`;
     return null;
   };
 
@@ -2363,11 +2425,9 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   };
 
   const validateForm = (): string | null => {
-    // validate the real form values (not zod-parsed data)
     const values = getValues();
     const variants = (values.variants || []) as any[];
 
-    // [CAT TYPE] category select kora thakte hobe
     if (!values.categoryId) {
       return `Please select a ${productType.toLowerCase()} category`;
     }
@@ -2415,7 +2475,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       }
     }
 
-    // ---- [PICKUP] [CHANGE] PRODUCT ar SERVICE duitar-i ----
+    // ---- [PICKUP] ----
     if (customPickup) {
       const pickupErr = validatePickup(pickup);
       if (pickupErr) return pickupErr;
@@ -2443,7 +2503,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
 
     // ---- Media ----
     if (!hasColor && existingImages.length + imageFiles.length === 0) {
-      return "Product image is required. Add at least one image or video in the 'Product Images / Videos' section.";
+      return "Product image is required. Add at least one image or video in the 'Photos & Videos' section.";
     }
 
     // ---- Total upload count (backend multer files limit) ----
@@ -2480,7 +2540,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
         if (imgs.existing.length + imgs.files.length === 0)
           return `${label}at least one image or video is required`;
 
-        // [GST] color level GST (size on/off duitai te)
         const colorGstErr = validateGstFields(label, v.gst);
         if (colorGstErr) return colorGstErr;
 
@@ -2550,7 +2609,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
           ? String(dailyBookingLimit)
           : "",
       );
-      // [PICKUP] [CHANGE] PRODUCT ar SERVICE duitar-i. Faka string = backend e purono pickup muche jabe
+      // [PICKUP] Faka string = backend e purono pickup muche jabe
       formData.append(
         "pickupAddress",
         customPickup ? JSON.stringify(cleanPickup(pickup)) : "",
@@ -2592,16 +2651,13 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
         formData.append("categoryId", String(data.categoryId));
 
       existingImages.forEach((url) => formData.append("images", url));
-      // video hole trim (start/end) file er naam e jay, backend oi part ta kete GIF banay
       imageFiles.forEach((file, idx) =>
         appendMediaFile(formData, `image${idx}`, file),
       );
 
-      // real form values
       const values = getValues();
       const globalPackaging = values.packagingDetails || {};
 
-      // [STOCK] stock off hole variant/size level e o opening stock + low stock alert shobshomoy 0 jabe
       const stockOf = (o: any) =>
         stockEnabled
           ? {
@@ -2611,11 +2667,9 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
           : { openingStock: 0, lowStockThreshold: 0 };
 
       if (!hasVariants) {
-        // MRP optional: faka hole field-i pathabo na (0 pathabo na)
         if (!isNil(values.mrp)) formData.append("mrp", String(values.mrp));
         if (!isNil(values.offerPrice))
           formData.append("offerPrice", String(values.offerPrice));
-        // [STOCK] main product er stock
         formData.append(
           "lowStockThreshold",
           String(stockEnabled ? ((values as any).lowStockThreshold ?? 0) : 0),
@@ -2625,7 +2679,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
           String(stockEnabled ? (values.openingStock ?? 0) : 0),
         );
         formData.append("packagingDetails", JSON.stringify(globalPackaging));
-        // [TIER] simple product er price tiers
         formData.append(
           "priceTiers",
           JSON.stringify(cleanTiers((values as any).priceTiers)),
@@ -2634,7 +2687,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       } else {
         const variants = (values.variants || []) as any[];
 
-        // [TIER] variant product e top-level tier lagbe na, purono tier clear korar jonno khali pathai
         formData.append("priceTiers", JSON.stringify([]));
 
         const variantsPayload = variants.map((v, idx) => {
@@ -2654,7 +2706,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
               return {
                 color,
                 images: imgState.existing,
-                gst: cleanGst(v.gst), // [GST] color level (size row er default)
+                gst: cleanGst(v.gst),
                 packagingDetails: packagingOf(
                   v.packagingDetails,
                   globalPackaging,
@@ -2665,10 +2717,10 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                   height: sv.height || undefined,
                   mrp: numOrUndef(sv.mrp),
                   offerPrice: numOrUndef(sv.offerPrice),
-                  ...stockOf(sv), // [STOCK]
+                  ...stockOf(sv),
                   sku: sv.sku || undefined,
-                  priceTiers: cleanTiers(sv.priceTiers), // [TIER]
-                  gst: cleanGst(sv.gst), // [GST]
+                  priceTiers: cleanTiers(sv.priceTiers),
+                  gst: cleanGst(sv.gst),
                   packagingDetails: packagingOf(
                     sv.packagingDetails,
                     globalPackaging,
@@ -2683,10 +2735,10 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
               images: imgState.existing,
               mrp: numOrUndef(v.mrp),
               offerPrice: numOrUndef(v.offerPrice),
-              ...stockOf(v), // [STOCK]
+              ...stockOf(v),
               sku: v.sku || undefined,
-              priceTiers: cleanTiers(v.priceTiers), // [TIER]
-              gst: cleanGst(v.gst), // [GST]
+              priceTiers: cleanTiers(v.priceTiers),
+              gst: cleanGst(v.gst),
               packagingDetails: packagingOf(
                 v.packagingDetails,
                 globalPackaging,
@@ -2701,10 +2753,10 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
             height: v.height || undefined,
             mrp: numOrUndef(v.mrp),
             offerPrice: numOrUndef(v.offerPrice),
-            ...stockOf(v), // [STOCK]
+            ...stockOf(v),
             sku: v.sku || undefined,
-            priceTiers: cleanTiers(v.priceTiers), // [TIER]
-            gst: cleanGst(v.gst), // [GST]
+            priceTiers: cleanTiers(v.priceTiers),
+            gst: cleanGst(v.gst),
             packagingDetails: packagingOf(v.packagingDetails, globalPackaging),
           };
         });
@@ -2729,7 +2781,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
         method: isEditMode ? "put" : "post",
         data: formData,
         headers: { "Content-Type": "multipart/form-data" },
-        // boro video upload + GIF convert e time lage (ekadhik video hole aro beshi)
         timeout: 10 * 60 * 1000,
       });
 
@@ -2741,8 +2792,8 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       clearNewImages();
       setExistingImages([]);
       setColorImages({});
-      setCustomPickup(false); // [PICKUP]
-      setPickup(EMPTY_PICKUP); // [PICKUP]
+      setCustomPickup(false);
+      setPickup(EMPTY_PICKUP);
       onSuccess();
     } catch (error: any) {
       const apiErrors = error.response?.data?.errors;
@@ -2765,48 +2816,65 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
     );
   }
 
-  // notun video select kora thakle button e "Converting video..." dekhabe
   const hasNewVideo =
     imageFiles.some(isVideoFile) ||
     Object.values(colorImages).some((s) => s.files.some(isVideoFile));
 
+  const isService = productType === "SERVICE";
+  const itemWord = isService ? "service" : "product";
+
   return (
-    <div className="px-4 pt-2 pb-3 min-h-[80vh]">
+    <div className="px-4 pt-2 pb-0 min-h-[80vh] bg-gray-50/60">
       <form onSubmit={handleSubmit(onSubmit, onInvalid)} className="space-y-3">
+        {/* Edit mode info bar */}
         {isEditMode && productCode && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-1.5 flex items-center gap-2 flex-wrap">
             <i className="pi pi-hashtag text-blue-500"></i>
-            <span className="text-sm text-gray-600">Product Code:</span>
+            <span className="text-sm text-gray-600">Product code:</span>
             <span className="text-sm font-semibold text-gray-800">
               {productCode}
             </span>
-            {/* [STOCK] current stock badge shudhu stock on thakle */}
             {currentStockInfo !== null && !hasVariants && stockEnabled && (
               <span className="ml-auto text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full border border-blue-200">
-                Current Stock: {currentStockInfo}
+                Current stock: {currentStockInfo}
               </span>
             )}
           </div>
         )}
 
-        {/* Basic Information */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-            <i className="pi pi-box text-blue-600"></i>
-            Basic Information
-          </h3>
+        <p className="text-[11px] text-gray-500">
+          Fields marked <span className="text-red-500 font-semibold">*</span>{" "}
+          are required. Everything else is optional.
+        </p>
 
-          {/* [CAT TYPE] age type select, tarpor oi type er category dropdown e ashbe */}
+        {/* ============ 1. TYPE ============ */}
+        <FormSection
+          step={1}
+          icon="pi-tag"
+          title="What are you adding?"
+          description="Choose first. This decides which categories and options you see."
+          badge="Required"
+        >
           <ProductTypeSelector
             value={productType}
             onChange={handleTypeChange}
           />
+        </FormSection>
 
+        {/* ============ 2. BASIC DETAILS ============ */}
+        <FormSection
+          step={2}
+          icon="pi-box"
+          title="Basic Details"
+          description={`Name and describe your ${itemWord}.`}
+          badge="Required"
+        >
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-            <div className="space-y-1">
-              <label className="text-sm font-semibold text-gray-700">
-                Category <span className="text-red-500">*</span>
-              </label>
+            <Field
+              label="Category"
+              required
+              error={errors.categoryId?.message as string | undefined}
+            >
               <Controller
                 name="categoryId"
                 control={control}
@@ -2825,7 +2893,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                         : categoriesLoading
                           ? "Loading categories..."
                           : categories.length === 0
-                            ? `No ${productType.toLowerCase()} categories found. Add one first.`
+                            ? `No ${itemWord} categories found. Add one first.`
                             : "Select category"
                     }
                     className="w-full border-blue-200"
@@ -2836,39 +2904,21 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                   />
                 )}
               />
-              {errors.categoryId && (
-                <small className="text-red-500">
-                  {errors.categoryId.message as string}
-                </small>
-              )}
-            </div>
+            </Field>
 
-            <div className="space-y-1">
-              <label className="text-sm font-semibold text-gray-700">
-                {productType === "SERVICE" ? "Service Name" : "Product Name"}{" "}
-                <span className="text-red-500">*</span>
-              </label>
+            <Field
+              label={isService ? "Service name" : "Product name"}
+              required
+              error={errors.name?.message}
+            >
               <InputText
                 className="w-full"
                 {...register("name")}
-                placeholder={
-                  productType === "SERVICE"
-                    ? "Enter service name"
-                    : "Enter product name"
-                }
+                placeholder={`Enter ${itemWord} name`}
               />
-              {errors.name && (
-                <small className="text-red-500 flex items-center gap-1">
-                  <i className="pi pi-exclamation-circle"></i>
-                  {errors.name.message}
-                </small>
-              )}
-            </div>
+            </Field>
 
-            <div className="space-y-1">
-              <label className="text-sm font-semibold text-gray-700">
-                Unit <span className="text-red-500">*</span>
-              </label>
+            <Field label="Unit" required error={errors.unit?.message}>
               <Controller
                 name="unit"
                 control={control}
@@ -2882,48 +2932,35 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                   />
                 )}
               />
-              {errors.unit && (
-                <small className="text-red-500">{errors.unit.message}</small>
-              )}
-            </div>
+            </Field>
           </div>
 
-          <div className="space-y-1">
-            <label className="text-sm font-semibold text-gray-700">
-              Description <span className="text-red-500">*</span>
-            </label>
+          <Field
+            label="Description"
+            required
+            error={errors.description?.message}
+          >
             <InputTextarea
               className="w-full"
-              rows={2}
+              rows={3}
               {...register("description")}
-              placeholder={
-                productType === "SERVICE"
-                  ? "Service description"
-                  : "Product description"
-              }
+              placeholder={`Describe your ${itemWord}`}
             />
-            {errors.description && (
-              <small className="text-red-500">
-                {errors.description.message}
-              </small>
-            )}
-          </div>
-        </div>
+          </Field>
+        </FormSection>
 
-        {/* Main Product Media: required when color is off, optional when on */}
-        <div className="space-y-1.5">
-          <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-            <i className="pi pi-image text-blue-600"></i>
-            Product Images / Videos
-            {!hasColor ? (
-              <span className="text-red-500">*</span>
-            ) : (
-              <span className="text-xs font-normal text-gray-500">
-                (optional — add images/videos inside each color)
-              </span>
-            )}
-          </h4>
-
+        {/* ============ 3. PHOTOS ============ */}
+        <FormSection
+          step={3}
+          icon="pi-image"
+          title="Photos & Videos"
+          description={
+            hasColor
+              ? "Optional here. Add photos and videos inside each color below."
+              : "Add at least one photo or video."
+          }
+          badge={hasColor ? "Optional" : "Required"}
+        >
           {(existingImages.length > 0 || imagePreviews.length > 0) && (
             <div className="flex gap-2 flex-wrap">
               {existingImages.map((url, idx) => (
@@ -2931,7 +2968,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                   key={`ex-${idx}`}
                   src={url}
                   isVideo={isVideoUrl(url)}
-                  sizeClass="w-32 h-24"
+                  sizeClass="w-28 h-24"
                   removeBtnClass="top-1 right-1 p-1 text-xs"
                   onRemove={() => removeImage(idx, true)}
                 />
@@ -2941,7 +2978,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                   key={`new-${idx}`}
                   src={src}
                   isVideo={isVideoFile(imageFiles[idx])}
-                  sizeClass="w-32 h-24"
+                  sizeClass="w-28 h-24"
                   removeBtnClass="top-1 right-1 p-1 text-xs"
                   onRemove={() => removeImage(idx, false)}
                 />
@@ -2954,12 +2991,12 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
               type="file"
               multiple
               onChange={handleImageChange}
-              className="flex-1 min-w-0 p-1.5 border border-blue-200 rounded-lg"
+              className="flex-1 min-w-0 p-1.5 border border-dashed border-blue-300 rounded-lg bg-blue-50/30 text-sm"
               accept={MEDIA_ACCEPT}
             />
             <Button
               type="button"
-              label="Take Photo"
+              label="Take photo"
               icon="pi pi-camera"
               onClick={() => openCamera(null)}
               outlined
@@ -2967,150 +3004,68 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
             />
           </div>
           <p className="text-[11px] text-gray-400">{MEDIA_HINT}</p>
-        </div>
+        </FormSection>
 
-        {/* [CAT TYPE] type selector upore giyeche, ekhane shudhu returns & refunds */}
-        <ProductPolicyBlock
-          productType={productType}
-          policy={policy}
-          onPolicyChange={(patch) => setPolicy((p) => ({ ...p, ...patch }))}
-        />
+        {/* ============ 4. COLORS & SIZES ============ */}
+        <FormSection
+          step={4}
+          icon="pi-palette"
+          title="Colors & Sizes"
+          description={`Does your ${itemWord} come in different colors or sizes? Skip this if it does not.`}
+          badge="Optional"
+        >
+          <ToggleRow
+            icon="pi-palette"
+            title="Different colors"
+            description="Each color gets its own photos, videos and price."
+            checked={hasColor}
+            onChange={toggleColor}
+          />
+          <ToggleRow
+            icon="pi-arrows-h"
+            title="Different sizes / weights / heights"
+            description={
+              hasColor
+                ? "Shortcut: turn size options on or off for all colors at once. You can also set them for one color inside its block."
+                : "Add separate options with their own prices."
+            }
+            checked={hasSize}
+            onChange={toggleSize}
+          />
 
-        {/* [BOOKING LIMIT] shudhu SERVICE e */}
-        {productType === "SERVICE" && (
-          <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-2.5 space-y-1.5">
-            <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-              <i className="pi pi-calendar-plus text-blue-600"></i>
-              Daily booking limit
-            </p>
-            <p className="text-xs text-gray-500">
-              Maximum number of bookings you can take for this service on one
-              day. When the limit is reached, customers must choose another
-              date. Leave empty for no limit.
-            </p>
-            <div className="sm:w-1/2">
-              <InputNumber
-                value={dailyBookingLimit}
-                onValueChange={(e) => setDailyBookingLimit(e.value ?? null)}
-                min={1}
-                max={10000}
-                useGrouping={false}
-                placeholder="No limit"
-                suffix=" bookings / day"
-                className="w-full"
-                inputClassName="w-full p-inputtext-sm"
-              />
-            </div>
-          </div>
-        )}
-
-        {productType !== "SERVICE" && (
-          <div className="flex items-center justify-between gap-3 rounded-xl border border-orange-200 bg-orange-50/50 p-2.5">
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                <i className="pi pi-bolt text-orange-500"></i>
-                Fastest delivery
-              </p>
-              <p className="text-xs text-gray-500">
-                Turn on to show the time and charge of the fastest Shiprocket
-                courier for this product. The shipping charge may be higher.
-                When off, the normal delivery estimate is shown.
-              </p>
-            </div>
-            <InputSwitch
-              checked={fastestDelivery}
-              onChange={(e) => setFastestDelivery(!!e.value)}
+          {/* {!isEditMode && businessType === "BOTH" && !isService && (
+            <ToggleRow
+              icon="pi-wrench"
+              iconClass="text-orange-500"
+              tone="orange"
+              title="Made for product"
+              description="Turn on if this product is made after the customer orders it. No quantity needs to be entered. This cannot be changed after the product is created."
+              checked={madeForProduct}
+              onChange={setMadeForProduct}
             />
-          </div>
-        )}
+          )} */}
+        </FormSection>
 
-        {/* [PICKUP] [CHANGE] PRODUCT ar SERVICE duitar-i pickup address */}
-        <PickupAddressBlock
-          enabled={customPickup}
-          onToggle={setCustomPickup}
-          value={pickup}
-          onChange={(patch) => setPickup((p) => ({ ...p, ...patch }))}
-          isService={productType === "SERVICE"}
-        />
-
-        {/* VARIANT TOGGLES — independent */}
-        <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-2.5 space-y-2.5">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-gray-800">
-                Color variants
-              </p>
-              <p className="text-xs text-gray-500">
-                Each color gets its own images/videos. Size / Weight not
-                required.
-              </p>
-            </div>
-            <InputSwitch
-              checked={hasColor}
-              onChange={(e) => toggleColor(!!e.value)}
-            />
-          </div>
-
-          <div className="flex items-center justify-between border-t border-blue-200 pt-2.5">
-            <div>
-              <p className="text-sm font-semibold text-gray-800">
-                Size / Weight / Height variants
-              </p>
-              <p className="text-xs text-gray-500">
-                {hasColor
-                  ? "Shortcut: turn size options on or off for all colors at once. You can also enable them for individual colors inside each color block."
-                  : "Plain variants with different size / weight / height."}
-              </p>
-            </div>
-            <InputSwitch
-              checked={hasSize}
-              onChange={(e) => toggleSize(!!e.value)}
-            />
-          </div>
-        </div>
-
-        {!isEditMode &&
-          businessType === "BOTH" &&
-          productType !== "SERVICE" && (
-            <div className="flex items-center justify-between rounded-xl border border-orange-200 bg-orange-50/50 p-2.5">
-              <div>
-                <p className="text-sm font-semibold text-gray-800">
-                  Made for product
-                </p>
-                <p className="text-xs text-gray-500">
-                  Turn on if this product is made after the customer orders it.
-                  No quantity needs to be entered. This cannot be changed after
-                  the product is created.
-                </p>
-              </div>
-              <InputSwitch
-                checked={madeForProduct}
-                onChange={(e) => setMadeForProduct(!!e.value)}
-              />
-            </div>
-          )}
-
-        {/* PRICING & STOCK: values entered here fill every variant below */}
-        <div className="space-y-2">
-          <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-            <span className="text-blue-600 text-base">₹</span>
-            {/* [STOCK] stock off hole heading e "& Stock" thakbe na */}
-            Pricing{stockEnabled ? " & Stock" : ""}
-          </h3>
-          {hasVariants && (
-            <p className="text-xs text-gray-500">
-              These values are filled into every variant below. You can still
-              change them in any individual variant.
-            </p>
-          )}
+        {/* ============ 5. PRICING & STOCK ============ */}
+        <FormSection
+          step={5}
+          icon="pi-indian-rupee"
+          title={`Pricing${stockEnabled ? " & Stock" : ""}`}
+          description={
+            hasVariants
+              ? "Fill the common values once. They are copied into every variant below, and you can still change any variant."
+              : `Set the price${stockEnabled ? " and stock" : ""} of your ${itemWord}.`
+          }
+        >
           <div
-            className={`grid grid-cols-1 gap-2.5 ${
+            className={`grid grid-cols-2 gap-2.5 ${
               stockEnabled ? "sm:grid-cols-5" : "sm:grid-cols-3"
             }`}
           >
-            <div className="space-y-1">
-              {/* MRP optional, tai red * nei */}
-              <label className="text-xs font-semibold text-gray-700">MRP</label>
+            <Field
+              label="MRP"
+              hint="Original price (optional)"
+            >
               <Controller
                 name="mrp"
                 control={control}
@@ -3129,11 +3084,12 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                   />
                 )}
               />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-700">
-                Offer Price
-              </label>
+            </Field>
+
+            <Field
+              label="Selling price"
+              hint="Leave empty to quote later"
+            >
               <Controller
                 name="offerPrice"
                 control={control}
@@ -3152,15 +3108,11 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                   />
                 )}
               />
-            </div>
+            </Field>
 
-            {/* [STOCK] Opening Stock + Low Stock Alert shudhu stock on thakle */}
             {stockEnabled && (
               <>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-700">
-                    Opening Stock<span className="text-red-500">*</span>
-                  </label>
+                <Field label="Opening stock" required>
                   <Controller
                     name="openingStock"
                     control={control}
@@ -3178,11 +3130,8 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                       />
                     )}
                   />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-xs font-semibold text-gray-700">
-                    Low Stock Alert
-                  </label>
+                </Field>
+                <Field label="Low stock alert" hint="0 = off">
                   <Controller
                     name={"lowStockThreshold" as any}
                     control={control}
@@ -3200,12 +3149,11 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                       />
                     )}
                   />
-                </div>
+                </Field>
               </>
             )}
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-700">SKU</label>
+            <Field label="SKU" hint="Your own item code">
               <Controller
                 name={"sku" as any}
                 control={control}
@@ -3218,20 +3166,113 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                   />
                 )}
               />
-            </div>
+            </Field>
           </div>
 
-          {/* [TIER] shudhu simple product er jonno (variant e proti row te alada) */}
+          {/* Bulk pricing: only for simple products (variants have their own) */}
           {!hasVariants && (
             <PriceTiersBlock control={control} name="priceTiers" />
           )}
 
-          {/* [GST] product level (variant e override kora jay) */}
+          {/* ---- Variant list ---- */}
+          {hasVariants && (
+            <div className="space-y-2.5 pt-2 border-t border-gray-100">
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-800">
+                    {hasColor ? "Color details" : "Variant details"}{" "}
+                    <span className="text-red-500">*</span>
+                  </h4>
+                  <p className="text-[11px] text-gray-500">
+                    {hasColor
+                      ? "Add each color with its own photos and prices."
+                      : "Add each size / weight / height option."}
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  label={hasColor ? "Add color" : "Add variant"}
+                  icon="pi pi-plus"
+                  onClick={handleAddVariant}
+                  className="p-button-sm"
+                  style={{
+                    background: "#eff6ff",
+                    color: "#1d4ed8",
+                    border: "1px solid #bfdbfe",
+                  }}
+                />
+              </div>
+
+              <div className="space-y-2.5 w-full min-w-0">
+                {variantFields.map((field, index) => {
+                  const uiKey = getUiKey(field);
+                  return hasColor ? (
+                    <div key={field.id} className="relative">
+                      <ColorVariantBlock
+                        control={control}
+                        register={register}
+                        colorIndex={index}
+                        onRemoveColor={() => handleRemoveVariant(index, uiKey)}
+                        canRemoveColor={variantFields.length > 1}
+                        imgState={getColorImageState(uiKey)}
+                        onAddImages={(files) =>
+                          addColorImageFiles(uiKey, files)
+                        }
+                        onRemoveImage={(i, isExisting) =>
+                          removeColorImage(uiKey, i, isExisting)
+                        }
+                        onOpenCamera={() => openCamera(uiKey)}
+                        getDefaults={getDefaults}
+                        showStock={stockEnabled}
+                      />
+                    </div>
+                  ) : (
+                    <div key={field.id} className="relative">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-semibold text-gray-600">
+                          Variant {index + 1}
+                        </span>
+                        {variantFields.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveVariant(index, uiKey)}
+                            className="text-red-500 hover:text-red-700 text-xs flex items-center gap-1"
+                          >
+                            <i className="pi pi-trash"></i> Remove
+                          </button>
+                        )}
+                      </div>
+                      <SizeVariantRow
+                        control={control}
+                        register={register}
+                        basePath={`variants.${index}`}
+                        index={index}
+                        onRemove={() => handleRemoveVariant(index, uiKey)}
+                        canRemove={variantFields.length > 1}
+                        showRemove={false}
+                        showStock={stockEnabled}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </FormSection>
+
+        {/* ============ 6. TAX ============ */}
+        <FormSection
+          step={6}
+          icon="pi-percentage"
+          title="Tax (GST)"
+          description="Only fill this if GST applies to your item."
+          badge="Optional"
+        >
           <GstFieldsBlock
             control={control}
             basePath="gst"
             title={
-              hasVariants ? "GST (all variants, optional)" : "GST (optional)"
+              hasVariants ? "GST rates (all variants)" : "GST rates"
             }
             hint={
               hasVariants
@@ -3240,12 +3281,14 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
             }
           />
 
-          {/* [HSN] kono level e GST thakle-i dekhabe */}
+          {/* HSN shows only when GST is set at any level */}
           {gstOn && (
-            <div className="space-y-1 border border-green-100 rounded-lg px-2.5 py-2 bg-green-50/40">
-              <label className="text-xs font-semibold text-gray-700">
-                HSN Code <span className="text-red-500">*</span>
-              </label>
+            <Field
+              label="HSN code"
+              required
+              hint="Enter a 4, 6 or 8 digit code. Required when GST is applied."
+              className="border border-green-100 rounded-lg px-2.5 py-2 bg-green-50/40"
+            >
               <Controller
                 name={"hsnCode" as any}
                 control={control}
@@ -3264,118 +3307,122 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                   />
                 )}
               />
-              <p className="text-[10px] text-gray-500">
-                Enter a 4, 6 or 8 digit code. HSN code is required when GST is
-                applied.
-              </p>
-            </div>
+            </Field>
           )}
 
-          <div className="flex items-center justify-between border border-green-100 rounded-lg px-2.5 py-1.5 bg-green-50/40">
-            <div>
-              <p className="text-xs font-semibold text-gray-700">
-                Prices already include GST
-              </p>
-              <p className="text-[10px] text-gray-500">
-                On: GST is calculated from within the price. Off: GST is added
-                on top of the price.
-              </p>
-            </div>
-            <Controller
-              name={"gstInclusive" as any}
-              control={control}
-              render={({ field }) => (
-                <InputSwitch
-                  checked={!!field.value}
-                  onChange={(e) => field.onChange(!!e.value)}
-                />
-              )}
-            />
-          </div>
-
-          <PackagingFieldsBlock control={control} basePath="packagingDetails" />
-          <PaymentModeBlock storeId={selectedStoreId} />
-        </div>
-
-        {/* VARIANT MODE */}
-        {hasVariants && (
-          <div className="space-y-2.5 w-full min-w-0">
-            <div className="flex items-center justify-between flex-wrap gap-2">
-              <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                <span className="text-blue-600 text-base">₹</span>
-                {hasColor ? "Color Variants" : "Variants"}
-                <span className="text-red-500">*</span>
-              </h3>
-              <Button
-                type="button"
-                label={hasColor ? "Add Color" : "Add Variant"}
-                icon="pi pi-plus"
-                onClick={handleAddVariant}
-                className="p-button-sm"
-                style={{
-                  background: "#eff6ff",
-                  color: "#1d4ed8",
-                  border: "1px solid #bfdbfe",
-                }}
+          <Controller
+            name={"gstInclusive" as any}
+            control={control}
+            render={({ field }) => (
+              <ToggleRow
+                tone="green"
+                title="My prices already include GST"
+                description="On: GST is calculated from within the price. Off: GST is added on top of the price."
+                checked={!!field.value}
+                onChange={(v) => field.onChange(v)}
               />
-            </div>
+            )}
+          />
+        </FormSection>
 
-            <div className="space-y-2.5 w-full min-w-0">
-              {variantFields.map((field, index) => {
-                const uiKey = getUiKey(field);
-                return hasColor ? (
-                  <div key={field.id} className="relative">
-                    <ColorVariantBlock
-                      control={control}
-                      register={register}
-                      colorIndex={index}
-                      onRemoveColor={() => handleRemoveVariant(index, uiKey)}
-                      canRemoveColor={variantFields.length > 1}
-                      imgState={getColorImageState(uiKey)}
-                      onAddImages={(files) => addColorImageFiles(uiKey, files)}
-                      onRemoveImage={(i, isExisting) =>
-                        removeColorImage(uiKey, i, isExisting)
-                      }
-                      onOpenCamera={() => openCamera(uiKey)}
-                      getDefaults={getDefaults}
-                      showStock={stockEnabled}
-                    />
-                  </div>
-                ) : (
-                  <div key={field.id} className="relative">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs font-semibold text-gray-600">
-                        Variant {index + 1}
-                      </span>
-                      {variantFields.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveVariant(index, uiKey)}
-                          className="text-red-500 hover:text-red-700 text-xs flex items-center gap-1"
-                        >
-                          <i className="pi pi-trash"></i> Remove
-                        </button>
-                      )}
-                    </div>
-                    <SizeVariantRow
-                      control={control}
-                      register={register}
-                      basePath={`variants.${index}`}
-                      index={index}
-                      onRemove={() => handleRemoveVariant(index, uiKey)}
-                      canRemove={variantFields.length > 1}
-                      showRemove={false}
-                      showStock={stockEnabled}
-                    />
-                  </div>
-                );
-              })}
+        {/* ============ 7. DELIVERY / BOOKING + PICKUP ============ */}
+        <FormSection
+          step={7}
+          icon={isService ? "pi-calendar-plus" : "pi-truck"}
+          title={isService ? "Booking & Pickup" : "Delivery & Pickup"}
+          description={
+            isService
+              ? "Limit daily bookings and set where the service happens."
+              : "Package details help us calculate shipping. All optional."
+          }
+          badge="Optional"
+        >
+          {isService ? (
+            <div className="rounded-lg border border-blue-100 bg-blue-50/40 p-2.5 space-y-1.5">
+              <p className="text-sm font-semibold text-gray-800">
+                Daily booking limit
+              </p>
+              <p className="text-[11px] text-gray-500">
+                Maximum bookings per day for this service. When the limit is
+                reached, customers must choose another date. Leave empty for no
+                limit.
+              </p>
+              <div className="sm:w-1/2">
+                <InputNumber
+                  value={dailyBookingLimit}
+                  onValueChange={(e) => setDailyBookingLimit(e.value ?? null)}
+                  min={1}
+                  max={10000}
+                  useGrouping={false}
+                  placeholder="No limit"
+                  suffix=" bookings / day"
+                  className="w-full"
+                  inputClassName="w-full p-inputtext-sm"
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <>
+              <PackagingFieldsBlock
+                control={control}
+                basePath="packagingDetails"
+                title="Package size & weight (default for all variants)"
+              />
+              <ToggleRow
+                icon="pi-bolt"
+                iconClass="text-orange-500"
+                tone="orange"
+                title="Show fastest delivery"
+                description="Shows the time and charge of the fastest courier for this product. The shipping charge may be higher. When off, the normal delivery estimate is shown."
+                checked={fastestDelivery}
+                onChange={setFastestDelivery}
+              />
+            </>
+          )}
+
+          <PickupAddressBlock
+            enabled={customPickup}
+            onToggle={setCustomPickup}
+            value={pickup}
+            onChange={(patch) => setPickup((p) => ({ ...p, ...patch }))}
+            isService={isService}
+          />
+        </FormSection>
+
+        {/* ============ 8. RETURNS ============ */}
+        <FormSection
+          step={8}
+          icon="pi-replay"
+          title="Returns & Refunds"
+          description={
+            isService
+              ? "Decide if customers can cancel for a refund."
+              : "Decide what customers can do after delivery."
+          }
+          badge="Optional"
+        >
+          <ProductPolicyBlock
+            productType={productType}
+            policy={policy}
+            onPolicyChange={(patch) => setPolicy((p) => ({ ...p, ...patch }))}
+          />
+        </FormSection>
+
+        {/* ============ 9. PAYMENT ============ */}
+        {isValidObjectId(selectedStoreId) && (
+          <FormSection
+            step={9}
+            icon="pi-credit-card"
+            title="Payment Options"
+            description="How customers can pay for orders from your store."
+            badge="Optional"
+          >
+            <PaymentModeBlock storeId={selectedStoreId} />
+          </FormSection>
         )}
 
-        {/* SUBMIT BUTTONS */}
-        <div className="flex gap-3 pt-2">
+        {/* ============ STICKY SAVE BAR ============ */}
+        <div className="sticky bottom-0 z-10 -mx-4 px-4 py-3 bg-white/95 backdrop-blur border-t border-gray-200 flex gap-3">
           <Button
             type="button"
             label="Cancel"
@@ -3393,11 +3440,11 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                   ? "Converting video..."
                   : "Saving..."
                 : isEditMode
-                  ? "Update Product"
-                  : "Create Product"
+                  ? `Update ${isService ? "Service" : "Product"}`
+                  : `Create ${isService ? "Service" : "Product"}`
             }
             icon={isSubmitting ? "pi pi-spin pi-spinner" : "pi pi-check"}
-            className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 border-0 text-white shadow-lg hover:shadow-xl transform hover:scale-[1.02] transition-all duration-300"
+            className="flex-1 bg-gradient-to-r from-blue-500 to-blue-600 border-0 text-white shadow-lg hover:shadow-xl transition-all duration-300"
             disabled={isSubmitting}
           />
         </div>
@@ -3405,7 +3452,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
 
       {/* CAMERA DIALOG */}
       <Dialog
-        header="Take Product Photo"
+        header="Take Photo"
         visible={cameraOpen}
         onShow={() => startCamera(facingMode)}
         onHide={closeCamera}
