@@ -10,11 +10,15 @@ export default function AddToCart({
   madeFor = false,
   bookingDate = "",
   compact = false,
+  maxQty,
+  disabled = false,
 }: {
   slug: string;
   madeFor?: boolean;
-  bookingDate?: string; // "YYYY-MM-DD", empty when missing or invalid
-  compact?: boolean; // sticky-bar version: no stepper, quantity 1
+  bookingDate?: string;
+  compact?: boolean;
+  maxQty?: number;
+  disabled?: boolean; // sticky-bar version: no stepper, quantity 1
 }) {
   const [q, setQ] = useState(1);
   const [error, setError] = useState("");
@@ -26,6 +30,13 @@ export default function AddToCart({
   }, [bookingDate]);
 
   const needsDate = madeFor && !bookingDate;
+  const atMax = maxQty !== undefined && q >= maxQty;
+  const blocked = disabled || (maxQty !== undefined && maxQty <= 0);
+
+  // if the available slots drop (e.g. user switches date), pull quantity down
+  useEffect(() => {
+    if (maxQty !== undefined && maxQty > 0 && q > maxQty) setQ(maxQty);
+  }, [maxQty, q]);
 
   const ensureBookingDate = () => {
     if (!madeFor) return true;
@@ -41,12 +52,14 @@ export default function AddToCart({
   };
 
   const handleAddToCart = async () => {
+    if (blocked) return;
     if (!ensureBookingDate()) return;
     setError("");
     await add(slug, q);
   };
 
   const handleBuyNow = async () => {
+    if (blocked) return;
     if (!ensureBookingDate()) return;
     setError("");
     await add(slug, q);
@@ -58,7 +71,7 @@ export default function AddToCart({
   };
 
   const pad = compact ? "px-5 py-2.5 text-sm" : "flex-1 py-3.5";
-  const dim = needsDate ? "opacity-60" : "";
+  const dim = needsDate || blocked ? "opacity-60" : "";
 
   return (
     <div className={compact ? "" : "mt-6"}>
@@ -68,9 +81,15 @@ export default function AddToCart({
           <div className="flex items-center overflow-hidden rounded-lg bg-[#7a1118] text-white">
             <button aria-label="Decrease quantity" onClick={() => setQ(Math.max(1, q - 1))} className="grid h-9 w-9 place-items-center"><Minus size={16} /></button>
             <span className="grid h-9 w-12 place-items-center bg-white font-bold text-[#4a0710]">{q}</span>
-            <button aria-label="Increase quantity" onClick={() => setQ(q + 1)} className="grid h-9 w-9 place-items-center"><Plus size={16} /></button>
+            <button aria-label="Increase quantity" disabled={atMax || blocked} onClick={() => setQ(maxQty !== undefined ? Math.min(q + 1, maxQty) : q + 1)} className="grid h-9 w-9 place-items-center disabled:opacity-40"><Plus size={16} /></button>
           </div>
         </div>
+      )}
+
+      {!compact && atMax && maxQty !== undefined && maxQty > 0 && (
+        <p className="-mt-2 mb-3 text-xs font-semibold text-[#b26a00]">
+          Maximum available: {maxQty}
+        </p>
       )}
 
       <div className="flex gap-3">

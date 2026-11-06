@@ -243,7 +243,17 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
     ? Number(avail.dailyBookingLimit) || 0
     : 0;
   const availDays: any[] = Array.isArray(avail?.days) ? avail.days : [];
-  const dateFull = Boolean(availDays.find((d) => d.date === bookingDate)?.full);
+  const selDay = availDays.find((d) => d.date === bookingDate);
+  const dateFull = Boolean(selDay?.full);
+  const slotsLeft: number | undefined =
+    isService && bookingLimit > 0 && selDay
+      ? Number(selDay.remaining)
+      : undefined;
+  const allDaysFull =
+    isService &&
+    bookingLimit > 0 &&
+    availDays.length > 0 &&
+    availDays.every((d) => d.full);
 
   // ---- variants: color -> size ----
   const colorVariants: any[] = Array.isArray(raw?.variants) ? raw.variants : [];
@@ -277,14 +287,17 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
 
   // ---- stock ----
   const stock: number | undefined =
-    raw?.hasStockManagement && typeof vsrc?.currentStock === "number"
+    !needsBooking &&
+    raw?.hasStockManagement &&
+    typeof vsrc?.currentStock === "number"
       ? vsrc.currentStock
       : undefined;
-  const outOfStock = stock !== undefined && stock <= 0;
+  const outOfStock = allDaysFull || (stock !== undefined && stock <= 0);
   const lowStock =
-    stock !== undefined &&
-    stock > 0 &&
-    stock <= (Number(vsrc?.lowStockThreshold) || 5);
+    (slotsLeft !== undefined && slotsLeft > 0 && slotsLeft <= 3) ||
+    (stock !== undefined &&
+      stock > 0 &&
+      stock <= (Number(vsrc?.lowStockThreshold) || 5));
 
   // ---- GST + packaging ----
   const gstSrc: any = [size?.effectiveGst, color?.effectiveGst, raw?.gst].find(
@@ -769,6 +782,7 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
                   <div className="mt-2 flex flex-wrap gap-2">
                     {sizeVariants.map((s: any, i: number) => {
                       const out =
+                        !needsBooking &&
                         raw?.hasStockManagement &&
                         typeof s.currentStock === "number" &&
                         s.currentStock <= 0;
@@ -794,11 +808,15 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
           )}
 
           {outOfStock && (
-            <p className="mt-3 text-sm font-bold text-red-600">Out of stock</p>
+            <p className="mt-3 text-sm font-bold text-red-600">
+              {allDaysFull ? "Fully booked" : "Out of stock"}
+            </p>
           )}
           {lowStock && (
             <p className="mt-3 text-sm font-bold text-[#b26a00]">
-              Only {stock} left. Order soon!
+              {slotsLeft !== undefined && slotsLeft > 0 && slotsLeft <= 3
+                ? `Only ${slotsLeft} slot${slotsLeft === 1 ? "" : "s"} left on this date. Book soon!`
+                : `Only ${stock} left. Order soon!`}
             </p>
           )}
 
@@ -930,6 +948,8 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
             slug={p.slug}
             madeFor={needsBooking}
             bookingDate={dateValid ? bookingDate : ""}
+            maxQty={slotsLeft ?? stock}
+            disabled={outOfStock}
           />
 
           <h2 className="mt-6 font-extrabold text-[#4a0710]">
@@ -1233,6 +1253,8 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
             slug={p.slug}
             madeFor={needsBooking}
             bookingDate={dateValid ? bookingDate : ""}
+            maxQty={slotsLeft ?? stock}
+            disabled={outOfStock}
           />
         </div>
       </div>
