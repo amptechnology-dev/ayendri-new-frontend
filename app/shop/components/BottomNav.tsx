@@ -123,6 +123,9 @@ export default function BottomNav() {
 
   const tint = activeIdx >= 0 ? items[activeIdx].color : "#ffffff";
 
+  // no bottom nav on product pages (they have their own sticky Add to Cart bar)
+  if (path.startsWith("/shop/product/")) return null;
+
   return (
     <div
       className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex items-center justify-center gap-3 px-3"

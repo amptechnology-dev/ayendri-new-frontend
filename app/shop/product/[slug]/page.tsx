@@ -156,7 +156,7 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   const [bookingDate, setBookingDate] = useState(""); // "YYYY-MM-DD"
   const [imgIdx, setImgIdx] = useState(0);
   const [copied, setCopied] = useState(false);
-  const [tab, setTab] = useState<TabId>("description");
+  const tab = "description" as TabId;
   const [expanded, setExpanded] = useState(false);
   const [colorIdx, setColorIdx] = useState(0);
   const [sizeIdx, setSizeIdx] = useState(0);
@@ -978,30 +978,10 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
 
       {/* ---------- Description ---------- */}
       <section className="mt-12 rounded-3xl border border-[#f0dcc0] bg-white px-4 pb-4 pt-5 shadow-sm sm:px-6">
-        {/* Tabs */}
-        <div className="flex flex-wrap justify-center gap-3">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => {
-                setTab(t.id);
-                setExpanded(false);
-              }}
-              className={`rounded-full border px-6 py-2.5 text-base font-semibold transition ${
-                tab === t.id
-                  ? "border-[#8b1a2b] bg-[#8b1a2b] text-white shadow-md"
-                  : "border-[#e4cfae] bg-white text-[#5a1a22] hover:bg-[#fff4dc]"
-              }`}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+
 
         {/* Title */}
-        <h2 className="mt-6 text-3xl font-black text-[#1a1a1a]">
-          {sectionTitle}
-        </h2>
+        <h2 className="text-3xl font-black text-[#1a1a1a]">{sectionTitle}</h2>
 
         {/* Content (collapsible) */}
         <div className="relative mt-6">

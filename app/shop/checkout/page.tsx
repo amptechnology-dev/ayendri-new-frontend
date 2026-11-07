@@ -190,6 +190,11 @@ export default function Checkout() {
 
   useEffect(() => setMounted(true), []);
 
+  // COD is no longer offered, so always use online payment
+  useEffect(() => {
+    if (cart.payment !== "ONLINE") cart.set({ payment: "ONLINE" });
+  }, [cart.payment]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // load saved addresses and prefill the default one
   useEffect(() => {
     if (!token) return;
@@ -615,12 +620,6 @@ export default function Checkout() {
         } catch {}
         cart.clear();
       };
-
-      if (cart.payment === "COD") {
-        await clearCartEverywhere();
-        setSuccess({ orderId: orderIds[0] ?? "", message });
-        return;
-      }
 
       // ONLINE
       if (!orderIds.length) {
@@ -1061,31 +1060,7 @@ export default function Checkout() {
             )}
           </section>
 
-          <section className="shop-card p-5">
-            <h2 className="mb-2 text-sm font-bold">Payment method</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {(
-                [
-                  ["ONLINE", "Pay Online"],
-                  ["COD", "Cash on Delivery"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => cart.set({ payment: value })}
-                  aria-pressed={cart.payment === value}
-                  className={`rounded-xl border px-3 py-2.5 text-sm font-bold ${
-                    cart.payment === value
-                      ? "border-[#e0622d] bg-orange-50 text-[#9b4326]"
-                      : "border-[#e8cfa8] text-[#9a7a7a]"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </section>
+
 
           {error && (
             <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">

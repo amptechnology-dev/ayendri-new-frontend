@@ -415,7 +415,7 @@ export default function ShopHeader() {
 
           <Link
             href="/shop/notifications"
-            className={ICON_BTN}
+            className={`${ICON_BTN} ${BTN_SCROLLED}`}
             aria-label="Notifications"
           >
             <Bell size={20} />
@@ -448,7 +448,7 @@ export default function ShopHeader() {
           <button
             type="button"
             onClick={() => setDrawer(true)}
-            className={`${ICON_BTN} ${scrolled ? BTN_SCROLLED : ""}`}
+            className={`${ICON_BTN} ${BTN_SCROLLED}`}
             aria-label="Open menu"
             aria-expanded={drawer}
           >
