@@ -1065,7 +1065,9 @@ type RequestRow = {
     trackingUrl?: string | null;
     createdAt?: string | null;
   } | null;
-
+  evidence?: { url: string; type: "IMAGE" | "VIDEO_GIF" }[];
+  replacementOrderId?: string | null;
+  replacementOrderNumber?: string | null;
   createdAt: string;
 };
 
@@ -1212,6 +1214,42 @@ function OrderRequestsCard({
               <span className="font-semibold">Customer reason:</span> {r.reason}
             </p>
 
+            {r.evidence && r.evidence.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {r.evidence.map((e, i) => (
+                  <a
+                    key={i}
+                    href={e.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative"
+                  >
+                    <img
+                      src={e.url}
+                      alt="Customer proof"
+                      className="h-24 w-24 rounded-lg border object-cover"
+                    />
+                    {e.type === "VIDEO_GIF" && (
+                      <span className="absolute bottom-1 left-1 bg-black/60 text-white rounded px-1.5 py-0.5 text-[10px]">
+                        Video
+                      </span>
+                    )}
+                  </a>
+                ))}
+              </div>
+            )}
+            {r.replacementOrderId && (
+              <p className="text-xs text-orange-700">
+                Replacement order:{" "}
+                <a
+                  href={`/dashboard/orders/${r.replacementOrderId}`}
+                  className="underline font-medium"
+                >
+                  #{r.replacementOrderNumber}
+                </a>
+              </p>
+            )}
+
             {r.refundAmount > 0 && (
               <div className="text-xs space-y-1">
                 <KV label="Refund amount">{money(r.refundAmount)}</KV>
@@ -1265,7 +1303,16 @@ function OrderRequestsCard({
                   icon="pi pi-check"
                   size="small"
                   loading={busyId === r._id}
-                  onClick={() => act(r._id, "decision", { action: "APPROVE" })}
+                  onClick={() => {
+                    if (
+                      r.type === "REPLACE" &&
+                      !window.confirm(
+                        "Approve replacement? A free replacement order will be created and a courier pickup of the old item will be arranged.",
+                      )
+                    )
+                      return;
+                    act(r._id, "decision", { action: "APPROVE" });
+                  }}
                 />
                 <Button
                   label="Reject"
@@ -1693,6 +1740,29 @@ function OrderDetailsPage() {
             </span>
           </div>
         </div>
+
+        {order.orderType === "REPLACEMENT" && (
+          <div className="border border-orange-200 bg-orange-50 rounded-xl p-3 text-sm text-orange-800 flex flex-wrap items-center justify-between gap-2">
+            <span>
+              <i className="pi pi-sync mr-1.5"></i>
+              Replacement order{" "}
+              {order.replacementRequestNumber
+                ? `(${order.replacementRequestNumber})`
+                : ""}
+              . No charge to the customer. Courier cost is borne by the store.
+            </span>
+            {order.replacementOf && (
+              <Button
+                label="View original order"
+                size="small"
+                text
+                onClick={() =>
+                  router.push(`/dashboard/orders/${order.replacementOf}`)
+                }
+              />
+            )}
+          </div>
+        )}
 
         {/* ============ Quick stats ============ */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5">

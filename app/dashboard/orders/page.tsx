@@ -367,7 +367,11 @@ function OrdersPage() {
   );
 
   const amountTemplate = (rowData: OrderRow) => {
-    // price estimate pending hole amount-er jaygay badge
+    if (rowData.orderType === "REPLACEMENT") {
+      return (
+        <span className="text-xs font-medium text-orange-700">No charge</span>
+      );
+    }
     if (isQuotePending(rowData)) {
       return (
         <div className="space-y-0.5">
@@ -396,6 +400,17 @@ function OrdersPage() {
       </div>
     );
   };
+
+  const orderNoTemplate = (row: OrderRow) => (
+    <div>
+      <span>{row.orderNumber}</span>
+      {row.orderType === "REPLACEMENT" && (
+        <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700">
+          Replacement
+        </span>
+      )}
+    </div>
+  );
 
   // 🔥 CHANGED: View + status-change dropdown (delivery date / courier choose item muche dewa)
   const actionTemplate = (rowData: OrderRow) => {
@@ -531,6 +546,11 @@ function OrdersPage() {
                         <div>
                           <h3 className="text-sm md:text-base font-semibold text-gray-800">
                             #{order.orderNumber}
+                            {order.orderType === "REPLACEMENT" && (
+                              <span className="ml-1.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-orange-100 text-orange-700">
+                                Replacement
+                              </span>
+                            )}
                           </h3>
                           <p className="text-xs text-gray-500">
                             {formatDate(order.createdAt)}
@@ -689,16 +709,18 @@ function OrdersPage() {
             rowClassName={() => "cursor-pointer"}
             emptyMessage={<EmptyState />}
           >
-            <Column field="orderNumber" header="Order #" />
+            <Column header="Order #" body={orderNoTemplate} />
             <Column header="Customer" body={customerTemplate} />
             <Column header="Items" body={itemsTemplate} />
             <Column header="Amount" body={amountTemplate} />
             <Column
               header="Payment"
               body={(row: OrderRow) =>
-                row.paymentOff
-                  ? "Paid to store directly"
-                  : `${row.paymentMethod} • ${row.paymentStatus}`
+                row.orderType === "REPLACEMENT"
+                  ? "Free replacement"
+                  : row.paymentOff
+                    ? "Paid to store directly"
+                    : `${row.paymentMethod} • ${row.paymentStatus}`
               }
             />
             <Column header="Status" body={statusTemplate} />
