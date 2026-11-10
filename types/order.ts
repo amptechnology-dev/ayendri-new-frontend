@@ -210,6 +210,10 @@ export type OrderRow = {
   shipStartDate?: string | null;
   shipmentDone?: boolean;
   shipError?: string | null;
+
+  orderType?: "NORMAL" | "REPLACEMENT";
+  replacementOf?: string | null;
+  replacementRequestNumber?: string | null;
 };
 
 // 🔥 CHANGED: PENDING remove

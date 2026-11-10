@@ -52,6 +52,7 @@ type RequestRow = {
   decidedAt?: string | null;
   completedAt?: string | null;
   createdAt: string;
+  evidence?: { url: string; type: "IMAGE" | "VIDEO_GIF" }[];
 };
 
 const TYPE_LABEL: Record<RequestType, string> = {
@@ -537,9 +538,16 @@ function RequestsPage() {
                             size="small"
                             className="text-xs"
                             loading={busyId === r._id}
-                            onClick={() =>
-                              act(r._id, "decision", { action: "APPROVE" })
-                            }
+                            onClick={() => {
+                              if (
+                                r.type === "REPLACE" &&
+                                !window.confirm(
+                                  "Approve replacement? A free replacement order will be created and a courier pickup of the old item will be arranged.",
+                                )
+                              )
+                                return;
+                              act(r._id, "decision", { action: "APPROVE" });
+                            }}
                           />
                           <Button
                             label="Reject"
