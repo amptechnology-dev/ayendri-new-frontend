@@ -36,12 +36,12 @@ export default function ServicesSection() {
           </p>
         </div>
 
-        <div className="shop-scroll mt-8 flex gap-4 overflow-x-auto pb-4 sm:gap-6 md:grid md:grid-cols-3 md:overflow-visible lg:grid-cols-4">
+        <div className="shop-scroll mt-8 flex gap-4 overflow-x-auto pb-4 sm:gap-6 md:flex-wrap md:justify-center md:overflow-visible max-md:[&>*:first-child]:ml-auto max-md:[&>*:last-child]:mr-auto">
           {services.slice(0, 8).map((p) => (
             <Link
               key={p.slug}
               href={`/shop/product/${p.slug}`}
-              className="group relative flex w-[230px] shrink-0 flex-col overflow-hidden rounded-3xl border-2 border-[#f2b632]/70 bg-[#fff4dc] shadow-xl transition hover:-translate-y-1.5 hover:shadow-2xl md:w-auto"
+              className="group relative flex w-[230px] shrink-0 flex-col overflow-hidden rounded-3xl border-2 border-[#f2b632]/70 bg-[#fff4dc] shadow-xl transition hover:-translate-y-1.5 hover:shadow-2xl md:w-[calc((100%-3rem)/3)] lg:w-[calc((100%-4.5rem)/4)]"
             >
               <span className="absolute left-3 top-3 z-10 flex items-center gap-1 rounded-full bg-[#7a1118] px-3 py-1 text-[10px] font-bold tracking-widest text-[#f2b632] shadow">
                 <CalendarCheck size={12} /> SERVICE

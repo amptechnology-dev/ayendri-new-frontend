@@ -7,6 +7,8 @@ import { useAuth } from "../auth";
 import { useShop } from "../shop-data";
 import { useNotifications } from "../notifications-store";
 import Pagination from "../components/Pagination";
+import { fetchMyOrders, imgUrl } from "../api";
+import { rawOrderItems, itemImage, itemProductId } from "../order-items";
 import {
   clearAllNotifications,
   deleteNotification,
@@ -30,6 +32,18 @@ function timeAgo(iso: string) {
   return new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 }
 
+function notificationImage(
+  n: AppNotification,
+  productMap: Record<string, string>,
+  orderMap: Record<string, string>
+): string | null {
+  const x = n as any;
+  if (x.productId && productMap[String(x.productId)]) return productMap[String(x.productId)];
+  const oid = notificationOrderId(n);
+  if (oid && orderMap[oid]) return orderMap[oid];
+  return null;
+}
+
 export default function NotificationsPage() {
   const router = useRouter();
   const { token, ready } = useAuth();
@@ -40,6 +54,19 @@ export default function NotificationsPage() {
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 5;
   const [loading, setLoading] = useState(true);
+  const products = useShop((s) => s.products);
+  const productImages = useMemo(() => {
+    const map: Record<string, string> = {};
+    (products ?? []).forEach((p: any) => {
+      const img = p.image ?? p.images?.[0];
+      if (!img) return;
+      [p.slug, p.raw?._id, p.id, p._id].forEach((k) => {
+        if (k) map[String(k)] = imgUrl(img);
+      });
+    });
+    return map;
+  }, [products]);
+  const [orderImages, setOrderImages] = useState<Record<string, string>>({});
 
   const [error, setError] = useState("");
   const [filter, setFilter] = useState<"all" | "unread">("all");
@@ -79,6 +106,32 @@ export default function NotificationsPage() {
   useEffect(() => {
     if (ready) void load();
   }, [ready, load]);
+
+  // order images for ORDER_* notifications (same call the orders page uses)
+  useEffect(() => {
+    if (!token) return;
+    fetchMyOrders()
+      .then((res: any) => {
+        const value = res?.data ?? res;
+        const list: any[] = Array.isArray(value)
+          ? value
+          : Array.isArray(value?.orders)
+            ? value.orders
+            : Array.isArray(value?.data?.orders)
+              ? value.data.orders
+              : [];
+        const map: Record<string, string> = {};
+        list.forEach((o) => {
+          const first: any = rawOrderItems(o)[0] ?? o.product;
+          const img =
+            (first ? itemImage(first) : "") ||
+            (first ? productImages[itemProductId(first)] : "");
+          if (o?._id && img) map[String(o._id)] = img;
+        });
+        setOrderImages(map);
+      })
+      .catch(() => undefined);
+  }, [token, productImages]);
 
   
 
@@ -233,6 +286,7 @@ export default function NotificationsPage() {
             <div className="shop-card flex flex-1 flex-col divide-y divide-[#f1e0c4] overflow-hidden">
               {pageItems.map((n) => {
                 const Icon = n.type === "REVIEW_REPLY" ? MessageSquare : notificationOrderId(n) ? Package : Bell;
+const img = notificationImage(n, productImages, orderImages);
                 return (
                   <div
                     key={n._id}
@@ -240,13 +294,23 @@ export default function NotificationsPage() {
                       n.isRead ? "" : "bg-[#fffdf8] shadow-[inset_4px_0_0_#e0622d]"
                     }`}
                   >
-                    <div
-                      className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${
-                        n.isRead ? "bg-[#f6efe4] text-[#9a7a7a]" : "bg-[#fff1da] text-[#e0622d]"
-                      }`}
-                    >
-                      <Icon size={18} />
-                    </div>
+                    {img ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={img}
+                        alt=""
+                        loading="lazy"
+                        className="h-14 w-14 shrink-0 rounded-xl border border-[#f1e0c4] object-cover"
+                      />
+                    ) : (
+                      <div
+                        className={`grid h-14 w-14 shrink-0 place-items-center rounded-xl ${
+                          n.isRead ? "bg-[#f6efe4] text-[#9a7a7a]" : "bg-[#fff1da] text-[#e0622d]"
+                        }`}
+                      >
+                        <Icon size={20} />
+                      </div>
+                    )}
 
                     <button onClick={() => void open(n)} className="min-w-0 flex-1 text-left">
                       <div className="flex items-center gap-2">

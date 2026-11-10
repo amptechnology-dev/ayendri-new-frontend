@@ -157,7 +157,7 @@ export function validateBank(details: BankAccountDetails): string | null {
   if (!details.accountHolder.trim()) {
     return "Enter the account holder's name.";
   }
-  if (!/^\d{8,20}$/.test(details.accountNumber.trim())) {
+  if (!/^\d{9,18}$/.test(details.accountNumber.trim())) {
     return "Enter a valid bank account number.";
   }
   if (!/^[A-Z]{4}0[A-Z0-9]{6}$/i.test(details.ifsc.trim())) {

@@ -16,7 +16,7 @@ import {
 import {
   ACTION_LABEL,
   REASON_CODE,
-  cancelOrderItem,
+  cancelMyOrder,
   createItemRequest,
   type ActionKind,
 } from "../../order-actions";
@@ -25,7 +25,6 @@ import ReasonSheet from "../../components/ReasonSheet";
 
 const HOUR = 60 * 60 * 1000;
 const DAY_MS = 24 * HOUR;
-const CANCEL_WINDOW_DAYS = 10;
 
 const unwrap = (v: any) => v?.data?.order ?? v?.order ?? v?.data ?? v;
 
@@ -46,6 +45,25 @@ const fmtDate = (v: unknown) => {
   return Number.isNaN(d.getTime())
     ? ""
     : d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+};
+
+const fmtDeadline = (v: unknown) => {
+  const d = new Date(String(v));
+  if (Number.isNaN(d.getTime())) return "";
+  const t = d
+    .toLocaleTimeString("en-IN", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "Asia/Kolkata",
+    })
+    .toUpperCase();
+  const day = d.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Asia/Kolkata",
+  });
+  return `${t}, ${day}`; // "4:00 PM, 14 Nov"
 };
 
 const statusStyle = (status: string, cancelledBy?: string) => {
@@ -161,24 +179,36 @@ export default function OrderDetails({
   const deliveredMs = new Date(delivered?.at ?? order.updatedAt).getTime();
 
   const bookingYmd = String(order.bookingDate ?? "").slice(0, 10);
-  const todayYmd = new Date(Date.now() + 5.5 * HOUR).toISOString().slice(0, 10);
   const bookingLabel = /^\d{4}-\d{2}-\d{2}$/.test(bookingYmd)
     ? fmtDate(new Date(`${bookingYmd}T00:00:00`))
     : "";
 
-  const placedMs = new Date(order.createdAt).getTime();
-  const withinCancelWindow =
-    Number.isFinite(placedMs) &&
-    Date.now() - placedMs <= CANCEL_WINDOW_DAYS * DAY_MS;
-
-  // booking orders: cancel until the booking date, paid or not
-  // other orders: paid ones can't be cancelled
-  const paidCancelBlocked = bookingYmd ? bookingYmd <= todayYmd : false;
-
-  const canCancelOrder =
-    ["PENDING", "CONFIRMED"].includes(status) &&
-    !paidCancelBlocked &&
-    (!!bookingYmd || withinCancelWindow);
+  // cancel rules now come from the backend
+  const cancelInfo = order.cancelInfo as
+    | {
+        canCancel: boolean;
+        message?: string | null;
+        deadline?: string | null;
+        requiresBankDetails?: boolean;
+      }
+    | undefined;
+  // PRODUCT orders: once a courier shipment exists (AWB / status), no cancel
+  const shipment = order.shipment as
+    | { awb?: string | null; status?: string | null }
+    | null
+    | undefined;
+  const shipmentStarted =
+    !order.hasService &&
+    (Boolean(shipment?.awb || shipment?.status) ||
+      ["SHIPPED", "DELIVERED"].includes(status));
+  const canCancel = cancelInfo?.canCancel === true && !shipmentStarted;
+  const cancelNote = canCancel
+    ? null
+    : cancelInfo?.canCancel === false
+      ? (cancelInfo.message ?? null)
+      : shipmentStarted
+        ? "Shipment has started for this order, so it can no longer be cancelled."
+        : null;
 
   const canDo = (it: any, t: "RETURN" | "REPLACE" | "REFUND") => {
     const flag = {
@@ -199,42 +229,46 @@ export default function OrderDetails({
     );
   };
 
-  const submitAction = async (reason: string, bank?: BankDetails) => {
+    const submitAction = async (reason: string, bank?: BankDetails) => {
     if (!action) return;
     const { kind, item } = action;
-    const productId = item ? itemProductId(item) : undefined;
-    if (kind === "CANCEL" && bank) {
-      // paid cancellation → refund request (with bank details) for each item
-      for (const it of items) {
-        await createItemRequest(orderMongoId, {
-          type: "REFUND",
-          reasonCode: "OTHER",
-          reason: reason || "Cancelled before booking date",
-          itemId: it._id,
-          productId: itemProductId(it),
-          bankDetails: bank,
-        });
+
+    if (kind === "CANCEL") {
+      try {
+        const res = await cancelMyOrder(orderMongoId, reason, bank);
+        setAction(null);
+        await load();
+        setNotice(res?.message ?? "Order cancelled.");
+      } catch (e: any) {
+        const status = e?.response?.status;
+        const d = e?.response?.data;
+        // blocked by rule (400 CANCEL_NOT_ALLOWED) or state changed / courier fail (409)
+        if (d?.code === "CANCEL_NOT_ALLOWED" || status === 409) {
+          setAction(null);
+          await load(); // load() clears error, so set it after
+          setError(d?.message ?? "Unable to cancel this order. Please try again.");
+          return;
+        }
+        // reason / bankDetails validation: let the sheet show it
+        throw new Error(
+          d?.errors?.[0]?.message ?? d?.message ?? "Could not cancel. Please try again.",
+        );
       }
-    } else if (kind === "CANCEL") {
-      // unpaid / COD cancellation → no refund needed
-      await cancelOrderItem(orderMongoId, reason, {});
-    } else {
-      const reasonCode = REASON_CODE[reason] ?? "OTHER";
-      await createItemRequest(orderMongoId, {
-        type: kind,
-        reasonCode,
-        reason: reasonCode === "OTHER" ? reason : "",
-        itemId: item._id,
-        productId,
-        ...(bank ? { bankDetails: bank } : {}),
-      });
+      return;
     }
+
+    const productId = item ? itemProductId(item) : undefined;
+    const reasonCode = REASON_CODE[reason] ?? "OTHER";
+    await createItemRequest(orderMongoId, {
+      type: kind,
+      reasonCode,
+      reason: reasonCode === "OTHER" ? reason : "",
+      itemId: item._id,
+      productId,
+      ...(bank ? { bankDetails: bank } : {}),
+    });
     setAction(null);
-    setNotice(
-      kind === "CANCEL"
-        ? "Cancellation requested. The store will send your refund to your bank account."
-        : "Request sent. The store will review it and get back to you.",
-    );
+    setNotice("Request sent. The store will review it and get back to you.");
     await load();
   };
 
@@ -342,8 +376,10 @@ export default function OrderDetails({
                   }
                 >
                   <div className="flex items-start gap-2.5 sm:gap-3 lg:gap-4">
-                    <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#fff7ec] sm:h-16 sm:w-16 lg:h-24 lg:w-24">
-                      {image && (
+                    {(() => {
+                      const box =
+                        "relative block h-14 w-14 shrink-0 overflow-hidden rounded-xl bg-[#fff7ec] sm:h-16 sm:w-16 lg:h-24 lg:w-24";
+                      const pic = image ? (
                         <Image
                           src={image}
                           alt={name}
@@ -351,8 +387,19 @@ export default function OrderDetails({
                           unoptimized
                           className="object-cover"
                         />
-                      )}
-                    </div>
+                      ) : null;
+                      return productId ? (
+                        <Link
+                          href={`/shop/product/${encodeURIComponent(productId)}`}
+                          className={box}
+                          aria-label={name}
+                        >
+                          {pic}
+                        </Link>
+                      ) : (
+                        <div className={box}>{pic}</div>
+                      );
+                    })()}
                     <div className="min-w-0 flex-1">
                       {productId ? (
                         <Link
@@ -396,7 +443,7 @@ export default function OrderDetails({
                   ))}
 
                   {/* ALL ACTIONS (return / replace / refund) DISABLED FOR NOW */}
-                  {false && canAsk && (
+                  {canAsk && (
                     <div className="mt-3 flex flex-wrap gap-2">
                       {(["RETURN", "REPLACE", "REFUND"] as const)
                         // Refund only shows when it is actually available (paid + refundable)
@@ -431,21 +478,28 @@ export default function OrderDetails({
             })}
           </section>
 
-          {/* CANCEL DISABLED FOR NOW
-          {canCancelOrder && (
-            <button
-              onClick={() => setAction({ kind: "CANCEL", item: null })}
-              className="w-full rounded-full border border-red-300 bg-red-50 py-3 text-sm font-bold text-red-600"
-            >
-              Cancel order
-            </button>
+                    {canCancel && (
+            <div>
+              <button
+                onClick={() => setAction({ kind: "CANCEL", item: null })}
+                className="w-full rounded-full border border-red-300 bg-red-50 py-3 text-sm font-bold text-red-600"
+              >
+                Cancel order
+              </button>
+              {!!cancelInfo?.deadline && (
+                <p className="mt-1.5 text-center text-xs text-[#9a7a7a]">
+                  Cancel by {fmtDeadline(cancelInfo.deadline)}
+                </p>
+              )}
+            </div>
           )}
-          {paidCancelBlocked && ["PENDING", "CONFIRMED"].includes(status) && (
-            <p className="text-center text-xs font-semibold text-[#9a7a7a]">
-              Cancellation is only available before the booking date.
-            </p>
-          )}
-          */}
+          {!canCancel &&
+            ["PENDING", "CONFIRMED"].includes(status) &&
+            !!cancelNote && (
+              <p className="text-center text-xs font-semibold text-[#9a7a7a]">
+                {cancelNote}
+              </p>
+            )}
         </div>
 
         {/* ---------- side column ---------- */}
@@ -561,7 +615,12 @@ export default function OrderDetails({
         <ReasonSheet
           kind={action.kind}
           itemName={action.item ? itemName(action.item) : "Entire order"}
-          needsBank={action.kind === "CANCEL" || action.kind === "REFUND"}          onClose={() => setAction(null)}
+          needsBank={
+  action.kind === "CANCEL"
+    ? !!cancelInfo?.requiresBankDetails
+    : action.kind === "REFUND" || (action.kind === "RETURN" && paid)
+}
+          onClose={() => setAction(null)}
           onSubmit={submitAction}
         />
       )}

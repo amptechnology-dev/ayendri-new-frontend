@@ -25,7 +25,10 @@ const cartCall = async (run: () => Promise<unknown>) => {
       x?.config?.url,
       x?.response?.data,
     );
-    throw new Error(errMsg(e, "Could not update your cart"));
+    throw new Error(
+      x?.response?.data?.errors?.[0]?.message ??
+        errMsg(e, "Could not update your cart"),
+    );
   }
 };
 
@@ -63,7 +66,7 @@ type CartState = {
   loading: boolean;
 
   // Existing operations
-  add: (slug: string, qty?: number) => Promise<void>;
+  add: (slug: string, qty?: number) => Promise<string | void>;
   setQty: (slug: string, qty: number) => Promise<void>;
   remove: (slug: string) => Promise<void>;
   applyPromo: (code: string) => boolean;
@@ -123,7 +126,10 @@ export const useCart = create<CartState>()(
           }
           await get().hydrate();
         } catch (e: any) {
+          // booking adds: the caller shows this under the date field
+          if (sel?.bookingDate) return e.message as string;
           alert(e.message);
+          return e.message as string;
         }
       },
       
@@ -232,6 +238,8 @@ export const useCart = create<CartState>()(
                   serverItem.variant?.name ??
                   undefined,
                 isAvailable: serverItem.isAvailable ?? true,
+                bookingDateExpired: Boolean(serverItem.bookingDateExpired),
+                earliestBookingDate: serverItem.earliestBookingDate ?? undefined,
                 bookingDate:
                   serverItem.bookingDate ?? get().bookingDates[product._id] ?? undefined,
               },
@@ -280,14 +288,18 @@ export const useCart = create<CartState>()(
         );
         await get().hydrate();
       },
-      // the backend takes the booking date at checkout, so it is kept in the browser until then
+      // the booking date is saved on the server so bookingDateExpired is recalculated
       changeBookingDate: async (item, bookingDate) => {
+        await cartCall(() =>
+          shopApi.patch(
+            `/api/cart/items/${encodeURIComponent(item.cartItemId ?? item.lineId)}`,
+            { bookingDate },
+          ),
+        );
         set((s) => ({
           bookingDates: { ...s.bookingDates, [item.id]: bookingDate },
-          items: s.items.map((i) =>
-            i.id === item.id ? { ...i, bookingDate } : i,
-          ),
         }));
+        await get().hydrate();
       },
       removeItem: async (item) => {
         await cartCall(() =>

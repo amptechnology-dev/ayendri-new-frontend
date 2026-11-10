@@ -1,12 +1,16 @@
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** Earliest bookable date = tomorrow, 00:00 local time (no same-day booking). */
+/** Today in IST as a local 00:00 Date. Fallback only: the real earliest date comes from the backend (earliestBookingDate), which also applies the 4 PM cutoff. */
 export const getMinBookingDate = () => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  d.setDate(d.getDate() + 1);
-  return d;
+  const ymd = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date()); // "YYYY-MM-DD"
+  const [y, m, d] = ymd.split("-").map(Number);
+  return new Date(y, m - 1, d);
 };
 
 export const isValidBookingDate = (d?: Date | null) =>

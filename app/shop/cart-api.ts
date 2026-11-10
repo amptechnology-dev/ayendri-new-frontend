@@ -13,7 +13,9 @@ export type Product = Record<string, any> & { _id: string; title: string; price:
 export type Item = {
   id: string; lineId: string; cartItemId?: string; storeId?: string; storeName?: string;
   isAvailable?: boolean; quantity: number; product: Product; variantLabel?: string;
- bookingDate?: string;
+  bookingDate?: string;
+  bookingDateExpired?: boolean;
+  earliestBookingDate?: string | null;
 };
 
 export const imageUrl = (img?: string) =>

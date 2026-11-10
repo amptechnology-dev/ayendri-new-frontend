@@ -27,7 +27,7 @@ import { useAuth } from "../auth";
 import { useShop } from "../shop-data";
 import ProductCard from "../components/ProductCard";
 import FastestBadge from "../components/FastestBadge";
-import { actionError, cancelOrderItem } from "../order-actions";
+import { actionError, cancelMyOrder } from "../order-actions";
 import { rawOrderItems } from "../order-items";
 import ReviewModal from "../components/ReviewModal";
 import { StarsDisplay } from "../components/Stars";
@@ -82,6 +82,13 @@ type OrderView = {
   invoiceUrl?: string;
   invoiceNumber?: string;
   steps: { label: string; date: string }[];
+  shipmentStarted?: boolean;
+  cancelInfo?: {
+    canCancel: boolean;
+    message?: string | null;
+    deadline?: string | null;
+    requiresBankDetails?: boolean;
+  };
 };
 
 const MONTHS = [
@@ -99,7 +106,7 @@ const MONTHS = [
   "Dec",
 ];
 const DAY_MS = 24 * 60 * 60 * 1000;
-const CANCEL_WINDOW_DAYS = 10;
+
 const PAGE_SIZE = 2; // order cards per page
 const money = (n: number) => `₹${n.toFixed(2)}`;
 
@@ -111,6 +118,25 @@ function fmtDate(value: unknown): string {
   const d = new Date(String(value));
   if (Number.isNaN(d.getTime())) return "";
   return `${String(d.getDate()).padStart(2, "0")} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function fmtDeadline(v: unknown): string {
+  const d = new Date(String(v));
+  if (Number.isNaN(d.getTime())) return "";
+  const t = d
+    .toLocaleTimeString("en-IN", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "Asia/Kolkata",
+    })
+    .toUpperCase();
+  const day = d.toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Asia/Kolkata",
+  });
+  return `${t}, ${day}`;
 }
 
 function historyDate(history: any[], status: string): string {
@@ -318,6 +344,11 @@ function toOrderView(record: any, index: number, catalog: any[]): OrderView {
     lines: pricedLines,
     cancelledBy,
     paymentStatus: textValue(record.paymentStatus, ""),
+    cancelInfo: record.cancelInfo ?? undefined,
+    shipmentStarted:
+      !record.hasService &&
+      (Boolean(record.shipment?.awb || record.shipment?.status) ||
+        ["SHIPPED", "DELIVERED"].includes(orderStatus)),
     invoiceUrl:
       typeof record.invoiceUrl === "string" && record.invoiceUrl
         ? record.invoiceUrl
@@ -374,11 +405,7 @@ const TABS: { key: StatusGroup; label: string }[] = [
   { key: "CANCELED", label: "Canceled" },
 ];
 
-const cancelWindowOpen = (o: { createdAtMs?: number }) => {
-  const t = o.createdAtMs;
-  if (t === undefined || Number.isNaN(t)) return true;
-  return Date.now() - t <= CANCEL_WINDOW_DAYS * DAY_MS;
-};
+
 
 const isPaid = (o: OrderView) =>
   ["PAID", "SUCCESS", "SUCCESSFUL", "COMPLETED", "CAPTURED"].includes(
@@ -706,9 +733,9 @@ export default function OrdersPage() {
   }, [deliveredKey, loadMyReviews]);
 
   const onCancelPress = (o: OrderView) => {
-    if (!cancelWindowOpen(o)) return;
-    // paid orders need the refund rules and bank details, which live on the details page
-    if (isPaid(o)) {
+    if (o.cancelInfo?.canCancel !== true || o.shipmentStarted) return;
+    // orders that need bank details are cancelled from the details page
+    if (o.cancelInfo?.requiresBankDetails) {
       router.push(`/shop/orders/${encodeURIComponent(o.id)}`);
       return;
     }
@@ -721,11 +748,16 @@ export default function OrdersPage() {
     setCancelBusy(true);
     setCancelError("");
     try {
-      await cancelOrderItem(cancelTarget.id, "Changed my mind", {});
+      await cancelMyOrder(cancelTarget.id, "Changed my mind");
       setCancelTarget(null);
       await load();
-    } catch (e) {
+    } catch (e: any) {
       setCancelError(actionError(e, "Could not cancel. Please try again."));
+      if (
+        e?.response?.data?.code === "CANCEL_NOT_ALLOWED" ||
+        e?.response?.status === 409
+      )
+        void load();
     } finally {
       setCancelBusy(false);
     }
@@ -843,8 +875,8 @@ export default function OrdersPage() {
             {pageCards.map(({ order, line, idx }) => {
                 const group = lineGroup(order, line);
                 const paid = isPaid(order);
-                const windowOpen = cancelWindowOpen(order);
-                const canCancel = group === "PROCESSING" && windowOpen;
+                const canCancel =
+                  order.cancelInfo?.canCancel === true && !order.shipmentStarted;
                 const lineRequests = (requests[order.id] ?? []).filter(
                   (r) =>
                     !r.itemId ||
@@ -1109,22 +1141,32 @@ export default function OrdersPage() {
                             <span />
                           )}
                           {canCancel && idx === 0 && (
-                            <button
-                              onClick={() => onCancelPress(order)}
-                              className="py-1 text-[11px] font-medium text-red-600 hover:underline"
-                            >
-                              Cancel Order
-                            </button>
+                            <div className="text-right">
+                              <button
+                                onClick={() => onCancelPress(order)}
+                                className="py-1 text-[11px] font-medium text-red-600 hover:underline"
+                              >
+                                Cancel Order
+                              </button>
+                              {!!order.cancelInfo?.deadline && (
+                                <p className="text-[10px] text-[#7b8094]">
+                                  Cancel by{" "}
+                                  {fmtDeadline(order.cancelInfo.deadline)}
+                                </p>
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
 
-                      {group === "PROCESSING" && !windowOpen && (
-                        <p className="text-[11px] font-medium text-[#7b8094]">
-                          Orders can only be cancelled within{" "}
-                          {CANCEL_WINDOW_DAYS} days.
-                        </p>
-                      )}
+                      {idx === 0 &&
+                        !canCancel &&
+                        !!order.cancelInfo?.message &&
+                        (group === "PROCESSING" || group === "APPROVED") && (
+                          <p className="text-[11px] font-medium text-[#7b8094]">
+                            {order.cancelInfo.message}
+                          </p>
+                        )}
 
                       {group === "CANCELED" && (
                         <p className="text-[11px] font-medium text-[#7b8094]">

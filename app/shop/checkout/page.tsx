@@ -123,6 +123,22 @@ function extractCartDetails(payload: any) {
   };
 }
 
+const BOOKING_MSG_RE = /booking for today closes|valid booking date/i;
+
+const isBookingInvalid = (e: any) => {
+  const d = e?.response?.data;
+  return (
+    e?.bookingInvalid === true ||
+    d?.code === "BOOKING_DATE_INVALID" ||
+    (Array.isArray(d?.failedStores) &&
+      d.failedStores.some(
+        (s: any) =>
+          s?.code === "BOOKING_DATE_INVALID" ||
+          BOOKING_MSG_RE.test(String(s?.message ?? "")),
+      ))
+  );
+};
+
 // delivery charge + ETA er short label
 const etaText = (o: any) =>
   `${inr(Number(o?.shippingCharge ?? 0))}${o?.etaLabel ? ` • ${o.etaLabel}` : ""}`;
@@ -513,16 +529,7 @@ export default function Checkout() {
         );
       }
 
-      // an order can have several booking dates (one per service item)
-      const bookingDates = [
-        ...new Set(
-          cart.items
-            .map((i) =>
-              i.bookingDate ? String(i.bookingDate).slice(0, 10) : "",
-            )
-            .filter(Boolean),
-        ),
-      ];
+
 
       const missing = cart.items.find(
         (i) =>
@@ -534,13 +541,7 @@ export default function Checkout() {
           `Please choose a booking date for "${missing.product.title}". Remove it from the cart and add it again.`,
         );
       }
-      const bookingDate = bookingDates[0];
-      const itemBookings = cart.items
-        .filter((i) => i.bookingDate)
-        .map((i) => ({
-          productId: i.product._id,
-          bookingDate: String(i.bookingDate).slice(0, 10),
-        }));
+
 
       const deliveryAddress = {
         fullName: address.fullName.trim(),
@@ -576,11 +577,14 @@ export default function Checkout() {
         Array.isArray(finalPreview.stores) &&
         finalPreview.stores.some((store: any) => store.ok === false)
       ) {
-        throw new Error(
-          badMessage(
-            finalPreview.stores.filter((store: any) => store.ok === false),
-          ),
+        const badStores = finalPreview.stores.filter(
+          (store: any) => store.ok === false,
         );
+        const err: any = new Error(badMessage(badStores));
+        err.bookingInvalid = badStores.some(
+          (s: any) => s?.code === "BOOKING_DATE_INVALID",
+        );
+        throw err;
       }
 
       const orderResponse = await shopApi.post("/order/checkout", {
@@ -588,8 +592,7 @@ export default function Checkout() {
         storeIds,
         deliveryAddress,
         note: cart.remarks.trim() || undefined,
-        bookingDate, // first date, kept for the old backend field
-        itemBookings, // [{ productId, bookingDate }, ...] one per service item
+
         paymentMethod: cart.payment,
         fastestDelivery: fastest, // [FASTEST] preview er sathe hubohu same
       });
@@ -668,11 +671,15 @@ export default function Checkout() {
     } catch (e: unknown) {
       setRedirecting(false);
       const failed = (e as any)?.response?.data?.failedStores;
-      setError(
+      const msg =
         Array.isArray(failed) && failed.length
           ? badMessage(failed)
-          : errMsg(e, "Unable to place order. Please try again."),
-      );
+          : errMsg(e, "Unable to place order. Please try again.");
+      setError(msg);
+      if (isBookingInvalid(e)) {
+        window.alert(`${msg}\n\nPlease change the booking date in your cart.`);
+        router.push("/shop/cart");
+      }
     } finally {
       if (!leaving) setBusy(false);
     }

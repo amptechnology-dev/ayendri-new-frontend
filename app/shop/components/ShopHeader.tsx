@@ -304,15 +304,8 @@ export default function ShopHeader() {
       {/* announcement strip (desktop only, collapses on scroll) */}
       <div className="shop-strip flex max-md:hidden items-center justify-between gap-3 px-4 py-2 text-[13px] font-semibold md:px-6">
         <span className="hidden w-[170px] md:block" aria-hidden />
-        <span className="min-w-0 flex-1 truncate text-center">
-          Flat 50% Off · Up to 70% Off on Combos
-        </span>
-        <Link
-          href="/shop/orders"
-          className="flex w-[170px] shrink-0 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-[#fff1c2] bg-gradient-to-b from-[#ffd66b] to-[#f2b632] px-3.5 py-1.5 text-xs font-extrabold text-[#4a0710] shadow-[0_2px_8px_rgba(0,0,0,.3)] transition hover:brightness-105 active:scale-95 max-md:w-auto"
-        >
-          <Truck size={14} /> Track Order
-        </Link>
+        
+        
       </div>
 
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:px-5 md:flex-nowrap md:gap-4">
@@ -462,21 +455,21 @@ export default function ShopHeader() {
 
       {/* nav row (desktop only, collapses once the page is scrolled) */}
       <nav className="shop-navrow shop-scroll mx-auto flex max-md:hidden min-h-[52px] max-w-[1400px] snap-x items-center gap-3 overflow-x-auto px-3 pb-3 pt-2 text-sm font-semibold sm:px-5">
-        <Link
+        {/* <Link
           href="/shop/category/idols"
           onMouseEnter={() => setOpen(null)}
           className={GOLD_PILL}
         >
           <span className={TAG}>Sale</span>
           <Flame size={16} /> Diwali Offers
-        </Link>
+        </Link> */}
         <Link
           href="/shop/category/services"
           onMouseEnter={() => setOpen(null)}
           className={GOLD_PILL}
         >
-          <span className={TAG}>New</span>
-          <Landmark size={16} /> Pujas
+          <span className={TAG}>Book</span>
+          <Landmark size={16} /> Services
         </Link>
         <Link
           href="/shop/category/all"

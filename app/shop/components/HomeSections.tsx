@@ -194,8 +194,8 @@ function CelebrateDiwali() {
     <section className="px-1 py-10 sm:px-3 sm:py-14">
       <div className="relative mx-auto max-w-[1400px] rounded-[32px] bg-[#fdeaa8] px-3 pb-6 pt-8 text-center sm:rounded-[44px] sm:px-6 sm:pb-8 sm:pt-10">
         <span className="absolute -left-2 -top-4 -rotate-12 text-4xl sm:-left-3 sm:-top-5 sm:text-6xl">🪷</span><span className="absolute -right-2 -top-4 rotate-12 text-4xl sm:-right-3 sm:-top-5 sm:text-6xl">🪷</span>
-        <div className="text-xs font-bold tracking-[.45em] text-[#4a0710] sm:text-sm">CELEBRATE</div>
-        <h2 className="font-serif text-5xl font-bold text-[#7a1118] sm:text-6xl md:text-7xl">Diwali</h2>
+        <div className="text-xs font-bold tracking-[.45em] text-[#4a0710] sm:text-sm">DECORATE YOUR</div>
+        <h2 className="font-serif text-5xl font-bold text-[#7a1118] sm:text-6xl md:text-7xl">Mandir</h2>
         <span className="mt-2 inline-block rounded-full border border-[#e3c36a] bg-white px-4 py-1.5 text-xs font-bold sm:px-5 sm:text-sm">🪔 Dhanteras 6 Nov · Lakshmi Puja 8 Nov</span>
         <div className="mt-5 rounded-3xl border border-dashed border-[#e3c36a] bg-[#fff7e0] p-3 sm:mt-6 sm:p-5">
           <div className="grid grid-cols-3 gap-2.5 sm:gap-4 md:grid-cols-6">
@@ -233,39 +233,39 @@ function CelebrateDiwali() {
 }
 
 /* ---------- 5. Red festival banner ---------- */
-function FestivalBanner() {
-  const cards = [["DIWALI OFFER", "Flat 50% Off", "on bestsellers", "Shop now", "/shop/category/all"], ["COMBOS", "Up to 70% Off", "on Divine Combos", "Shop combos", "/shop/category/all"], ["FREE GIFT", "Free Silver Coin", "on purchase above ₹2,000", "Start shopping", "/shop/category/all"]];
-  return (
-    <section className="shop-pattern overflow-hidden text-center">
-      <div className="shop-band" />
-      <div className="px-2 py-8 sm:px-3 md:py-12">
-        <h2 className="text-3xl font-extrabold leading-tight !text-white [text-shadow:0_2px_10px_rgba(0,0,0,.55)] sm:text-5xl md:text-7xl">
-          ये दिवाली राम राज्य वाली!
-        </h2>
-        <div className="mt-3 text-base font-extrabold tracking-[.12em] !text-[#ffd66b] [text-shadow:0_2px_8px_rgba(0,0,0,.55)] sm:text-2xl sm:tracking-[.25em] md:text-3xl">
-          THE GREAT DHARMA FESTIVAL
-        </div>
-        <p className="mt-2 text-xs font-semibold !text-[#fff1c2] [text-shadow:0_1px_6px_rgba(0,0,0,.55)] sm:text-sm">
-          Lowest price ever on Karungali, Rudraksha, Rashi stones and more
-        </p>
-        <div className="mx-auto mt-6 grid max-w-[1500px] grid-cols-1 gap-4 md:mt-8 md:grid-cols-3 md:gap-5">
-          {cards.map(([k, t, s, b, h]) => (
-            <div key={t} className="rounded-3xl border border-[#f2b632] bg-gradient-to-b from-[#fff4dc] to-[#ffe2b8] px-5 py-7 shadow-xl transition hover:-translate-y-1.5 md:px-4 md:py-10 lg:px-6">
-              <div className="text-xs font-bold tracking-widest !text-[#a3161c]">{k}</div>
-              <div className="mt-2 text-3xl font-black !text-[#4a0710] sm:text-4xl lg:text-5xl">{t}</div>
-              <div className="mt-1 text-sm font-medium !text-[#5a1a22]">{s}</div>
-              <Link href={h} className="mt-5 inline-block rounded-full bg-[#7a1118] px-6 py-2.5 text-sm font-bold !text-white shadow-md hover:bg-[#5e0d13]">{b} →</Link>
-            </div>
-          ))}
-        </div>
-        <p className="mt-6 text-xs font-medium !text-[#fff1c2]/90 [text-shadow:0_1px_4px_rgba(0,0,0,.5)]">
-          *Offers valid during The Great Dharma Festival. T&amp;C apply.
-        </p>
-      </div>
-      <div className="shop-band" />
-    </section>
-  );
-}
+// function FestivalBanner() {
+//   const cards = [["DIWALI OFFER", "Flat 50% Off", "on bestsellers", "Shop now", "/shop/category/all"], ["COMBOS", "Up to 70% Off", "on Divine Combos", "Shop combos", "/shop/category/all"], ["FREE GIFT", "Free Silver Coin", "on purchase above ₹2,000", "Start shopping", "/shop/category/all"]];
+//   return (
+//     <section className="shop-pattern overflow-hidden text-center">
+//       <div className="shop-band" />
+//       <div className="px-2 py-8 sm:px-3 md:py-12">
+//         <h2 className="text-3xl font-extrabold leading-tight !text-white [text-shadow:0_2px_10px_rgba(0,0,0,.55)] sm:text-5xl md:text-7xl">
+//           ये दिवाली राम राज्य वाली!
+//         </h2>
+//         <div className="mt-3 text-base font-extrabold tracking-[.12em] !text-[#ffd66b] [text-shadow:0_2px_8px_rgba(0,0,0,.55)] sm:text-2xl sm:tracking-[.25em] md:text-3xl">
+//           THE GREAT DHARMA FESTIVAL
+//         </div>
+//         <p className="mt-2 text-xs font-semibold !text-[#fff1c2] [text-shadow:0_1px_6px_rgba(0,0,0,.55)] sm:text-sm">
+//           Lowest price ever on Karungali, Rudraksha, Rashi stones and more
+//         </p>
+//         <div className="mx-auto mt-6 grid max-w-[1500px] grid-cols-1 gap-4 md:mt-8 md:grid-cols-3 md:gap-5">
+//           {cards.map(([k, t, s, b, h]) => (
+//             <div key={t} className="rounded-3xl border border-[#f2b632] bg-gradient-to-b from-[#fff4dc] to-[#ffe2b8] px-5 py-7 shadow-xl transition hover:-translate-y-1.5 md:px-4 md:py-10 lg:px-6">
+//               <div className="text-xs font-bold tracking-widest !text-[#a3161c]">{k}</div>
+//               <div className="mt-2 text-3xl font-black !text-[#4a0710] sm:text-4xl lg:text-5xl">{t}</div>
+//               <div className="mt-1 text-sm font-medium !text-[#5a1a22]">{s}</div>
+//               <Link href={h} className="mt-5 inline-block rounded-full bg-[#7a1118] px-6 py-2.5 text-sm font-bold !text-white shadow-md hover:bg-[#5e0d13]">{b} →</Link>
+//             </div>
+//           ))}
+//         </div>
+//         <p className="mt-6 text-xs font-medium !text-[#fff1c2]/90 [text-shadow:0_1px_4px_rgba(0,0,0,.5)]">
+//           *Offers valid during The Great Dharma Festival. T&amp;C apply.
+//         </p>
+//       </div>
+//       <div className="shop-band" />
+//     </section>
+//   );
+// }
 
 /* ---------- 6. Shop by Intention ---------- */
 function Intention() {
@@ -274,14 +274,23 @@ function Intention() {
   if (!serviceItems.length) return null;
   return (
     <section className="px-1 py-10 sm:px-3 sm:py-14">
-      <div className="relative mx-auto max-w-[1400px] rounded-t-[70px] rounded-b-3xl bg-gradient-to-b from-[#f9b85a] to-[#ee7d22] px-3 pb-12 pt-8 text-center sm:rounded-t-[90px] sm:px-5 sm:pt-10">
-        <div className="text-xs font-bold tracking-[.4em] text-[#4a0710] sm:text-sm">SHOP WITH</div>
-        <h2 className="text-[40px] font-black leading-tight text-[#4a0710] min-[400px]:text-5xl sm:text-6xl md:text-7xl">PURITY</h2>
-        <div className="mt-5 rounded-3xl border border-dashed border-[#f0c88a] bg-[#fffaf0] p-3 sm:mt-6 sm:p-6">
-          <div className="grid grid-cols-2 gap-3 sm:gap-6 md:grid-cols-4">
+      <div
+        className="relative mx-auto max-w-[1000px] rounded-t-[60px] rounded-b-3xl border-2 border-[#f2c25a] px-3 pb-9 pt-6 text-center shadow-[0_20px_40px_-18px_rgba(7,63,69,.6)] sm:rounded-t-[80px] sm:px-5 sm:pt-7"
+        style={{
+          backgroundImage:
+            "radial-gradient(circle at 12px 12px, rgba(242,194,90,.22) 1.5px, transparent 2px), linear-gradient(to bottom, #0f6b6b, #073f45)",
+          backgroundSize: "24px 24px, auto",
+        }}
+      >
+        <span aria-hidden className="absolute left-5 top-14 text-xl text-[#f2c25a] sm:left-12 sm:text-2xl">✦</span>
+        <span aria-hidden className="absolute right-5 top-14 text-xl text-[#f2c25a] sm:right-12 sm:text-2xl">✦</span>
+        <div className="text-xs font-bold tracking-[.35em] text-[#f5d58a] sm:text-sm">SHOP WITH</div>
+        <h2 className="bg-gradient-to-b from-[#ffe28d] via-[#f5c04a] to-[#dd9c26] bg-clip-text text-[30px] font-black leading-tight tracking-[.06em] text-transparent min-[400px]:text-4xl sm:text-5xl">PURITY</h2>
+        <div className="mt-3 rounded-3xl border border-[#f2c25a] bg-[#f4fbfa] p-2.5 sm:mt-4 sm:p-4">
+          <div className="grid grid-cols-2 gap-2 sm:gap-3 md:grid-cols-4">
             {serviceItems.map((p) => (
               <Link key={p.slug} href={`/shop/product/${p.slug}`} className="group block min-w-0">
-                <div className="shop-arch relative mx-auto aspect-[3/4] w-full max-w-[190px] overflow-hidden border-2 border-[#d9a13a]">
+                <div className="shop-arch relative mx-auto aspect-[3/4] w-full max-w-[140px] overflow-hidden border-2 border-[#f2c25a] bg-white shadow-md">
                   <img
                     src={p.image}
                     alt={p.name}
@@ -290,13 +299,13 @@ function Intention() {
                     className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-110"
                   />
                 </div>
-                <div className="mt-2 line-clamp-1 text-center text-sm font-bold text-[#4a0710]">{p.name}</div>
-                <div className="text-center text-xs font-bold text-[#a3161c] sm:text-sm">{inr(p.price)}</div>
+                <div className="mt-1.5 line-clamp-1 text-center text-sm font-bold text-[#073f45]">{p.name}</div>
+                <div className="text-center text-xs font-bold text-[#0f6b6b] sm:text-sm">{inr(p.price)}</div>
               </Link>
             ))}
           </div>
         </div>
-        <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[#fcd7b0] px-4 py-2 text-xs font-bold text-[#7a1118] shadow sm:px-6 sm:text-sm">★ Flat 50% off on bestsellers</span>
+        <span className="absolute -bottom-4 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full border-2 border-[#073f45] bg-gradient-to-b from-[#ffe28d] to-[#f5c04a] px-4 py-1.5 text-xs font-extrabold text-[#073f45] shadow-lg sm:px-6 sm:text-sm">★ Flat 50% off on bestsellers</span>
       </div>
     </section>
   );
@@ -308,7 +317,7 @@ export default function HomeSections() {
       <Reveal><DivinePicks /></Reveal>
       <Reveal><AboutCard /></Reveal>
       <Reveal><CelebrateDiwali /></Reveal>
-      <Reveal><FestivalBanner /></Reveal>
+      {/* <Reveal><FestivalBanner /></Reveal> */}
       <Reveal><Intention /></Reveal>
     </>
   );

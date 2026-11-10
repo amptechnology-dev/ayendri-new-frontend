@@ -35,12 +35,12 @@ export default function ShopHome() {
         <HeroArt />
         <div className="relative mx-auto max-w-[1000px] px-4 pt-5">
           <HeroCarousel />
-          <Link
+          {/* <Link
             href="/shop/category/idols"
             className="shop-gold-btn relative z-10 mx-auto -mt-5 flex w-fit items-center gap-1.5 whitespace-nowrap rounded-full px-5 py-2 text-[13px] transition hover:-translate-y-0.5 sm:-mt-6 sm:gap-2 sm:px-8 sm:py-3.5 sm:text-base"
           >
             Explore Diwali offers <ArrowRight size={16} />
-          </Link>
+          </Link> */}
         </div>
         <div className="shop-scallop mt-6" />
       </section>
@@ -83,7 +83,7 @@ export default function ShopHome() {
           </Reveal>
           <Reveal>
             <div className="mx-auto max-w-[1500px] px-3">
-              <div className="shop-scroll -mx-3 flex snap-x gap-2 overflow-x-auto px-3 pb-3 sm:mx-0 sm:flex-wrap sm:justify-center sm:gap-6 sm:overflow-visible sm:px-0 sm:pb-0">
+              <div className="-mx-3 flex snap-x gap-2 overflow-x-auto px-3 pb-4 pt-2 sm:mx-0 sm:gap-6 sm:px-0 [&>*:first-child]:ml-auto [&>*:last-child]:mr-auto [scrollbar-width:thin] [scrollbar-color:#d99a1e_#f6e7c8] [&::-webkit-scrollbar]:h-2 [&::-webkit-scrollbar-track]:rounded-full [&::-webkit-scrollbar-track]:bg-[#f6e7c8] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[#d99a1e]">
                 {serviceCats.map((c, i) => {
                   const count = products.filter(
                     (p) => p.category === c.slug,
@@ -113,7 +113,9 @@ export default function ShopHome() {
                         </span>
                       </div>
                       <div className="p-2 text-center sm:p-3">
-                        <h3 className="line-clamp-1 text-xs font-extrabold text-[#1a1013] sm:text-lg">{c.name}</h3>
+                        <h3 className="line-clamp-1 text-xs font-extrabold text-[#1a1013] sm:text-lg">
+                          {c.name}
+                        </h3>
                         <p className="mt-0.5 text-[10px] text-[#8a7f7f] sm:mt-1 sm:text-sm">
                           {count
                             ? `${count} ${count === 1 ? "service" : "services"}`
@@ -198,8 +200,6 @@ export default function ShopHome() {
 
       <HomeSections />
 
-      
-
       {/* TRUST STRIP */}
       <section className="shop-hero-bg">
         <div className="mx-auto grid max-w-[1500px] grid-cols-2 gap-6 px-3 py-8 text-center text-white md:grid-cols-4">
@@ -235,8 +235,8 @@ export default function ShopHome() {
           </div>
         </section>
       </Reveal>
-      <div className="mx-auto grid max-w-[1500px] grid-cols-2 gap-x-5 gap-y-8 px-3 md:grid-cols-4">
-        {physical.slice(0, 24).map((p) => (
+      <div className="mx-auto grid max-w-[1500px] grid-cols-2 gap-x-3 gap-y-5 px-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+        {useShop.getState().products.map((p) => (
           <Reveal key={p.slug}>
             <ProductCard p={p} />
           </Reveal>

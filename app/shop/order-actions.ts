@@ -58,6 +58,23 @@ export async function cancelOrderItem(
   return res.data;
 }
 
+// Whole-order cancel. Backend decides the rules (cancelInfo) and creates the refund request itself.
+export async function cancelMyOrder(
+  orderId: string,
+  reason: string,
+  bankDetails?: BankDetails,
+) {
+  const res = await axiosInstance.patch(
+    `/api/order/my-orders/${encodeURIComponent(orderId)}/cancel`,
+    {
+      reason,
+      ...(bankDetails ? { bankDetails } : {}),
+    },
+    noCreds,
+  );
+  return res.data; // { message, order, refundRequestId? }
+}
+
 // Same endpoint as your existing order-requests.ts createOrderRequest, with the app's body
 export async function createItemRequest(
   orderId: string,
@@ -80,3 +97,6 @@ export async function createItemRequest(
 
 export const actionError = (e: any, fallback = "Something went wrong. Please try again.") =>
   e?.response?.data?.errors?.[0]?.message ?? e?.response?.data?.message ?? e?.message ?? fallback;
+
+
+

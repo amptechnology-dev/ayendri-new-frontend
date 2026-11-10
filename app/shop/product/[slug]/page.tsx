@@ -38,7 +38,6 @@ import { useBookingAdd } from "../../components/useBookingAdd";
 import {
   formatBookingDate,
   getMinBookingDate,
-  isValidBookingDate,
   parseApiDate,
   toApiDate,
 } from "../../booking-date";
@@ -185,6 +184,16 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
     };
   }, [serviceId]);
 
+  // re-check availability (the 4 PM cutoff can pass while the page is open)
+  const refreshAvail = () => {
+    if (!serviceId) return;
+    fetchAvailability(serviceId)
+      .then((r: any) => {
+        if (r?.success) setAvail(r);
+      })
+      .catch(() => {});
+  };
+
   // tell the cart which size/color/booking date is selected (cart.add reads this)
   useEffect(() => {
     const r = (p as any)?.raw;
@@ -330,8 +339,9 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
       String(raw?.productType ?? "PRODUCT").toUpperCase()
     ] ?? dlv?.freeDeliveryAbove;
   const parsedDate = parseApiDate(bookingDate);
-  const dateValid = isValidBookingDate(parsedDate) && !dateFull;
-  const minDate = toApiDate(getMinBookingDate());
+  const minDate: string =
+    avail?.earliestBookingDate ?? toApiDate(getMinBookingDate());
+  const dateValid = Boolean(bookingDate) && bookingDate >= minDate && !dateFull;
 
   const rawImgs: string[] =
     (color?.images?.length ? color.images : raw?.images) ?? [];
@@ -837,12 +847,20 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
                   value={bookingDate}
                   min={minDate}
                   onChange={(e) => setBookingDate(e.target.value)}
+                  onFocus={refreshAvail}
                   suppressHydrationWarning
                   className={`mt-1 block w-full rounded-xl border bg-white px-3 py-2 text-sm font-normal outline-none focus:border-[#a3161c] ${
                     bookingDate ? "border-[#e4cfae]" : "border-[#b26a00]"
                   }`}
                 />
               </label>
+              {isService && avail?.todayClosed && (
+                <p className="mt-2 text-xs font-semibold text-[#b26a00]">
+                  Today&apos;s booking is closed (after{" "}
+                  {avail?.cutoffLabel ?? "4:00 PM"}). Next available:{" "}
+                  {formatBookingDate(parseApiDate(avail?.earliestBookingDate))}
+                </p>
+              )}
               {isService && bookingLimit > 0 && availDays.length > 0 && (
                 <div className="mt-3 min-w-0">
                   <div className="flex items-center justify-between text-xs">
@@ -922,8 +940,8 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
               )}
               {bookingDate && !dateValid && !dateFull && (
                 <p className="mt-2 text-xs font-semibold text-red-600">
-                  Same-day booking isn&apos;t available. Please pick a later
-                  date.
+                  This date isn&apos;t available. Please pick{" "}
+                  {formatBookingDate(parseApiDate(minDate))} or a later date.
                 </p>
               )}
             </div>

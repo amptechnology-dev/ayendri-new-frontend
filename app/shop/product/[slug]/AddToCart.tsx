@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Minus, Plus } from "lucide-react";
 import { useCart } from "../../cart";
-import { isValidBookingDate, parseApiDate } from "../../booking-date";
+
 
 export default function AddToCart({
   slug,
@@ -38,37 +38,39 @@ export default function AddToCart({
     if (maxQty !== undefined && maxQty > 0 && q > maxQty) setQ(maxQty);
   }, [maxQty, q]);
 
-  const ensureBookingDate = () => {
+   const ensureBookingDate = () => {
     if (!madeFor) return true;
     if (!bookingDate) {
-      setError("Please choose a booking date (from tomorrow onwards) to continue.");
+      setError("Please choose an available booking date to continue.");
       return false;
     }
-    if (!isValidBookingDate(parseApiDate(bookingDate))) {
-      setError("Same-day booking isn't available. Please pick a later date.");
-      return false;
-    }
-    return true;
+    return true; // the 4 PM rule is enforced by the backend
   };
 
   const handleAddToCart = async () => {
     if (blocked) return;
     if (!ensureBookingDate()) return;
     setError("");
-    await add(slug, q);
+    const msg = await add(slug, q);
+    if (typeof msg === "string") setError(msg);
   };
 
   const handleBuyNow = async () => {
     if (blocked) return;
     if (!ensureBookingDate()) return;
     setError("");
-    await add(slug, q);
+    const msg = await add(slug, q);
+    if (typeof msg === "string") {
+      setError(msg);
+      return;
+    }
     router.push(
       madeFor
         ? `/shop/cart?madeFor=true&bookingDate=${encodeURIComponent(bookingDate)}`
         : "/shop/cart",
     );
   };
+
 
   const pad = compact ? "px-5 py-2.5 text-sm" : "flex-1 py-3.5";
   const dim = needsDate || blocked ? "opacity-60" : "";

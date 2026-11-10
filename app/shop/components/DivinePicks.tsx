@@ -215,7 +215,7 @@ function PickCard({ title, sub, art, bg, footBg, tabs, children }: {
   tabs?: React.ReactNode; children: React.ReactNode;
 }) {
   return (
-    <div className={`relative flex w-[226px] shrink-0 snap-start flex-col overflow-hidden rounded-b-[22px] rounded-t-[113px] border border-white/70 shadow-[0_22px_44px_-18px_rgba(120,60,20,.4)] transition duration-300 hover:-translate-y-1 sm:h-[640px] sm:w-[272px] sm:rounded-b-[28px] sm:rounded-t-[136px] ${bg}`}>
+    <div className={`relative flex w-[210px] shrink-0 snap-start flex-col overflow-hidden rounded-b-[22px] rounded-t-[105px] border border-white/70 shadow-[0_22px_44px_-18px_rgba(120,60,20,.4)] transition duration-300 hover:-translate-y-1 sm:h-[520px] sm:w-[240px] sm:rounded-b-[28px] sm:rounded-t-[120px] ${bg}`}>
       <div className="flex flex-col items-center px-3 pt-6 text-center sm:px-4 sm:pt-9">
         {art}
         <h3 className="mt-1.5 text-[17px] font-extrabold leading-[1.1] tracking-[-.01em] text-[#2e1409] sm:mt-2 sm:text-[22px]">{title}</h3>
@@ -234,23 +234,23 @@ function PickCard({ title, sub, art, bg, footBg, tabs, children }: {
 
 /* ───────── MAHASALE ───────── */
 function Window({ x, b, h }: { x: number; b: number; h: number }) {
-  return <path d={`M${x - 5} ${b} v-${h} a5 5 0 0 1 10 0 v${h}z`} fill="#4d0716" stroke="#f2c25a" strokeWidth="1" />;
+  return <path d={`M${x - 5} ${b} v-${h} a5 5 0 0 1 10 0 v${h}z`} fill="#073f45" stroke="#f2c25a" strokeWidth="1" />;
 }
 
 function Mahasale() {
   const allProducts = useShop((s) => s.products);
   const products = allProducts.filter((p) => !isService(p));
-  const top = [...products].sort((a, b) => off(b) - off(a)).slice(0, 3);
+  const top = [...products].sort((a, b) => off(b) - off(a)).slice(0, 2);
   const pillar = {
     background: "repeating-linear-gradient(90deg,#c99a4b 0 2px,#f4dfae 2px 5px)",
   } as const;
 
   return (
-    <div className="relative flex w-[250px] shrink-0 snap-start flex-col transition duration-300 hover:-translate-y-1 sm:h-[640px] sm:w-[300px]">
+    <div className="relative flex w-[250px] shrink-0 snap-start flex-col transition duration-300 hover:-translate-y-1 sm:h-[520px] sm:w-[260px]">
       {/* gopuram tower */}
-      <svg viewBox="0 0 300 112" className="h-[80px] w-full shrink-0 sm:h-[112px]" aria-hidden>
+      <svg viewBox="0 0 300 112" className="h-[70px] w-full shrink-0 sm:h-[92px]" aria-hidden>
         <defs>
-          <linearGradient id="dp-tier" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ee8a3d" /><stop offset="1" stopColor="#b3361a" /></linearGradient>
+          <linearGradient id="dp-tier" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#5fc4b8" /><stop offset="1" stopColor="#1f7f86" /></linearGradient>
           <linearGradient id="dp-gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ffe08a" /><stop offset="1" stopColor="#d99a1e" /></linearGradient>
         </defs>
         <path d="M150 1C154.5 7 154.5 12 150 15C145.5 12 145.5 7 150 1Z" fill="#ffae2b" />
@@ -260,7 +260,7 @@ function Mahasale() {
         <rect x="104" y="66" width="92" height="5" rx="2" fill="url(#dp-gold)" />
         <polygon points="100,71 200,71 214,96 86,96" fill="url(#dp-tier)" />
         <rect x="74" y="96" width="152" height="6" rx="2" fill="url(#dp-gold)" />
-        <rect x="0" y="102" width="300" height="10" fill="#8f1632" />
+        <rect x="0" y="102" width="300" height="10" fill="#0b5a5f" />
         <Window x={150} b={36} h={6} />
         <Window x={138} b={64} h={7} /><Window x={162} b={64} h={7} />
         <Window x={124} b={94} h={9} /><Window x={150} b={94} h={9} /><Window x={176} b={94} h={9} />
@@ -274,7 +274,7 @@ function Mahasale() {
         <span aria-hidden className="absolute right-0 top-0 h-[6px] w-[15px] rounded-sm bg-[#b9822c] sm:w-[17px]" />
 
         {/* sanctum arch */}
-        <div className="relative flex min-h-0 flex-col rounded-b-2xl rounded-t-[100px] bg-gradient-to-b from-[#7d1228] to-[#4d0716] px-1.5 pb-1.5 pt-4 shadow-[inset_0_4px_14px_rgba(0,0,0,.35)] sm:flex-1 sm:rounded-t-[130px] sm:pb-2 sm:pt-6">
+        <div className="relative flex min-h-0 flex-col rounded-b-2xl rounded-t-[100px] bg-gradient-to-b from-[#0f6b6b] to-[#073f45] px-1.5 pb-1.5 pt-4 shadow-[inset_0_4px_14px_rgba(0,0,0,.35)] sm:flex-1 sm:rounded-t-[130px] sm:pb-2 sm:pt-6">
           <div className="text-center text-[10px] font-extrabold tracking-[.4em] text-[#fbe3b0] sm:text-[11px]">DIWALI</div>
           <h3 className="bg-gradient-to-b from-[#ffe28d] via-[#f5c04a] to-[#dd9c26] bg-clip-text text-center text-[21px] font-black leading-[26px] tracking-[.04em] text-transparent sm:text-[27px] sm:leading-[32px]">MAHASALE</h3>
           <p className="mb-1.5 text-center text-[11px] text-[#f6e3c4] sm:mb-2 sm:text-[12px]">Up to 75% off on puja essentials</p>
@@ -302,7 +302,7 @@ export default function DivinePicks() {
   const [cap, setCap] = useState(199);
   const sorted = [...products].sort((a, b) => a.price - b.price);
   const within = sorted.filter((p) => p.price <= cap);
-  const low = [...within, ...sorted.filter((p) => !within.includes(p))].slice(0, 3);
+  const low = [...within, ...sorted.filter((p) => !within.includes(p))].slice(0, 2);
 
   return (
     <section
@@ -326,25 +326,27 @@ export default function DivinePicks() {
 
         {/* cards side by side; scrolls sideways on smaller screens */}
         <div className="mt-5 flex items-stretch gap-3 overflow-x-auto px-1 pb-5 pt-2 snap-x snap-proximity [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:mt-8 sm:gap-5 sm:pb-8 min-[1230px]:justify-center">
-          <Mahasale />
+
 
           <PickCard title="Your everyday needs" sub="Daily puja essentials" art={<DiyaArt />}
-                    bg="bg-gradient-to-b from-[#fff2df] to-[#ffe4c0]" footBg="bg-[#ffdfad]">
-            {products.slice(0, 3).map((p, idx) => <Row key={p.slug} p={p} hideOnMobile={idx === 2} />)}
+                    bg="bg-gradient-to-b from-[#e9f8e1] to-[#c9eabf]" footBg="bg-[#c4e7ba]">
+            {products.slice(0, 2).map((p, idx) => <Row key={p.slug} p={p} hideOnMobile={idx === 2} />)}
           </PickCard>
 
           <PickCard title="Organic & natural" sub="Our natural agarbatti range" art={<PlantArt />}
-                    bg="bg-gradient-to-b from-[#e9f8e1] to-[#c9eabf]" footBg="bg-[#c4e7ba]">
-            {products.slice(3, 6).map((p, idx) => <Row key={p.slug} p={p} hideOnMobile={idx === 2} />)}
+                    bg="bg-gradient-to-b from-[#f1e9ff] to-[#d8c7f7]" footBg="bg-[#d0bcf3]">
+            {products.slice(2, 4).map((p, idx) => <Row key={p.slug} p={p} hideOnMobile={idx === 2} />)}
           </PickCard>
 
+          <Mahasale />
+
           <PickCard title="Lowest prices every day" sub="Puja needs for every budget" art={<TagArt />}
-                    bg="bg-gradient-to-b from-[#fff6d6] to-[#f6df97]" footBg="bg-[#f3dc8e]"
+                    bg="bg-gradient-to-b from-[#ffe8ef] to-[#f8bfd2]" footBg="bg-[#f4b3c8]"
                     tabs={
-                      <div className="flex h-11 rounded-xl bg-[#eddcc9] p-1 sm:h-14 sm:rounded-2xl sm:p-[5px]">
+                      <div className="flex h-11 rounded-xl bg-[#f3d3de] p-1 sm:h-14 sm:rounded-2xl sm:p-[5px]">
                         {[199, 299, 499].map((c) => (
                           <button key={c} onClick={() => setCap(c)}
-                                  className={`flex-1 rounded-lg leading-tight transition sm:rounded-xl ${cap === c ? "bg-[#7a1118] text-white shadow-md" : "text-[#3a1a10]"}`}>
+                                  className={`flex-1 rounded-lg leading-tight transition sm:rounded-xl ${cap === c ? "bg-[#be3a6a] text-white shadow-md" : "text-[#3a1a10]"}`}>
                             <div className="text-[10px] font-semibold sm:text-[12px]">Under</div>
                             <div className="text-[14px] font-extrabold sm:text-[17px]">₹ {c}</div>
                           </button>

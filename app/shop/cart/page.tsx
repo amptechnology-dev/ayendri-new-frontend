@@ -81,10 +81,11 @@ export default function Cart() {
   const splitOrders = items.length > 1 && hasPending;
   const payableText = payable > 0 ? `${inr(payable)}${hasPending ? " + quote" : ""}` : "Price pending";
 
+  const hasExpired = items.some((i) => i.bookingDateExpired);
   const add = (p: Product) => addItem(p).catch((e) => alert(e.message));
 
   const checkout = async () => {
-    const stale = items.find((i) => i.bookingDate && !isValidBookingDate(parseApiDate(i.bookingDate)));
+    const stale = items.find((i) => i.bookingDateExpired);
     if (stale) {
       alert("A booking date in your cart is no longer valid. Please change it before ordering.");
       return;
@@ -319,7 +320,18 @@ export default function Cart() {
         {items.length > 1 && hasPending && (
           <p className="text-center text-xs text-[#999]">Items will be placed as separate orders.</p>
         )}
-        <button onClick={checkout} className="shop-gold-btn w-full rounded-full py-3.5">Order Now</button>
+        {hasExpired && (
+          <p className="text-center text-xs font-semibold text-red-600">
+            Choose a new booking date for the item(s) marked in red to continue.
+          </p>
+        )}
+        <button
+          onClick={checkout}
+          disabled={hasExpired}
+          className="shop-gold-btn w-full rounded-full py-3.5 disabled:opacity-50"
+        >
+          Order Now
+        </button>
       </aside>
     </div>
   );
@@ -333,7 +345,8 @@ function BookingDate({ item, onChange }: { item: Item; onChange: (d: string) => 
   const [err, setErr] = useState("");
 
   const parsed = parseApiDate(item.bookingDate);
-  const expired = !isValidBookingDate(parsed);
+  const expired = item.bookingDateExpired === true || !isValidBookingDate(parsed);
+  const minDate = item.earliestBookingDate ?? toApiDate(getMinBookingDate());
 
   useEffect(() => {
     if (!edit) return;
@@ -345,7 +358,7 @@ function BookingDate({ item, onChange }: { item: Item; onChange: (d: string) => 
   }, [edit, item.id]);
 
   const full = Boolean(days.find((d) => d.date === val)?.full);
-  const valid = Boolean(val) && isValidBookingDate(parseApiDate(val)) && !full;
+  const valid = Boolean(val) && val >= minDate && !full;
 
   const save = async () => {
     if (!valid) return;
@@ -377,13 +390,13 @@ function BookingDate({ item, onChange }: { item: Item; onChange: (d: string) => 
           </button>
         )}
       </div>
-      {expired && !edit && <p className="mt-0.5 text-red-600">This date has passed. Please change it.</p>}
+      {expired && !edit && <p className="mt-0.5 text-red-600">Booking date is no longer available, please choose a new date.</p>}
       {edit && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input
             type="date"
             value={val}
-            min={toApiDate(getMinBookingDate())}
+            min={minDate}
             onChange={(e) => setVal(e.target.value)}
             className="rounded-lg border border-[#e4cfae] px-2 py-1 text-xs outline-none focus:border-[#a3161c]"
           />
@@ -396,7 +409,7 @@ function BookingDate({ item, onChange }: { item: Item; onChange: (d: string) => 
           </button>
           <button onClick={() => setEdit(false)} className="font-semibold text-[#6b4a4a]">Cancel</button>
           {full && <span className="w-full font-semibold text-red-600">This date is fully booked.</span>}
-          {val && !valid && !full && <span className="w-full font-semibold text-red-600">Pick tomorrow or a later date.</span>}
+          {val && !valid && !full && <span className="w-full font-semibold text-red-600">Pick {formatBookingDate(parseApiDate(minDate))} or a later date.</span>}
           {err && <span className="w-full font-semibold text-red-600">{err}</span>}
         </div>
       )}
