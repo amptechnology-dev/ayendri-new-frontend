@@ -66,6 +66,26 @@ const fmtDeadline = (v: unknown) => {
   return `${t}, ${day}`; // "4:00 PM, 14 Nov"
 };
 
+const SHIP_STEPS = [
+  "Confirmed",
+  "Shipment",
+  "AWB",
+  "Pickup",
+  "In transit",
+  "Delivered",
+];
+
+// index of the last completed step
+function shipProgress(status: string, shipment: any, hasShipment: boolean) {
+  const s = String(shipment?.status ?? "").toUpperCase();
+  if (status === "DELIVERED" || s.includes("DELIVERED")) return 5;
+  if (s.includes("TRANSIT") || status === "SHIPPED") return 4;
+  if (s.includes("PICK")) return 3;
+  if (shipment?.awb) return 2;
+  if (hasShipment) return 1;
+  return 0;
+}
+
 const statusStyle = (status: string, cancelledBy?: string) => {
   switch (status) {
     case "CANCELLED":
@@ -177,6 +197,12 @@ export default function OrderDetails({
     .reverse()
     .find((h) => h.status === "DELIVERED");
   const deliveredMs = new Date(delivered?.at ?? order.updatedAt).getTime();
+  const expectedMs = order.expectedDeliveryDate
+    ? new Date(order.expectedDeliveryDate).getTime()
+    : NaN;
+  // the expected date is stored as midnight, so delivery on that day counts as on time
+  const deliveredLate =
+    Number.isFinite(expectedMs) && deliveredMs > expectedMs + DAY_MS;
 
   const bookingYmd = String(order.bookingDate ?? "").slice(0, 10);
   const bookingLabel = /^\d{4}-\d{2}-\d{2}$/.test(bookingYmd)
@@ -201,14 +227,12 @@ export default function OrderDetails({
     !order.hasService &&
     (Boolean(shipment?.awb || shipment?.status) ||
       ["SHIPPED", "DELIVERED"].includes(status));
-  const canCancel = cancelInfo?.canCancel === true && !shipmentStarted;
-  const cancelNote = canCancel
-    ? null
-    : cancelInfo?.canCancel === false
-      ? (cancelInfo.message ?? null)
-      : shipmentStarted
-        ? "Shipment has started for this order, so it can no longer be cancelled."
-        : null;
+  const canCancel =
+    ["PENDING", "CONFIRMED"].includes(status) && !shipmentStarted;
+  const cancelNote =
+    !canCancel && shipmentStarted
+      ? "Shipment has started for this order, so it can no longer be cancelled."
+      : null;
 
   const canDo = (it: any, t: "RETURN" | "REPLACE" | "REFUND") => {
     const flag = {
@@ -229,7 +253,11 @@ export default function OrderDetails({
     );
   };
 
-    const submitAction = async (reason: string, bank?: BankDetails) => {
+    const submitAction = async (
+    reason: string,
+    bank?: BankDetails,
+    extra?: { category: string; details: string; files: File[] },
+  ) => {
     if (!action) return;
     const { kind, item } = action;
 
@@ -258,13 +286,17 @@ export default function OrderDetails({
     }
 
     const productId = item ? itemProductId(item) : undefined;
-    const reasonCode = REASON_CODE[reason] ?? "OTHER";
+    const category = extra?.category ?? reason;
+    const details = extra?.details ?? "";
+    const reasonCode = REASON_CODE[category] ?? "OTHER";
     await createItemRequest(orderMongoId, {
       type: kind,
       reasonCode,
-      reason: reasonCode === "OTHER" ? reason : "",
+      // for OTHER the backend shows only the text, so the category goes in front
+      reason: reasonCode === "OTHER" ? `${category}: ${details}` : details,
       itemId: item._id,
       productId,
+      files: extra?.files ?? [],
       ...(bank ? { bankDetails: bank } : {}),
     });
     setAction(null);
@@ -354,7 +386,9 @@ export default function OrderDetails({
                 String(it.status ?? it.itemStatus ?? "").toUpperCase(),
               );
               const canAsk =
-                myReqs.length === 0 && !itemCancelled && status !== "CANCELLED";
+                myReqs.length === 0 &&
+                !itemCancelled &&
+                status === "DELIVERED";
 
               const unit = it.offerPrice != null ? Number(it.offerPrice) : null;
               const line =
@@ -445,10 +479,7 @@ export default function OrderDetails({
                   {/* ALL ACTIONS (return / replace / refund) DISABLED FOR NOW */}
                   {canAsk && (
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {(["RETURN", "REPLACE", "REFUND"] as const)
-                        // Refund only shows when it is actually available (paid + refundable)
-                        .filter((t) => t !== "REFUND" || canDo(it, "REFUND"))
-                        .map((t) => {
+                      {(["RETURN", "REPLACE"] as const).map((t) => {
                           const ok = canDo(it, t);
                           const label = ACTION_LABEL[t].toLowerCase();
                           return (
@@ -477,7 +508,89 @@ export default function OrderDetails({
               );
             })}
           </section>
+          {!order.hasService &&
+            status !== "CANCELLED" &&
+            ["CONFIRMED", "SHIPPED", "DELIVERED"].includes(status) &&
+            (() => {
+              const sh: any = order.shipment ?? {};
+              const done = shipProgress(status, sh, Boolean(order.shipment));
+              const courier = sh.courierName ?? order.courierName ?? "";
+              const transport = sh.transportMode ?? sh.mode ?? "";
+              return (
+                <section className="shop-card p-3.5 sm:p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <h2 className="font-extrabold">Courier &amp; Shipment</h2>
+                    <span className="rounded-full bg-[#f3eae0] px-2.5 py-1 text-[11px] font-bold text-[#6b4a4a]">
+                      {done >= 5
+                        ? "Delivered"
+                        : done >= 2
+                          ? "Shipped"
+                          : "Not shipped"}
+                    </span>
+                  </div>
 
+                  <div className="mt-4 flex items-start">
+                    {SHIP_STEPS.map((label, i) => {
+                      const complete = i <= done;
+                      const current = i === done + 1;
+                      return (
+                        <div key={label} className="flex flex-1 flex-col items-center">
+                          <div className="flex w-full items-center">
+                            <span
+                              className={`h-0.5 flex-1 ${i === 0 ? "opacity-0" : i <= done ? "bg-green-500" : "bg-[#e5e7eb]"}`}
+                            />
+                            <span
+                              className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border-2 text-[11px] font-bold ${
+                                complete
+                                  ? "border-green-500 bg-green-500 text-white"
+                                  : current
+                                    ? "border-blue-500 bg-white text-blue-600"
+                                    : "border-[#e5e7eb] bg-white text-[#9aa0b4]"
+                              }`}
+                            >
+                              {complete ? "✓" : i + 1}
+                            </span>
+                            <span
+                              className={`h-0.5 flex-1 ${i === SHIP_STEPS.length - 1 ? "opacity-0" : i < done ? "bg-green-500" : "bg-[#e5e7eb]"}`}
+                            />
+                          </div>
+                          <span className="mt-1.5 text-center text-[10px] text-[#6b4a4a] sm:text-xs">
+                            {label}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {done < 2 && (
+                    <p className="mt-4 rounded-xl bg-[#fff8e8] p-3 text-xs text-[#8a5a00]">
+                      Your order is confirmed. The courier shipment will be
+                      created soon, and you can cancel until then.
+                    </p>
+                  )}
+
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                    {[
+                      ["Courier", courier],
+                      ["Transport", transport],
+                      ["Expected delivery", eta],
+                      ["AWB", sh.awb ?? ""],
+                    ]
+                      .filter(([, v]) => v)
+                      .map(([k, v]) => (
+                        <div key={k} className="rounded-xl border border-[#f3eae0] bg-[#faf8f5] p-3">
+                          <div className="text-[10px] font-bold uppercase text-[#9aa0b4]">
+                            {k}
+                          </div>
+                          <div className="mt-1 break-words text-sm font-semibold">
+                            {v}
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </section>
+              );
+            })()}
                     {canCancel && (
             <div>
               <button
@@ -615,11 +728,10 @@ export default function OrderDetails({
         <ReasonSheet
           kind={action.kind}
           itemName={action.item ? itemName(action.item) : "Entire order"}
+          allowLate={deliveredLate}
           needsBank={
-  action.kind === "CANCEL"
-    ? !!cancelInfo?.requiresBankDetails
-    : action.kind === "REFUND" || (action.kind === "RETURN" && paid)
-}
+            action.kind === "CANCEL" && !!cancelInfo?.requiresBankDetails
+          }
           onClose={() => setAction(null)}
           onSubmit={submitAction}
         />

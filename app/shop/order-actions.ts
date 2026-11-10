@@ -23,21 +23,30 @@ export const CANCEL_REASONS = [
   "Other",
 ];
 
+export const LATE_REASON = "Product was delivered late";
+
 export const REQUEST_REASONS = [
-  "Damaged item",
-  "Defective item",
-  "Wrong item received",
-  "Size / fit issue",
-  "Other",
+  "Product is defective",
+  "Product is damaged or deficient",
+  "Wrong product delivered",
+  "Product is counterfeit or spurious",
+  "Product materially differs from its advertised or agreed description",
+  LATE_REASON,
 ];
 
-// same mapping as the app
+// the backend only accepts its own codes, so unmatched reasons go as OTHER
 export const REASON_CODE: Record<string, string> = {
-  "Damaged item": "PRODUCT_DAMAGE",
-  "Defective item": "QUALITY_ISSUE",
-  "Wrong item received": "WRONG_PRODUCT",
-  "Size / fit issue": "SIZE_MISMATCH",
+  "Product is defective": "QUALITY_ISSUE",
+  "Product is damaged or deficient": "PRODUCT_DAMAGE",
+  "Wrong product delivered": "WRONG_PRODUCT",
+  "Product materially differs from its advertised or agreed description":
+    "NOT_AS_DESCRIBED",
 };
+
+// proof limits (same as the backend)
+export const EVIDENCE_MAX_FILES = 5;
+export const EVIDENCE_IMAGE_MB = 5;
+export const EVIDENCE_VIDEO_MB = 100;
 
 // Same endpoint and body as the app's api.cancelOrder (PATCH)
 export async function cancelOrderItem(
@@ -85,12 +94,23 @@ export async function createItemRequest(
     itemId?: string;
     productId?: string;
     bankDetails?: BankDetails;
+    files?: File[];
   },
 ) {
+  const fd = new FormData();
+  fd.append("type", payload.type);
+  fd.append("reasonCode", payload.reasonCode);
+  fd.append("reason", payload.reason);
+  if (payload.itemId) fd.append("itemId", payload.itemId);
+  if (payload.productId) fd.append("productId", payload.productId);
+  if (payload.bankDetails)
+    fd.append("bankDetails", JSON.stringify(payload.bankDetails));
+  (payload.files ?? []).forEach((f, i) => fd.append(`evidence${i + 1}`, f));
+
   const res = await axiosInstance.post(
     `/api/order/my-orders/${encodeURIComponent(orderId)}/requests`,
-    payload,
-    noCreds,
+    fd,
+    { ...noCreds, headers: { "Content-Type": "multipart/form-data" } },
   );
   return res.data?.data ?? res.data;
 }

@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { useCart, bill } from "../cart";
 import { useAuth, errMsg, shopApi } from "../auth";
 import { inr } from "../data";
-import { submitPayUPayment } from "./payment";
+import { savePending, clearPending, startSessionPayment } from "./payment";
 import {
   getSavedAddresses,
   saveAddressStrict,
@@ -28,7 +28,7 @@ type AddressForm = {
   pincode: string;
   country: string;
 };
-
+const LAST_ADDR_KEY = "ayendri:lastAddress";
 const EMPTY_ADDRESS: AddressForm = {
   fullName: "",
   phone: "",
@@ -123,6 +123,47 @@ function extractCartDetails(payload: any) {
   };
 }
 
+// flat list of cart lines from the /api/cart/ response
+function extractCartLines(payload: any): any[] {
+  const value = unwrapResponse(payload);
+  const cart = value?.cart ?? value?.data?.cart ?? value;
+  const fromStores = Array.isArray(cart?.stores)
+    ? cart.stores.flatMap((entry: any) => {
+        const store = entry?.store ?? entry?.storeId;
+        const sid =
+          typeof store === "object" ? (store?._id ?? store?.id) : store;
+        return (entry?.items ?? []).map((it: any) => ({
+          ...it,
+          storeId: it?.storeId ?? sid,
+        }));
+      })
+    : [];
+  const flat = Array.isArray(cart?.items) ? cart.items : [];
+  return (fromStores.length ? fromStores : flat).filter(
+    (it: any) => it?.isAvailable !== false,
+  );
+}
+
+// one name per shipment, in the same order the backend creates them
+// (same store, and the same booking date for services)
+function shipmentNames(lines: any[]): string[] {
+  const groups = new Map<string, string[]>();
+  for (const it of lines) {
+    const isService = String(it?.productType ?? "").toUpperCase() === "SERVICE";
+    const date =
+      isService && it?.bookingDate ? String(it.bookingDate).slice(0, 10) : "";
+    const key = `${it?.storeId ?? ""}|${date}`;
+    const name = String(it?.name ?? it?.title ?? "Product");
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key)!.push(name);
+  }
+  return [...groups.values()].map((names) =>
+    names.length > 2
+      ? `${names.slice(0, 2).join(", ")} +${names.length - 2} more`
+      : names.join(", "),
+  );
+}
+
 const BOOKING_MSG_RE = /booking for today closes|valid booking date/i;
 
 const isBookingInvalid = (e: any) => {
@@ -188,6 +229,7 @@ export default function Checkout() {
   const [address, setAddress] = useState<AddressForm>(EMPTY_ADDRESS);
   const [saved, setSaved] = useState<SavedAddress[]>([]);
   const [selectedId, setSelectedId] = useState("new");
+  const [showForm, setShowForm] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const [locating, setLocating] = useState(false);
   const [savingAddr, setSavingAddr] = useState(false);
@@ -203,8 +245,21 @@ export default function Checkout() {
   const [previewError, setPreviewError] = useState(""); // pura preview fail
   const [unavailableMsg, setUnavailableMsg] = useState(""); // kichu item unavailable (preview tobuo thake)
   const previewReqRef = useRef(0);
+  const [cartLines, setCartLines] = useState<any[]>([]);
 
   useEffect(() => setMounted(true), []);
+
+  // coming back from PayU with the Back button: unfreeze the page
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        setRedirecting(false);
+        setBusy(false);
+      }
+    };
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, []);
 
   // COD is no longer offered, so always use online payment
   useEffect(() => {
@@ -219,9 +274,15 @@ export default function Checkout() {
       .then((list) => {
         if (cancelled) return;
         setSaved(list);
-        if (list[0]?._id) {
-          setSelectedId(list[0]._id);
-          setAddress(toForm(list[0]));
+        let last: any = null;
+        try {
+          last = JSON.parse(localStorage.getItem(LAST_ADDR_KEY) || "null");
+        } catch {}
+        const pick =
+          (last && list.find((a) => sameAddress(a, last))) || list[0];
+        if (pick?._id) {
+          setSelectedId(pick._id);
+          setAddress(toForm(pick));
         } else {
           setAddress((p) => ({
             ...p,
@@ -261,6 +322,7 @@ export default function Checkout() {
       try {
         const cartResponse = await shopApi.get("/api/cart/");
         const { cartId, storeIds } = extractCartDetails(cartResponse.data);
+        setCartLines(extractCartLines(cartResponse.data));
         if (!cartId || !storeIds.length)
           throw new Error("Cart could not be loaded.");
 
@@ -412,16 +474,27 @@ export default function Checkout() {
       : [];
   const canUseFastest = hasPreview && hasFasterStore(preview);
   const showFastest = hasPreview && previewStores.length > 0;
+
+  // product names per shipment, only used when the shipment count matches
+  const allGroups: any[] =
+    hasPreview && Array.isArray(preview.stores) ? preview.stores : [];
+  const groupNames = shipmentNames(cartLines);
+  const nameFor = (s: any): string | undefined =>
+    groupNames.length === allGroups.length
+      ? groupNames[allGroups.indexOf(s)]
+      : undefined;
   // order place kora jabe kina
   const cannotOrder =
     busy || previewLoading || !!previewError || !!unavailableMsg;
-
+  // the form shows when "new address" is chosen, or when nothing is saved yet
+  const formOpen = showForm || saved.length === 0;
   async function useMyLocation() {
     setLocating(true);
     setAddrNote(null);
     try {
       const found = await detectCurrentAddress();
       setSelectedId("new");
+      setShowForm(true);
       setAddress((p) => ({
         ...p,
         ...found,
@@ -469,7 +542,10 @@ export default function Checkout() {
       });
       setSaved(list);
       const match = list.find((a) => sameAddress(a, address));
-      if (match?._id) setSelectedId(match._id);
+      if (match?._id) {
+        setSelectedId(match._id);
+        setShowForm(false);
+      }
       setAddrNote({
         ok: true,
         text:
@@ -599,76 +675,38 @@ export default function Checkout() {
 
       const orderPayload = unwrapResponse(orderResponse.data);
 
-      // save the address only if it isn't already in the saved list
-      const alreadySaved = saved.some((a) => sameAddress(a, deliveryAddress));
-      if (!alreadySaved) {
+      const sessionIds: string[] = (orderPayload?.paymentSessions ?? [])
+        .map((s: any) => String(s?.sessionId ?? ""))
+        .filter(Boolean);
+
+      try {
+        localStorage.setItem(LAST_ADDR_KEY, JSON.stringify(deliveryAddress));
+      } catch {}
+      if (!saved.some((a) => sameAddress(a, deliveryAddress))) {
         try {
           await addSavedAddress(deliveryAddress);
         } catch (e) {
-          // order is already placed, so don't block it, but show the real reason
           console.warn("Save address failed:", (e as any)?.response?.data ?? e);
         }
       }
 
-      const created = extractCreatedOrders(orderPayload);
-      const orderIds = created.length
-        ? created.map((o) => o.id)
-        : [extractOrderId(orderPayload)].filter(Boolean);
-      const message =
-        orderPayload?.message || "Your order has been placed successfully.";
-
-      const clearCartEverywhere = async () => {
-        try {
-          await shopApi.delete("/api/cart");
-        } catch {}
-        cart.clear();
-      };
-
-      // ONLINE
-      if (!orderIds.length) {
-        throw new Error(
-          "Order was created but its ID is missing, so payment could not start.",
-        );
-      }
-
-      setRedirecting(true);
-      await clearCartEverywhere();
-
-      if (orderIds.length > 1) {
-        window.alert(
-          "You have more than one order. Pay for each one from the Orders page.",
-        );
-        router.replace("/shop/orders");
-        return;
-      }
-
-      let payment: any;
-      try {
-        const paymentResponse = await shopApi.post(
-          `/payment/initiate/${encodeURIComponent(orderIds[0])}`,
-          {},
-        );
-        payment = unwrapResponse(paymentResponse.data);
-        if (!payment.paymentUrl || !payment.payuParams) {
-          throw new Error(
-            payment.message || "Unable to initialize online payment.",
-          );
+      if (orderPayload?.paymentRequired !== true || !sessionIds.length) {
+        // only price-on-request orders were created, nothing to pay now
+        if (extractCreatedOrders(orderPayload).length) {
+          router.replace("/shop/orders");
+          return;
         }
-      } catch (e) {
-        window.alert(
-          `${errMsg(e, "Payment could not start.")} Your order is saved. You can pay from the Orders page.`,
-        );
-        router.replace("/shop/orders");
-        return;
+        throw new Error(orderPayload?.message || "Could not start payment.");
       }
 
-      try {
-        sessionStorage.setItem("ayendri:payOrder", orderIds[0]);
-      } catch {}
-
+      // do NOT clear the cart here; the result page clears it after PAID
+      savePending({ source: "CART", sessionIds });
+      setRedirecting(true);
       leaving = true;
-      submitPayUPayment(payment.paymentUrl, payment.payuParams);
+      await startSessionPayment(sessionIds[0]);
     } catch (e: unknown) {
+      leaving = false;
+      clearPending();
       setRedirecting(false);
       const failed = (e as any)?.response?.data?.failedStores;
       const msg =
@@ -698,105 +736,122 @@ export default function Checkout() {
           <section className="shop-card space-y-3 p-5">
             <h2 className="font-extrabold">Delivery address</h2>
 
-            {saved.length > 0 && (
-              <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {saved.map((a) => (
-                  <button
-                    key={a._id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedId(a._id!);
-                      setAddress(toForm(a));
-                    }}
-                    className={`rounded-xl border p-3 text-left text-sm ${
-                      selectedId === a._id
-                        ? "border-[#e0622d] bg-orange-50"
-                        : "border-[#e8cfa8]"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <b>{a.label || "Home"}</b>
-                      {a.isDefault && (
-                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
-                          Default
-                        </span>
-                      )}
-                    </div>
-                    <div className="mt-1 line-clamp-2 text-xs text-[#6b4a4a]">
-                      {[a.addressLine, a.area, a.city, a.state, a.pincode]
-                        .filter(Boolean)
-                        .join(", ")}
-                    </div>
-                  </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => {
+                        {saved.length > 0 && (
+              <select
+                value={formOpen ? "new" : selectedId}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setAddrNote(null);
+                  if (v === "new") {
                     setSelectedId("new");
+                    setShowForm(true);
                     setAddress({
                       ...EMPTY_ADDRESS,
                       fullName: user?.name ?? "",
                       phone: (user?.phone ?? "").replace(/\D/g, "").slice(-10),
                     });
-                  }}
-                  className={`flex items-center justify-center rounded-xl border border-dashed p-3 text-sm font-bold ${
-                    selectedId === "new"
-                      ? "border-[#e0622d] text-[#9b4326]"
-                      : "border-[#e8cfa8] text-[#9a7a7a]"
-                  }`}
-                >
-                  + Use a new address
-                </button>
+                    return;
+                  }
+                  const a = saved.find((x) => x._id === v);
+                  if (a) {
+                    setSelectedId(v);
+                    setAddress(toForm(a));
+                    setShowForm(false);
+                  }
+                }}
+                className="w-full min-w-0 truncate rounded-xl border border-[#e8cfa8] bg-white px-4 py-2.5 text-sm outline-none focus:border-[#e0622d]"
+              >
+                {saved.map((a) => (
+                  <option key={a._id} value={a._id}>
+                    {`${a.label || "Home"}${a.isDefault ? " (Default)" : ""} · ${
+                      a.city || a.area || ""
+                    } ${a.pincode}`}
+                  </option>
+                ))}
+                <option value="new">+ Use a new address</option>
+              </select>
+            )}
+
+            {!formOpen && (
+              <div className="rounded-xl border border-[#e8cfa8] bg-[#fffaf3] p-3 text-xs text-[#6b4a4a]">
+                <b className="text-[#4a0710]">{address.fullName}</b> ·{" "}
+                {address.phone}
+                <div className="mt-0.5">
+                  {[
+                    address.addressLine,
+                    address.area,
+                    address.city,
+                    address.state,
+                    address.pincode,
+                  ]
+                    .filter(Boolean)
+                    .join(", ")}
+                </div>
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={useMyLocation}
-              disabled={locating}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#e0622d] bg-orange-50 px-4 py-2.5 text-sm font-bold text-[#9b4326] disabled:opacity-60"
-            >
-              <MapPin size={16} />
-              {locating ? "Detecting location…" : "Use my current location"}
-            </button>
+            {formOpen && (
+              <>
+                <button
+                  type="button"
+                  onClick={useMyLocation}
+                  disabled={locating}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-[#e0622d] bg-orange-50 px-4 py-2.5 text-sm font-bold text-[#9b4326] disabled:opacity-60"
+                >
+                  <MapPin size={16} />
+                  {locating ? "Detecting location…" : "Use my current location"}
+                </button>
 
-            {/* form: 2-column grid; wide fields span both columns */}
-            <div className="grid grid-cols-2 gap-3">
-              {(
-                [
-                  ["fullName", "Full name", true, ""],
-                  ["phone", "10-digit phone number", true, ""],
-                  [
-                    "addressLine",
-                    "House number, street, address",
-                    true,
-                    "col-span-2",
-                  ],
-                  ["area", "Area / locality", false, ""],
-                  ["city", "City", true, ""],
-                  ["state", "State", true, ""],
-                  ["pincode", "6-digit pincode", true, ""],
-                ] as const
-              ).map(([key, label, required, span]) => (
-                <input
-                  key={key}
-                  value={address[key]}
-                  onChange={(event) =>
-                    setAddress((current) => ({
-                      ...current,
-                      [key]: event.target.value,
-                    }))
-                  }
-                  placeholder={`${label}${required ? " *" : ""}`}
-                  required={required}
-                  inputMode={
-                    key === "phone" || key === "pincode" ? "numeric" : "text"
-                  }
-                  className={`${span} w-full rounded-xl border border-[#e8cfa8] px-4 py-2.5 text-sm outline-none focus:border-[#e0622d]`}
-                />
-              ))}
-            </div>
-                        {addrNote && (
+                <div className="grid grid-cols-2 gap-3">
+                  {(
+                    [
+                      ["fullName", "Full name", true, ""],
+                      ["phone", "10-digit phone number", true, ""],
+                      [
+                        "addressLine",
+                        "House number, street, address",
+                        true,
+                        "col-span-2",
+                      ],
+                      ["area", "Area / locality", false, ""],
+                      ["city", "City", true, ""],
+                      ["state", "State", true, ""],
+                      ["pincode", "6-digit pincode", true, ""],
+                    ] as const
+                  ).map(([key, label, required, span]) => (
+                    <input
+                      key={key}
+                      value={address[key]}
+                      onChange={(event) =>
+                        setAddress((current) => ({
+                          ...current,
+                          [key]: event.target.value,
+                        }))
+                      }
+                      placeholder={`${label}${required ? " *" : ""}`}
+                      required={required}
+                      inputMode={
+                        key === "phone" || key === "pincode"
+                          ? "numeric"
+                          : "text"
+                      }
+                      className={`${span} w-full rounded-xl border border-[#e8cfa8] px-4 py-2.5 text-sm outline-none focus:border-[#e0622d]`}
+                    />
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={onSaveAddress}
+                  disabled={savingAddr}
+                  className="rounded-full border border-[#7a1118] px-5 py-2 text-sm font-bold text-[#7a1118] disabled:opacity-60"
+                >
+                  {savingAddr ? "Saving…" : "Save address"}
+                </button>
+              </>
+            )}
+
+            {addrNote && (
               <p
                 className={`rounded-xl p-2 text-xs ${
                   addrNote.ok
@@ -807,14 +862,6 @@ export default function Checkout() {
                 {addrNote.text}
               </p>
             )}
-            <button
-              type="button"
-              onClick={onSaveAddress}
-              disabled={savingAddr}
-              className="rounded-full border border-[#7a1118] px-5 py-2 text-sm font-bold text-[#7a1118] disabled:opacity-60"
-            >
-              {savingAddr ? "Saving…" : "Save address"}
-            </button>
           </section>
 
           {/* [FASTEST] preview er fastestAvailable true hole-i dekhabe */}
@@ -957,23 +1004,32 @@ export default function Checkout() {
 
                         {/* eta per shipment */}
                         <div className="mt-3 divide-y divide-[#f0dcc0] border-t border-[#f0dcc0] text-xs text-[#6b4a4a]">
-                          {previewStores.map((s, i) => (
-                            <div
-                              key={`${s.storeId}-${i}`}
-                              className="flex items-center justify-between gap-3 py-2"
-                            >
-                              {multi && (
-                                <span className="shrink-0 text-[#9a7a7a]">
-                                  Shipment {i + 1}
-                                </span>
-                              )}
-                              <span
-                                className={`font-semibold text-[#4a0710] ${multi ? "text-right" : ""}`}
+                          {previewStores.map((s, i) => {
+                            const label =
+                              nameFor(s) ?? (multi ? `Shipment ${i + 1}` : "");
+                            return (
+                              <div
+                                key={`${s.storeId}-${i}`}
+                                className="flex items-center justify-between gap-3 py-2"
                               >
-                                {o.line(s)}
-                              </span>
-                            </div>
-                          ))}
+                                {!!label && (
+                                  <span
+                                    title={label}
+                                    className="min-w-0 flex-1 truncate text-[#9a7a7a]"
+                                  >
+                                    {label}
+                                  </span>
+                                )}
+                                <span
+                                  className={`font-semibold text-[#4a0710] ${
+                                    label ? "max-w-[60%] shrink-0 text-right" : ""
+                                  }`}
+                                >
+                                  {o.line(s)}
+                                </span>
+                              </div>
+                            );
+                          })}
                         </div>
                       </button>
                     );

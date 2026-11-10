@@ -733,7 +733,7 @@ export default function OrdersPage() {
   }, [deliveredKey, loadMyReviews]);
 
   const onCancelPress = (o: OrderView) => {
-    if (o.cancelInfo?.canCancel !== true || o.shipmentStarted) return;
+    if (o.shipmentStarted) return;
     // orders that need bank details are cancelled from the details page
     if (o.cancelInfo?.requiresBankDetails) {
       router.push(`/shop/orders/${encodeURIComponent(o.id)}`);
@@ -875,8 +875,9 @@ export default function OrdersPage() {
             {pageCards.map(({ order, line, idx }) => {
                 const group = lineGroup(order, line);
                 const paid = isPaid(order);
-                const canCancel =
-                  order.cancelInfo?.canCancel === true && !order.shipmentStarted;
+                                const canCancel =
+                  ["PENDING", "CONFIRMED", "APPROVED"].includes(order.status) &&
+                  !order.shipmentStarted;
                 const lineRequests = (requests[order.id] ?? []).filter(
                   (r) =>
                     !r.itemId ||

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { Cormorant_Garamond } from "next/font/google";
 
 // Display serif for headings. Body text keeps the shop's own sans font.
@@ -25,14 +26,26 @@ const pCls = "mt-5 text-[17px] leading-8 text-[#3a2a22]";
    To use a real photo later, replace the whole <ImagePlaceholder ... /> with:
    <Image src="/img/photos/your-file.jpg" alt="describe the photo" width={1200} height={900}
           className="w-full rounded-md object-cover" /> (import Image from "next/image") */
-function ImagePlaceholder({ ratio, label }: { ratio: string; label: string }) {
+function ImagePlaceholder({
+  ratio,
+  label,
+  src,
+}: {
+  ratio: string;
+  label: string;
+  src: string;
+}) {
   return (
     <div
-      role="img"
-      aria-label={label}
-      className={`${ratio} flex w-full items-center justify-center rounded-md bg-gray-200 text-sm text-gray-500 ring-1 ring-[#e8d6bd]`}
+      className={`${ratio} relative w-full overflow-hidden rounded-md bg-gray-200 ring-1 ring-[#e8d6bd]`}
     >
-      Image placeholder
+      <Image
+        src={src}
+        alt={label}
+        fill
+        sizes="(min-width: 768px) 50vw, 100vw"
+        className="object-cover"
+      />
     </div>
   );
 }
@@ -90,7 +103,7 @@ export default function Page() {
       {/* OUR STORY */}
       <section className="bg-[#fffaf3] px-6 py-16 md:py-24">
         <div className="mx-auto grid max-w-[1100px] items-center gap-10 md:grid-cols-[5fr_6fr] md:gap-16">
-          <ImagePlaceholder ratio="aspect-[4/5]" label="Portrait of the founder" />
+          <ImagePlaceholder ratio="aspect-[4/5]" label="Portrait of the founder" src="/img/photos/About1.PNG" />
           <div>
             <h2 className={h2Cls}>Our story</h2>
             <p className={pCls}>
@@ -134,7 +147,7 @@ export default function Page() {
             </p>
           </div>
           <div className="order-1 md:order-2">
-            <ImagePlaceholder ratio="aspect-[4/3]" label="Artisans at work" />
+            <ImagePlaceholder ratio="aspect-[4/3]" label="Artisans at work" src="/img/photos/About2.png" />
           </div>
         </div>
       </section>
@@ -154,7 +167,7 @@ export default function Page() {
 
           <div className="mt-14 grid gap-12 md:grid-cols-3 md:gap-10">
             <div>
-              <ImagePlaceholder ratio="aspect-[4/3]" label="Selecting products by hand" />
+              <ImagePlaceholder ratio="aspect-[4/3]" label="Selecting products by hand" src="/img/photos/About3.png" />
               <h3 className={h3Cls}>Chosen by hand</h3>
               <p className="mt-3 text-[16px] leading-7 text-[#3a2a22]">
                 Demo text: We look at size, grain, symmetry and finish, and set aside anything that
@@ -162,7 +175,7 @@ export default function Page() {
               </p>
             </div>
             <div>
-              <ImagePlaceholder ratio="aspect-[4/3]" label="Checking products before shipping" />
+              <ImagePlaceholder ratio="aspect-[4/3]" label="Checking products before shipping" src="/img/photos/About4.png" />
               <h3 className={h3Cls}>Checked before it ships</h3>
               <p className="mt-3 text-[16px] leading-7 text-[#3a2a22]">
                 Demo text: Each item is inspected again and packed with a note on what it is and how to
@@ -170,7 +183,7 @@ export default function Page() {
               </p>
             </div>
             <div>
-              <ImagePlaceholder ratio="aspect-[4/3]" label="Energising ritual" />
+              <ImagePlaceholder ratio="aspect-[4/3]" label="Energising ritual" src="/img/photos/About5.png" />
               <h3 className={h3Cls}>Energised with mantra</h3>
               <p className="mt-3 text-[16px] leading-7 text-[#3a2a22]">
                 Demo text: Products are energised with traditional mantras and prayers, so they arrive
