@@ -7,6 +7,7 @@ import { InputText } from "primereact/inputtext";
 import { InputTextarea } from "primereact/inputtextarea";
 import { Button } from "primereact/button";
 import { Dialog } from "primereact/dialog";
+import OrderSummary, { OrderLite } from "@/components/chatbot/OrderSummary";
 
 type Conv = {
   _id: string;
@@ -19,6 +20,7 @@ type Conv = {
   lastMessageAt: string;
   lastMessagePreview: string;
   storeId?: { storeName?: string } | string;
+  orderId?: { _id: string; orderNumber?: string; status?: string } | string | null;
 };
 type Msg = {
   _id: string;
@@ -28,25 +30,39 @@ type Msg = {
 };
 
 const BASE = "/api/chatbot/conversations";
-
-// sidebar badge refresh korar jonno
 const notifySidebar = () => window.dispatchEvent(new Event("storeChatChanged"));
+const notifyTickets = () => window.dispatchEvent(new Event("storeTicketsChanged"));
+
+const initial = (n?: string) => (n?.trim()?.[0] || "C").toUpperCase();
+
+const timeAgo = (iso: string) => {
+  const d = new Date(iso);
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60) return "now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h`;
+  return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+};
+
+const orderNo = (c: Conv) =>
+  c.orderId && typeof c.orderId === "object" ? c.orderId.orderNumber : "";
 
 export default function ChatInboxPage() {
   const [convs, setConvs] = useState<Conv[]>([]);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "needs">("all");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [active, setActive] = useState<Conv | null>(null);
+  const [order, setOrder] = useState<OrderLite | null>(null);
+  const [showOrder, setShowOrder] = useState(true);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
   const [ticketOpen, setTicketOpen] = useState(false);
-  const [ticketForm, setTicketForm] = useState({
-    subject: "",
-    description: "",
-  });
+  const [ticketForm, setTicketForm] = useState({ subject: "", description: "" });
   const [raising, setRaising] = useState(false);
-  const endRef = useRef<HTMLDivElement>(null);
+
+  const scrollRef = useRef<HTMLDivElement>(null);
   const lastCount = useRef(0);
 
   const fetchList = async () => {
@@ -63,12 +79,12 @@ export default function ChatInboxPage() {
       const res = await axiosInstance.get(`${BASE}/${id}/messages`);
       setMessages(res.data.messages || []);
       setActive(res.data.conversation);
+      setOrder(res.data.order || null);
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to load chat");
     }
   };
 
-  // list poll
   useEffect(() => {
     fetchList();
     const t = setInterval(() => !document.hidden && fetchList(), 5000);
@@ -76,7 +92,6 @@ export default function ChatInboxPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [search]);
 
-  // active chat poll (event shudhu chat prothom khulle ekbar)
   useEffect(() => {
     if (!activeId) return;
     lastCount.current = 0;
@@ -84,19 +99,18 @@ export default function ChatInboxPage() {
       notifySidebar();
       fetchList();
     });
-    const t = setInterval(
-      () => !document.hidden && fetchMessages(activeId),
-      4000,
-    );
+    const t = setInterval(() => !document.hidden && fetchMessages(activeId), 4000);
     return () => clearInterval(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeId]);
 
+  // chat box er bhitore-i scroll (puro page na)
   useEffect(() => {
-    if (messages.length !== lastCount.current) {
-      lastCount.current = messages.length;
-      endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }
+    if (messages.length === lastCount.current) return;
+    const first = lastCount.current === 0;
+    lastCount.current = messages.length;
+    const el = scrollRef.current;
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: first ? "auto" : "smooth" });
   }, [messages]);
 
   const send = async () => {
@@ -111,25 +125,18 @@ export default function ChatInboxPage() {
       notifySidebar();
     } catch (err: any) {
       toast.error(
-        err?.response?.data?.errors?.[0]?.message ||
-          err?.response?.data?.message ||
-          "Send failed",
+        err?.response?.data?.errors?.[0]?.message || err?.response?.data?.message || "Send failed",
       );
     } finally {
       setSending(false);
     }
   };
 
-  const updateState = async (body: {
-    mode?: "bot" | "human";
-    status?: "active" | "closed";
-  }) => {
+  const updateState = async (body: { mode?: "bot" | "human"; status?: "active" | "closed" }) => {
     if (!activeId) return;
     try {
       await axiosInstance.patch(`${BASE}/${activeId}/state`, body);
-      toast.success(
-        body.mode === "bot" ? "Bot is handling this chat again" : "Updated",
-      );
+      toast.success(body.mode === "bot" ? "Bot is handling this chat again" : "Updated");
       await fetchMessages(activeId);
       fetchList();
       notifySidebar();
@@ -141,7 +148,7 @@ export default function ChatInboxPage() {
   const openTicketDialog = () => {
     const lastUser = [...messages].reverse().find((m) => m.role === "user");
     setTicketForm({
-      subject: "",
+      subject: order?.orderNumber ? `Order #${order.orderNumber}: ` : "",
       description: lastUser?.content?.slice(0, 500) || "",
     });
     setTicketOpen(true);
@@ -153,6 +160,7 @@ export default function ChatInboxPage() {
     try {
       const res = await axiosInstance.post("/api/ticket/store", {
         conversationId: activeId,
+        ...(order?._id ? { orderId: order._id } : {}),
         subject: ticketForm.subject,
         description: ticketForm.description,
       });
@@ -160,6 +168,7 @@ export default function ChatInboxPage() {
       setTicketOpen(false);
       await fetchMessages(activeId);
       fetchList();
+      notifyTickets();
     } catch (err: any) {
       toast.error(
         err?.response?.data?.errors?.[0]?.message ||
@@ -171,79 +180,105 @@ export default function ChatInboxPage() {
     }
   };
 
-  const storeName = (c: Conv) =>
-    typeof c.storeId === "object" ? c.storeId?.storeName : "";
+  const visible = filter === "needs" ? convs.filter((c) => c.humanRequested || c.unreadByStore > 0) : convs;
+  const storeName = (c: Conv) => (typeof c.storeId === "object" ? c.storeId?.storeName : "");
 
   return (
     <div className="w-full pt-2">
-      <div className="grid h-[80vh] grid-cols-1 overflow-hidden rounded-lg bg-white shadow md:grid-cols-[320px_1fr]">
-        {/* LEFT: conversations */}
-        <div
-          className={`flex flex-col border-r ${activeId ? "hidden md:flex" : "flex"}`}
-        >
-          <div className="border-b p-3">
-            <h2 className="mb-2 text-base font-semibold text-gray-800">
-              Customer Chats
-            </h2>
+      <div className="grid h-[calc(100vh-150px)] min-h-[520px] grid-cols-1 grid-rows-[minmax(0,1fr)] overflow-hidden rounded-xl bg-white shadow md:grid-cols-[340px_minmax(0,1fr)]">
+        {/* ============ LEFT ============ */}
+        <div className={`min-h-0 flex-col border-r ${activeId ? "hidden md:flex" : "flex"}`}>
+          <div className="shrink-0 space-y-2 border-b p-3">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-800">Customer Chats</h2>
+              <span className="text-xs text-gray-400">{convs.length}</span>
+            </div>
             <InputText
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search name / phone"
               className="p-inputtext-sm w-full"
             />
+            <div className="flex gap-1.5">
+              {(["all", "needs"] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                    filter === f ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                  }`}
+                >
+                  {f === "all" ? "All" : "Needs reply"}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto">
-            {convs.length === 0 && (
-              <p className="p-4 text-sm text-gray-500">No chats yet.</p>
-            )}
-            {convs.map((c) => (
+
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {visible.length === 0 && <p className="p-4 text-sm text-gray-500">No chats.</p>}
+            {visible.map((c) => (
               <button
                 key={c._id}
                 onClick={() => setActiveId(c._id)}
-                className={`w-full border-b px-3 py-2.5 text-left hover:bg-blue-50 ${
+                className={`flex w-full gap-2.5 border-b px-3 py-2.5 text-left transition hover:bg-blue-50 ${
                   activeId === c._id ? "bg-blue-50" : ""
                 }`}
               >
-                <div className="flex items-center justify-between gap-2">
-                  <span className="truncate text-sm font-semibold text-gray-800">
-                    {c.name || "Customer"}
-                  </span>
-                  {c.unreadByStore > 0 && (
-                    <span className="rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                      {c.unreadByStore}
-                    </span>
-                  )}
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                  {initial(c.name)}
                 </div>
-                <p className="truncate text-xs text-gray-500">
-                  {c.lastMessagePreview}
-                </p>
-                <div className="mt-1 flex items-center gap-2 text-[10px]">
-                  <span
-                    className={`rounded-full px-1.5 py-0.5 ${c.mode === "human" ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-600"}`}
-                  >
-                    {c.mode === "human" ? "You" : "Bot"}
-                  </span>
-                  <span className="text-gray-400">
-                    {new Date(c.lastMessageAt).toLocaleString()}
-                  </span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="truncate text-sm font-semibold text-gray-800">
+                      {c.name || "Customer"}
+                    </span>
+                    <span className="shrink-0 text-[10px] text-gray-400">{timeAgo(c.lastMessageAt)}</span>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="truncate text-xs text-gray-500">{c.lastMessagePreview}</p>
+                    {c.unreadByStore > 0 && (
+                      <span className="shrink-0 rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                        {c.unreadByStore}
+                      </span>
+                    )}
+                  </div>
+                  <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px]">
+                    <span
+                      className={`rounded-full px-1.5 py-0.5 ${
+                        c.mode === "human" ? "bg-amber-100 text-amber-800" : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {c.mode === "human" ? "You" : "Bot"}
+                    </span>
+                    {c.humanRequested && c.mode !== "human" && (
+                      <span className="rounded-full bg-red-100 px-1.5 py-0.5 font-semibold text-red-700">
+                        Needs reply
+                      </span>
+                    )}
+                    {orderNo(c) && (
+                      <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-amber-800">
+                        🛒 #{orderNo(c)}
+                      </span>
+                    )}
+                  </div>
                 </div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* RIGHT: chat */}
-        <div
-          className={`flex min-h-0 flex-col ${activeId ? "flex" : "hidden md:flex"}`}
-        >
+        {/* ============ RIGHT ============ */}
+        <div className={`min-h-0 min-w-0 flex-col overflow-hidden ${activeId ? "flex" : "hidden md:flex"}`}>
           {!active ? (
-            <div className="flex flex-1 items-center justify-center text-sm text-gray-400">
-              Select a chat to start
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 text-gray-400">
+              <i className="pi pi-comments text-4xl" />
+              <span className="text-sm">Select a chat to start</span>
             </div>
           ) : (
             <>
-              <div className="flex flex-wrap items-center justify-between gap-2 border-b p-3">
-                <div className="flex items-center gap-2">
+              {/* header */}
+              <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b px-3 py-2.5">
+                <div className="flex min-w-0 items-center gap-2">
                   <Button
                     icon="pi pi-arrow-left"
                     text
@@ -251,19 +286,33 @@ export default function ChatInboxPage() {
                     onClick={() => {
                       setActiveId(null);
                       setActive(null);
+                      setOrder(null);
                     }}
                   />
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
+                    {initial(active.name)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-gray-800">
                       {active.name || "Customer"}
                     </p>
-                    <p className="text-xs text-gray-500">
-                      {active.phoneNumber}{" "}
-                      {storeName(active) ? `· ${storeName(active)}` : ""}
+                    <p className="truncate text-xs text-gray-500">
+                      {active.phoneNumber}
+                      {storeName(active) ? ` · ${storeName(active)}` : ""}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
+
+                <div className="flex flex-wrap gap-2">
+                  {order && (
+                    <Button
+                      size="small"
+                      text
+                      icon={showOrder ? "pi pi-chevron-up" : "pi pi-chevron-down"}
+                      label={`Order #${order.orderNumber}`}
+                      onClick={() => setShowOrder((v) => !v)}
+                    />
+                  )}
                   {active.mode === "human" ? (
                     <Button
                       size="small"
@@ -289,31 +338,24 @@ export default function ChatInboxPage() {
                     icon="pi pi-ticket"
                     onClick={openTicketDialog}
                   />
-                  {/* <Button
-                    size="small"
-                    severity="secondary"
-                    outlined
-                    label={active.status === "closed" ? "Reopen" : "Close"}
-                    onClick={() =>
-                      updateState({
-                        status:
-                          active.status === "closed" ? "active" : "closed",
-                      })
-                    }
-                  /> */}
                 </div>
               </div>
 
-              <div className="flex-1 space-y-2 overflow-y-auto bg-gray-50 p-3">
+              {/* order panel */}
+              {order && showOrder && (
+                <div className="max-h-56 shrink-0 overflow-y-auto border-b bg-white p-3">
+                  <OrderSummary order={order} />
+                </div>
+              )}
+
+              {/* messages: eta-i scroll korbe */}
+              <div ref={scrollRef} className="min-h-0 flex-1 space-y-2 overflow-y-auto bg-gray-50 p-3">
                 {messages.map((m) => {
                   const mine = m.role === "store";
                   return (
-                    <div
-                      key={m._id}
-                      className={`flex ${mine ? "justify-end" : "justify-start"}`}
-                    >
+                    <div key={m._id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                       <div
-                        className={`max-w-[75%] whitespace-pre-wrap rounded-xl px-3 py-2 text-sm ${
+                        className={`max-w-[75%] whitespace-pre-wrap break-words rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] ${
                           mine
                             ? "rounded-br-sm bg-blue-600 text-white"
                             : m.role === "assistant"
@@ -322,9 +364,7 @@ export default function ChatInboxPage() {
                         }`}
                       >
                         {m.role === "assistant" && (
-                          <span className="mb-0.5 block text-[10px] font-semibold uppercase">
-                            Bot
-                          </span>
+                          <span className="mb-0.5 block text-[10px] font-semibold uppercase">Bot</span>
                         )}
                         {m.content}
                         <span className="mt-1 block text-right text-[10px] opacity-60">
@@ -337,10 +377,10 @@ export default function ChatInboxPage() {
                     </div>
                   );
                 })}
-                <div ref={endRef} />
               </div>
 
-              <div className="flex items-end gap-2 border-t p-3">
+              {/* input: sobsomoy niche */}
+              <div className="flex shrink-0 items-end gap-2 border-t bg-white p-3">
                 <InputTextarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
@@ -366,6 +406,7 @@ export default function ChatInboxPage() {
           )}
         </div>
       </div>
+
       <Dialog
         header="Raise Ticket"
         visible={ticketOpen}
@@ -374,32 +415,31 @@ export default function ChatInboxPage() {
         onHide={() => setTicketOpen(false)}
       >
         <div className="space-y-3">
+          {order ? (
+            <OrderSummary order={order} compact />
+          ) : (
+            <p className="rounded-lg bg-gray-50 p-2 text-xs text-gray-500">
+              No order is linked to this chat. This will be a general ticket.
+            </p>
+          )}
           <div className="space-y-1">
-            <label className="text-sm font-semibold text-gray-700">
-              Subject *
-            </label>
+            <label className="text-sm font-semibold text-gray-700">Subject *</label>
             <InputText
               className="w-full"
               value={ticketForm.subject}
-              onChange={(e) =>
-                setTicketForm((p) => ({ ...p, subject: e.target.value }))
-              }
+              onChange={(e) => setTicketForm((p) => ({ ...p, subject: e.target.value }))}
               placeholder="e.g. Wrong item delivered"
               maxLength={150}
             />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-semibold text-gray-700">
-              Complaint details *
-            </label>
+            <label className="text-sm font-semibold text-gray-700">Complaint details *</label>
             <InputTextarea
               className="w-full"
               rows={5}
               autoResize
               value={ticketForm.description}
-              onChange={(e) =>
-                setTicketForm((p) => ({ ...p, description: e.target.value }))
-              }
+              onChange={(e) => setTicketForm((p) => ({ ...p, description: e.target.value }))}
               maxLength={2000}
             />
           </div>
