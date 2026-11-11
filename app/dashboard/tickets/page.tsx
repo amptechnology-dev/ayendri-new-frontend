@@ -299,7 +299,7 @@ export default function TicketsPage() {
                 </div>
                 <div className="space-y-1">
                   <label className="text-sm font-semibold text-gray-700">
-                    Solution (customer dekhbe)
+                    Solution 
                   </label>
                   <InputTextarea
                     className="w-full"
@@ -310,7 +310,7 @@ export default function TicketsPage() {
                     onChange={(e) =>
                       setForm((p) => ({ ...p, resolution: e.target.value }))
                     }
-                    placeholder="Ki solution dile seta likho"
+                    placeholder="Please right which solution are you give in "
                   />
                 </div>
               </div>
