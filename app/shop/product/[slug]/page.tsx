@@ -35,6 +35,7 @@ import ReviewSection from "../../components/ReviewSection";
 import { useAuth } from "../../auth";
 import { htmlToBlocks, useTerms } from "../../terms-api";
 import { useBookingAdd } from "../../components/useBookingAdd";
+import { POLICY_INFO, POLICY_KEY, type PolicyKey } from "../../policy-info";
 import {
   formatBookingDate,
   getMinBookingDate,
@@ -160,6 +161,7 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
   const [colorIdx, setColorIdx] = useState(0);
   const [sizeIdx, setSizeIdx] = useState(0);
   const [avail, setAvail] = useState<any>(null);
+  const [policyOpen, setPolicyOpen] = useState<PolicyKey | null>(null);
 
   const serviceId: string | null =
     String((p as any)?.raw?.productType ?? "").toUpperCase() === "SERVICE"
@@ -820,7 +822,20 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
               {benefits.map(({ I, t, s }) => (
                 <div
                   key={t}
-                  className={`px-2 ${s === "Not available" ? "opacity-50" : ""}`}
+                  role={POLICY_KEY[t] ? "button" : undefined}
+                  tabIndex={POLICY_KEY[t] ? 0 : undefined}
+                  onClick={() => {
+                    const k = POLICY_KEY[t];
+                    if (k) setPolicyOpen(k);
+                  }}
+                  onKeyDown={(e) => {
+                    const k = POLICY_KEY[t];
+                    if (k && (e.key === "Enter" || e.key === " ")) {
+                      e.preventDefault();
+                      setPolicyOpen(k);
+                    }
+                  }}
+                  className={`px-2 py-2 ${POLICY_KEY[t] ? "cursor-pointer rounded-xl transition hover:bg-[#fff4eb]" : ""} ${s === "Not available" ? "opacity-70" : ""}`}
                 >
                   <span className="mx-auto mb-2 grid h-11 w-11 place-items-center rounded-full bg-[#fdecec] text-[#a3161c]">
                     <I size={20} />
@@ -829,6 +844,11 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
                   <div className="mt-0.5 text-[11px] font-normal text-[#9a7a7a]">
                     {s}
                   </div>
+                  {POLICY_KEY[t] && (
+                    <div className="mt-1.5 text-[11px] font-bold text-[#a3161c] underline underline-offset-2">
+                      View details ›
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1216,6 +1236,86 @@ export default function PDP({ params }: { params: Promise<{ slug: string }> }) {
           </div>
         </>
       )}
+
+      {/* ---------- Policy modal ---------- */}
+      {policyOpen &&
+        (() => {
+          const info = POLICY_INFO[policyOpen];
+          const ok = Boolean(
+            {
+              RETURN: raw?.isReturnable,
+              REPLACE: raw?.isReplaceable,
+              REFUND: raw?.isRefundable,
+            }[policyOpen],
+          );
+          const d = {
+            RETURN: raw?.returnDays,
+            REPLACE: raw?.replaceDays,
+            REFUND: raw?.refundDays,
+          }[policyOpen];
+          return (
+            <div
+              className="fixed inset-0 z-50 grid place-items-center bg-black/45 p-4"
+              onClick={() => setPolicyOpen(null)}
+            >
+              <div
+                role="dialog"
+                aria-modal="true"
+                className="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-xl font-black text-[#4a0710]">
+                    {info.title}
+                  </h3>
+                  <button
+                    onClick={() => setPolicyOpen(null)}
+                    aria-label="Close"
+                    className="text-lg font-bold text-[#9a7a7a]"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                <p
+                  className={`mt-3 rounded-xl px-3 py-2 text-sm font-bold ${
+                    ok
+                      ? "bg-green-50 text-green-700"
+                      : "bg-[#f1f1f1] text-[#6b6b6b]"
+                  }`}
+                >
+                  {ok
+                    ? d
+                      ? `Available for this product within ${d} days`
+                      : "Available for this product"
+                    : "Not available for this product"}
+                </p>
+
+                <p className="mt-4 text-sm leading-6 text-[#3a2a2a]">
+                  {info.intro}
+                </p>
+                <ul className="mt-3 space-y-2">
+                  {info.points.map((pt, i) => (
+                    <li
+                      key={i}
+                      className="flex gap-2 text-sm leading-6 text-[#4a3a3a]"
+                    >
+                      <span className="mt-2.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#a3161c]" />
+                      {pt}
+                    </li>
+                  ))}
+                </ul>
+
+                <button
+                  onClick={() => setPolicyOpen(null)}
+                  className="mt-6 w-full rounded-full bg-[#a3161c] py-2.5 text-sm font-bold text-white"
+                >
+                  Got it
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
       {/* ---------- Sticky bottom bar ---------- */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t border-[#f0dcc0] bg-white/95 px-4 py-3 backdrop-blur sm:px-6">

@@ -120,3 +120,12 @@ export const actionError = (e: any, fallback = "Something went wrong. Please try
 
 
 
+// ASSUMPTION: endpoint and body key. Confirm with the backend.
+export async function rescheduleMyOrder(orderId: string, bookingDate: string) {
+  const res = await axiosInstance.patch(
+    `/api/order/my-orders/${encodeURIComponent(orderId)}/reschedule`,
+    { bookingDate },
+    noCreds,
+  );
+  return res.data; // { message, order }
+}

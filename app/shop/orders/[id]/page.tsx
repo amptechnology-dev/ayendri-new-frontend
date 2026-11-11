@@ -16,8 +16,10 @@ import {
 import {
   ACTION_LABEL,
   REASON_CODE,
+  actionError,
   cancelMyOrder,
   createItemRequest,
+  rescheduleMyOrder,
   type ActionKind,
 } from "../../order-actions";
 import type { BankDetails } from "../../order-requests";
@@ -120,6 +122,10 @@ export default function OrderDetails({
   const [action, setAction] = useState<{ kind: ActionKind; item: any } | null>(
     null,
   );
+  const [resched, setResched] = useState<null | "ask" | "pick">(null);
+  const [newDate, setNewDate] = useState("");
+  const [reschedBusy, setReschedBusy] = useState(false);
+  const [reschedErr, setReschedErr] = useState("");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -205,6 +211,11 @@ export default function OrderDetails({
     Number.isFinite(expectedMs) && deliveredMs > expectedMs + DAY_MS;
 
   const bookingYmd = String(order.bookingDate ?? "").slice(0, 10);
+  const isService = Boolean(order.hasService) || Boolean(bookingYmd);
+  // earliest allowed new date: tomorrow (IST)
+  const minDate = new Date(Date.now() + 5.5 * HOUR + DAY_MS)
+    .toISOString()
+    .slice(0, 10);
   const bookingLabel = /^\d{4}-\d{2}-\d{2}$/.test(bookingYmd)
     ? fmtDate(new Date(`${bookingYmd}T00:00:00`))
     : "";
@@ -302,6 +313,26 @@ export default function OrderDetails({
     setAction(null);
     setNotice("Request sent. The store will review it and get back to you.");
     await load();
+  };
+
+  const submitReschedule = async () => {
+    if (!newDate) {
+      setReschedErr("Pick a new date.");
+      return;
+    }
+    setReschedBusy(true);
+    setReschedErr("");
+    try {
+      const res = await rescheduleMyOrder(orderMongoId, newDate);
+      setResched(null);
+      setNewDate("");
+      await load();
+      setNotice(res?.message ?? "Booking rescheduled.");
+    } catch (e: any) {
+      setReschedErr(actionError(e, "Could not reschedule. Please try again."));
+    } finally {
+      setReschedBusy(false);
+    }
   };
 
   const addr = order.deliveryAddress ?? order.shippingAddress ?? order.address;
@@ -594,7 +625,11 @@ export default function OrderDetails({
                     {canCancel && (
             <div>
               <button
-                onClick={() => setAction({ kind: "CANCEL", item: null })}
+                onClick={() =>
+                  isService
+                    ? setResched("ask")
+                    : setAction({ kind: "CANCEL", item: null })
+                }
                 className="w-full rounded-full border border-red-300 bg-red-50 py-3 text-sm font-bold text-red-600"
               >
                 Cancel order
@@ -723,6 +758,88 @@ export default function OrderDetails({
       >
         ← Back to orders
       </Link>
+
+      {resched && (
+        <div
+          className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+          onClick={() => !reschedBusy && setResched(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-5"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {resched === "ask" ? (
+              <>
+                <h3 className="text-lg font-black">Reschedule instead?</h3>
+                <p className="mt-2 text-sm text-[#6b4a4a]">
+                  Would you like to move your booking to another date instead
+                  of cancelling it?
+                </p>
+                <div className="mt-5 grid gap-2">
+                  <button
+                    onClick={() => setResched("pick")}
+                    className="rounded-full bg-[#e0622d] py-2.5 text-sm font-bold text-white"
+                  >
+                    Reschedule
+                  </button>
+                  <button
+                    onClick={() => {
+                      setResched(null);
+                      setAction({ kind: "CANCEL", item: null });
+                    }}
+                    className="rounded-full border border-red-300 bg-red-50 py-2.5 text-sm font-bold text-red-600"
+                  >
+                    No, cancel order
+                  </button>
+                  <button
+                    onClick={() => setResched(null)}
+                    className="py-2 text-sm font-bold text-[#9a7a7a]"
+                  >
+                    Keep booking
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h3 className="text-lg font-black">Pick a new date</h3>
+                {!!bookingLabel && (
+                  <p className="mt-1 text-xs text-[#9a7a7a]">
+                    Current booking: {bookingLabel}
+                  </p>
+                )}
+                <input
+                  type="date"
+                  min={minDate}
+                  value={newDate}
+                  onChange={(e) => setNewDate(e.target.value)}
+                  className="mt-4 w-full rounded-xl border border-[#e8cfa8] px-3 py-2.5 text-sm"
+                />
+                {!!reschedErr && (
+                  <p className="mt-2 text-xs font-semibold text-red-600">
+                    {reschedErr}
+                  </p>
+                )}
+                <div className="mt-5 grid gap-2">
+                  <button
+                    disabled={reschedBusy}
+                    onClick={() => void submitReschedule()}
+                    className="rounded-full bg-[#e0622d] py-2.5 text-sm font-bold text-white disabled:opacity-60"
+                  >
+                    {reschedBusy ? "Rescheduling..." : "Confirm new date"}
+                  </button>
+                  <button
+                    disabled={reschedBusy}
+                    onClick={() => setResched("ask")}
+                    className="py-2 text-sm font-bold text-[#9a7a7a]"
+                  >
+                    Back
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {action && (
         <ReasonSheet
