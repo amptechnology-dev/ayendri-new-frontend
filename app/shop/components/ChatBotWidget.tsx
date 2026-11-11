@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useShop } from "../shop-data";
+import { useAuth } from "../auth";
+import { fetchMyOrders } from "../api";
+import { rawOrderItems, itemImage } from "../order-items";
 
 // NEXT_PUBLIC_API_URL e jodi already "/api" thake, tahole path theke "/api" soriye nin
 const API = process.env.NEXT_PUBLIC_API_URL;
@@ -12,6 +15,20 @@ const REQUEST_AGENT_URL = `${API}/api/chatbot/request-agent`;
 
 const SESSION_KEY = "ayendri_chat_session";
 const USER_INFO_KEY = "ayendri_chat_user_info";
+const ORDER_KEY = "ayendri_chat_order";
+
+type PickedOrder = { id: string; label: string; img: string };
+
+const orderInfo = (o: any): PickedOrder => {
+  const first: any = rawOrderItems(o)[0] ?? o.product;
+  const name = first?.name ?? first?.product?.name ?? first?.productName ?? "Order";
+  const no = o.orderNumber ?? String(o._id).slice(-6);
+  return {
+    id: String(o._id),
+    label: `Order #${no} • ${name}`,
+    img: first ? itemImage(first) : "",
+  };
+};
 
 type Role = "user" | "assistant" | "store";
 type Mode = "bot" | "human";
@@ -174,6 +191,11 @@ export default function ChatBotWidget() {
   const [form, setForm] = useState({ name: "", phone: "" });
   const [formError, setFormError] = useState("");
   const [bootstrapped, setBootstrapped] = useState(false);
+  const token = useAuth((s) => s.token);
+  const [orders, setOrders] = useState<PickedOrder[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [orderStep, setOrderStep] = useState(false);
+  const [pickedOrder, setPickedOrder] = useState<PickedOrder | null>(null);
   const [mode, setMode] = useState<Mode>("bot");
   const [agentRequested, setAgentRequested] = useState(false);
   const [requesting, setRequesting] = useState(false);
@@ -210,6 +232,71 @@ export default function ChatBotWidget() {
   useEffect(() => {
     if (open && bootstrapped && !userInfo) setShowForm(true);
   }, [open, bootstrapped, userInfo]);
+
+    const loadOrders = () => {
+    setOrderStep(true);
+    setOrdersLoading(true);
+    fetchMyOrders()
+      .then((res: any) => {
+        const v = res?.data ?? res;
+        const list: any[] = Array.isArray(v)
+          ? v
+          : Array.isArray(v?.orders)
+            ? v.orders
+            : Array.isArray(v?.data?.orders)
+              ? v.data.orders
+              : [];
+        setOrders(list.slice(0, 8).map(orderInfo));
+      })
+      .catch(() => undefined)
+      .finally(() => setOrdersLoading(false));
+  };
+
+  // ask which order the chat is about (once per chat session, logged-in users)
+  useEffect(() => {
+    if (!open || !userInfo || !sessionId || !token || historyLoading) return;
+    try {
+      const s = localStorage.getItem(`${ORDER_KEY}_${sessionId}`);
+      if (s) {
+        setPickedOrder(s === "none" ? null : JSON.parse(s));
+        setOrderStep(false);
+        return;
+      }
+    } catch {}
+    loadOrders();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, userInfo, sessionId, token, historyLoading]);
+
+  // "Chat" button on the order page: fresh chat with that order preselected
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const o = (e as CustomEvent<PickedOrder>).detail;
+      if (!o?.id) return;
+      const sid = generateSessionId();
+      try {
+        localStorage.setItem(SESSION_KEY, sid);
+        localStorage.setItem(`${ORDER_KEY}_${sid}`, JSON.stringify(o));
+      } catch {}
+      didInitialScroll.current = false;
+      cursorRef.current = null;
+      setSessionId(sid);
+      setPickedOrder(o);
+      setOrderStep(false);
+      setMode("bot");
+      setAgentRequested(false);
+      setMessages([
+        ...INITIAL_MESSAGES,
+        {
+          id: makeId("assistant"),
+          role: "assistant",
+          content: `Got it, we'll help you with ${o.label}. Please tell us what went wrong, or tap "Talk to Customer Service" to raise a complaint.`,
+        },
+      ]);
+      setOpen(true);
+    };
+    window.addEventListener("ayendriOpenChat", onOpen);
+    return () => window.removeEventListener("ayendriOpenChat", onOpen);
+  }, []);
 
   // history load
   useEffect(() => {
@@ -301,6 +388,23 @@ export default function ChatBotWidget() {
     setMessages((cur) => [...cur, { id: makeId(role), role, content: text }]);
   };
 
+  const chooseOrder = (o: PickedOrder) => {
+    try {
+      localStorage.setItem(`${ORDER_KEY}_${sessionId}`, JSON.stringify(o));
+    } catch {}
+    setPickedOrder(o);
+    setOrderStep(false);
+    append("assistant", `Got it, we'll help you with ${o.label}. Please tell us what went wrong.`);
+  };
+
+  const skipOrder = () => {
+    try {
+      localStorage.setItem(`${ORDER_KEY}_${sessionId}`, "none");
+    } catch {}
+    setPickedOrder(null);
+    setOrderStep(false);
+  };
+
   const sendMessage = async (value: string, opts?: { resumeBot?: boolean }) => {
     const message = String(value || "").trim();
     if (!message || loading || !sessionId || !userInfo) return;
@@ -319,6 +423,7 @@ export default function ChatBotWidget() {
           name: userInfo.name,
           phoneNumber: userInfo.phoneNumber,
           ...(storeId ? { storeId } : {}),
+          ...(pickedOrder ? { orderId: pickedOrder.id } : {}),
           ...(opts?.resumeBot ? { resumeBot: true } : {}),
         }),
       });
@@ -356,6 +461,10 @@ export default function ChatBotWidget() {
 
   const requestAgent = async () => {
     if (requesting || !sessionId || !userInfo) return;
+    if (token && !pickedOrder) {
+      loadOrders(); // shows "Which order do you need help with?"
+      return;
+    }
     setRequesting(true);
     try {
       const res = await fetch(REQUEST_AGENT_URL, {
@@ -366,6 +475,7 @@ export default function ChatBotWidget() {
           name: userInfo.name,
           phoneNumber: userInfo.phoneNumber,
           ...(storeId ? { storeId } : {}),
+          ...(pickedOrder ? { orderId: pickedOrder.id } : {}),
         }),
       });
       const json = await res.json();
@@ -422,6 +532,8 @@ export default function ChatBotWidget() {
     setMessages(INITIAL_MESSAGES);
     setInput("");
     setMode("bot");
+    setPickedOrder(null);
+    setOrderStep(false);
     if (!userInfo) setShowForm(true);
   };
 
@@ -557,6 +669,48 @@ export default function ChatBotWidget() {
                 </div>
               )}
 
+              {orderStep && !showForm && (
+                <div className="absolute inset-0 z-10 flex flex-col bg-white/85 px-4 py-3 backdrop-blur-md">
+                  <h3 className="text-[13px] font-medium text-neutral-900">
+                    Which order do you need help with?
+                  </h3>
+                  <p className="text-[11px] text-neutral-500">
+                    Select the order your complaint is about.
+                  </p>
+                  <div className="mt-2 flex-1 space-y-2 overflow-y-auto">
+                    {ordersLoading && (
+                      <p className="text-[12px] text-neutral-500">Loading your orders…</p>
+                    )}
+                    {!ordersLoading && orders.length === 0 && (
+                      <p className="text-[12px] text-neutral-500">No orders found.</p>
+                    )}
+                    {orders.map((o) => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        onClick={() => chooseOrder(o)}
+                        className="flex w-full items-center gap-2 rounded-lg border border-neutral-200 bg-white p-2 text-left transition hover:border-[#6b1f2a]/50"
+                      >
+                        {o.img ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={o.img} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
+                        ) : (
+                          <div className="h-10 w-10 shrink-0 rounded bg-neutral-100" />
+                        )}
+                        <span className="min-w-0 flex-1 truncate text-[12px] text-neutral-800">{o.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={skipOrder}
+                    className="mt-2 w-full rounded-lg border border-neutral-300/70 bg-white/60 py-1.5 text-[12px] text-neutral-700 hover:text-[#6b1f2a]"
+                  >
+                    My issue is not about an order
+                  </button>
+                </div>
+              )}
+
               {/* Messages */}
               <div className="flex-1 space-y-2.5 overflow-y-auto px-4 py-3">
                 {historyLoading && (
@@ -653,6 +807,15 @@ export default function ChatBotWidget() {
                   </div>
                 )}
 
+                {pickedOrder && (
+                  <p className="mb-2 truncate rounded-lg bg-[#fff8e6] px-2 py-1 text-[11px] text-[#6b1f2a]">
+                    Regarding: {pickedOrder.label}{" "}
+                    <button type="button" onClick={loadOrders} className="font-semibold underline">
+                      Change
+                    </button>
+                  </p>
+                )}
+
                 {/* Quick chips (shudhu bot mode e) */}
                 {mode === "bot" && (
                   <div className="mb-2 flex gap-1.5 overflow-x-auto pb-0.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
@@ -660,7 +823,9 @@ export default function ChatBotWidget() {
                       <button
                         key={c.id}
                         type="button"
-                        onClick={() => sendMessage(c.query)}
+                        onClick={() =>
+                          c.id === "order" && token ? loadOrders() : sendMessage(c.query)
+                        }
                         disabled={loading}
                         className="shrink-0 rounded-full border border-neutral-300/70 bg-white/50 px-2.5 py-1 text-[11px] text-neutral-600 transition hover:border-[#6b1f2a]/50 hover:text-[#6b1f2a] disabled:cursor-not-allowed disabled:opacity-50"
                       >

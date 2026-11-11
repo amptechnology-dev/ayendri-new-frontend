@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { useAuth } from "../auth";
+import { rawOrderItems, itemImage, itemName, itemQty } from "../order-items";
+import { inr } from "../data";
 
 const API = process.env.NEXT_PUBLIC_API_URL;
 
@@ -65,12 +68,12 @@ export function useTicketUnread() {
   return count;
 }
 
-export default function MyTickets() {
+export default function MyTickets({ initialTicketId }: { initialTicketId?: string | null }) {
   const token = useAuth((s) => s.token);
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [detail, setDetail] = useState<{ ticket: Ticket; messages: Msg[] } | null>(null);
+  const [detail, setDetail] = useState<{ ticket: Ticket; messages: Msg[]; order: any | null } | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
   const loadList = useCallback(async () => {
@@ -100,7 +103,7 @@ export default function MyTickets() {
       const res = await fetch(`${API}/api/ticket/my/${id}`, { headers: authHeaders(token) });
       const json = await res.json();
       if (!res.ok || !json?.success) throw new Error(json?.message || "Failed to load ticket");
-      setDetail({ ticket: json.ticket, messages: json.messages || [] });
+      setDetail({ ticket: json.ticket, messages: json.messages || [], order: json.order || null });
       window.dispatchEvent(new Event("ayendriTicketsChanged")); // badge refresh
       loadList();
     } catch (e: any) {
@@ -109,6 +112,11 @@ export default function MyTickets() {
       setDetailLoading(false);
     }
   };
+
+    useEffect(() => {
+    if (initialTicketId && token) void openTicket(initialTicketId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialTicketId, token]);
 
   if (!token) {
     return <p className="p-4 text-sm text-neutral-500">Please login to see your tickets.</p>;
@@ -154,6 +162,125 @@ export default function MyTickets() {
             )}
           </div>
         </div>
+
+{detail.order ? (() => {
+  const o = detail.order;
+  const items: any[] = rawOrderItems(o);
+  const orderHref = `/shop/orders/${encodeURIComponent(String(o._id))}`;
+  const orderNo = o.orderNumber ?? o.orderId ?? String(o._id).slice(-6);
+  const total =
+    Number(o.totalAmount) > 0 ? Number(o.totalAmount) : Number(o.quote?.total ?? 0);
+  const addr = o.deliveryAddress ?? o.shippingAddress ?? o.address;
+  const addrText =
+    typeof addr === "string"
+      ? addr
+      : addr
+        ? [
+            addr.fullName,
+            addr.phone,
+            [addr.addressLine, addr.area].filter(Boolean).join(", "),
+            [addr.city, addr.state].filter(Boolean).join(", ") +
+              (addr.pincode ? ` - ${addr.pincode}` : ""),
+          ]
+            .filter(Boolean)
+            .join(" · ")
+        : "";
+
+  return (
+    <div className="rounded-xl border bg-white p-4 shadow-sm">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold text-neutral-800">Complaint regarding this order</p>
+        <Link href={orderHref} className="text-sm font-medium text-[#6b1f2a] hover:underline">
+          View full order →
+        </Link>
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-neutral-50 p-3 text-xs">
+        <div>
+          <p className="text-neutral-500">Order No.</p>
+          <p className="font-semibold text-neutral-800">#{orderNo}</p>
+        </div>
+        <div>
+          <p className="text-neutral-500">Status</p>
+          <p className="font-semibold capitalize text-neutral-800">
+            {String(o.status ?? o.orderStatus ?? "-").toLowerCase()}
+          </p>
+        </div>
+        {o.createdAt && (
+          <div>
+            <p className="text-neutral-500">Placed on</p>
+            <p className="font-semibold text-neutral-800">
+              {new Date(o.createdAt).toLocaleDateString("en-IN", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </p>
+          </div>
+        )}
+        <div>
+          <p className="text-neutral-500">Total</p>
+          <p className="font-semibold text-neutral-800">{total > 0 ? inr(total) : "Price pending"}</p>
+        </div>
+        {(o.paymentMethod || o.paymentStatus) && (
+          <div className="col-span-2">
+            <p className="text-neutral-500">Payment</p>
+            <p className="font-semibold text-neutral-800">
+              {[o.paymentMethod === "COD" ? "Cash on Delivery" : o.paymentMethod, o.paymentStatus && String(o.paymentStatus).toLowerCase()]
+                .filter(Boolean)
+                .join(" · ")}
+            </p>
+          </div>
+        )}
+        {addrText && (
+          <div className="col-span-2">
+            <p className="text-neutral-500">Delivery address</p>
+            <p className="font-semibold text-neutral-800">{addrText}</p>
+          </div>
+        )}
+      </div>
+
+      <p className="mb-2 mt-4 text-xs font-semibold uppercase text-neutral-500">
+        {items.length > 1 ? `Products in this order (${items.length})` : "Product"}
+      </p>
+      <div className="space-y-2">
+        {items.map((it: any, i: number) => {
+          const img = itemImage(it);
+          const name = itemName(it);
+          const qty = itemQty(it);
+          const variant = [it.color, it.size, it.weight, it.height].filter(Boolean).join(" · ");
+          const unit = it.offerPrice != null ? Number(it.offerPrice) : null;
+          return (
+            <Link
+              key={it._id ?? i}
+              href={orderHref}
+              className="flex items-center gap-3 rounded-lg border border-neutral-200 p-2 transition hover:border-[#6b1f2a]/50 hover:bg-[#fff8e6]"
+            >
+              {img ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={img} alt={name} className="h-16 w-16 shrink-0 rounded-lg border object-cover" />
+              ) : (
+                <div className="h-16 w-16 shrink-0 rounded-lg bg-neutral-100" />
+              )}
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-semibold text-neutral-800">{name}</p>
+                {variant && <p className="truncate text-xs text-neutral-500">{variant}</p>}
+                <p className="text-xs text-neutral-500">
+                  {unit != null ? `Qty ${qty} × ${inr(unit)}` : `Qty ${qty}`}
+                </p>
+              </div>
+              <span className="shrink-0 text-sm text-[#6b1f2a]">→</span>
+            </Link>
+          );
+        })}
+      </div>
+    </div>
+  );
+})() : (
+  <div className="rounded-xl border border-dashed bg-white p-4 text-sm text-neutral-500">
+    No order is linked to this ticket.
+  </div>
+)}
 
         <div className="rounded-xl border bg-white p-4 shadow-sm">
           <p className="mb-2 text-sm font-semibold text-neutral-800">Chat history</p>

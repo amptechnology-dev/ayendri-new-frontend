@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -11,6 +11,7 @@ import {
   Mail,
   Phone,
   ShoppingBag,
+  Ticket,
   User,
 } from "lucide-react";
 import { useShop } from "../shop-data";
@@ -18,6 +19,8 @@ import { useAuth } from "../auth";
 import ProfileForm from "../components/ProfileForm";
 import ProductCard from "../components/ProductCard";
 import PageArt from "../components/PageArt";
+// ⚠️ path ta tomar MyTickets file onujayi thik koro
+import MyTickets, { useTicketUnread } from "../components/MyTickets";
 
 export default function Profile() {
   const router = useRouter();
@@ -25,6 +28,17 @@ export default function Profile() {
   const signOut = useAuth((s) => s.signOut);
   const products = useShop((s) => s.products);
   const [editing, setEditing] = useState(false); // keep above the early return
+  const [view, setView] = useState<"profile" | "tickets">("profile");
+  const unreadTickets = useTicketUnread(); // hook must stay above the early return
+  const [initialTicket, setInitialTicket] = useState<string | null>(null);
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    if (p.get("tab") === "tickets") {
+      setView("tickets");
+      setEditing(false);
+      setInitialTicket(p.get("ticket"));
+    }
+  }, []);
   if (!user) return null; // RequireAuth redirects to login
 
   const initials = user.name
@@ -77,8 +91,13 @@ export default function Profile() {
           <nav>
             {/* My Profile: opens the edit form on the right */}
             <button
-              onClick={() => setEditing(true)}
-              className={`${rowBase} ${editing ? "bg-[#ececef]" : "bg-white hover:bg-[#f6f6f8]"}`}
+              onClick={() => {
+                setView("profile");
+                setEditing(true);
+              }}
+              className={`${rowBase} ${
+                view === "profile" && editing ? "bg-[#ececef]" : "bg-white hover:bg-[#f6f6f8]"
+              }`}
             >
               <User size={22} className="shrink-0 text-[#1f2430]" />
               <span className="min-w-0 flex-1">
@@ -96,6 +115,29 @@ export default function Profile() {
               </span>
               <ChevronRight size={20} className="shrink-0 text-[#1f2430]" />
             </Link>
+
+            {/* My Tickets: opens the tickets list (and ticket details) on the right */}
+            <button
+              onClick={() => {
+                setView("tickets");
+                setEditing(false);
+              }}
+              className={`${rowBase} ${
+                view === "tickets" ? "bg-[#ececef]" : "bg-white hover:bg-[#f6f6f8]"
+              }`}
+            >
+              <Ticket size={22} className="shrink-0 text-[#1f2430]" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-lg font-medium text-[#1f2430]">My Tickets</span>
+                <span className="block text-sm text-[#3c4150]">Track your complaints</span>
+              </span>
+              {unreadTickets > 0 && (
+                <span className="grid h-6 min-w-[24px] shrink-0 place-items-center rounded-full bg-[#c8161d] px-1.5 text-xs font-bold text-white">
+                  {unreadTickets}
+                </span>
+              )}
+              <ChevronRight size={20} className="shrink-0 text-[#1f2430]" />
+            </button>
 
             <Link href="/shop/wishlist" className={`${rowBase} bg-white hover:bg-[#f6f6f8]`}>
               <Heart size={22} className="shrink-0 text-[#1f2430]" />
@@ -127,50 +169,56 @@ export default function Profile() {
 
         {/* Right panel */}
         <section className="min-h-[500px] rounded-xl bg-white p-5 shadow-sm md:p-6">
-          <div className="flex items-center justify-between gap-3">
-            <h1 className="text-2xl font-semibold text-[#1f2430]">My Profile</h1>
-            <Link
-              href="/shop/wishlist"
-              aria-label="Open wishlist"
-              className="rounded-full p-2 transition-colors hover:bg-[#f7a04b]/10"
-            >
-              <Heart size={24} className="text-[#D5684A]" />
-            </Link>
-          </div>
+          {view === "tickets" ? (
+            <MyTickets initialTicketId={initialTicket} />
+          ) : (
+            <>
+              <div className="flex items-center justify-between gap-3">
+                <h1 className="text-2xl font-semibold text-[#1f2430]">My Profile</h1>
+                <Link
+                  href="/shop/wishlist"
+                  aria-label="Open wishlist"
+                  className="rounded-full p-2 transition-colors hover:bg-[#f7a04b]/10"
+                >
+                  <Heart size={24} className="text-[#D5684A]" />
+                </Link>
+              </div>
 
-          {/* Details card */}
-          <div className="mt-6 flex overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f8f9fb]">
-            <div className="grid w-28 shrink-0 place-items-center bg-[#e5e7eb] sm:w-32">
-              <span className="grid h-16 w-16 place-items-center rounded-full bg-[#f7a04b] text-xl font-black text-white">
-                {initials}
-              </span>
-            </div>
-            <div className="min-w-0 flex-1 space-y-1.5 p-5">
-              <p className="truncate text-lg font-semibold text-[#1f2430]">{user.name}</p>
-              {user.phone && (
-                <p className="flex items-center gap-2 text-sm text-[#3c4150]">
-                  <Phone size={14} className="shrink-0" /> {user.phone}
-                </p>
-              )}
-              {user.email && (
-                <p className="flex items-center gap-2 truncate text-sm text-[#3c4150]">
-                  <Mail size={14} className="shrink-0" /> {user.email}
-                </p>
-              )}
-              <button
-                onClick={() => setEditing((v) => !v)}
-                className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-[#1a56db]"
-              >
-                {editing ? "Close" : "Edit profile"}
-                {editing ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              </button>
-            </div>
-          </div>
+              {/* Details card */}
+              <div className="mt-6 flex overflow-hidden rounded-lg border border-[#e5e7eb] bg-[#f8f9fb]">
+                <div className="grid w-28 shrink-0 place-items-center bg-[#e5e7eb] sm:w-32">
+                  <span className="grid h-16 w-16 place-items-center rounded-full bg-[#f7a04b] text-xl font-black text-white">
+                    {initials}
+                  </span>
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5 p-5">
+                  <p className="truncate text-lg font-semibold text-[#1f2430]">{user.name}</p>
+                  {user.phone && (
+                    <p className="flex items-center gap-2 text-sm text-[#3c4150]">
+                      <Phone size={14} className="shrink-0" /> {user.phone}
+                    </p>
+                  )}
+                  {user.email && (
+                    <p className="flex items-center gap-2 truncate text-sm text-[#3c4150]">
+                      <Mail size={14} className="shrink-0" /> {user.email}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => setEditing((v) => !v)}
+                    className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-[#1a56db]"
+                  >
+                    {editing ? "Close" : "Edit profile"}
+                    {editing ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+                  </button>
+                </div>
+              </div>
 
-          {editing && (
-            <div className="mt-5 rounded-lg border border-[#e5e7eb] bg-white p-4 md:p-5">
-              <ProfileForm user={user} onUpdated={handleUpdated} />
-            </div>
+              {editing && (
+                <div className="mt-5 rounded-lg border border-[#e5e7eb] bg-white p-4 md:p-5">
+                  <ProfileForm user={user} onUpdated={handleUpdated} />
+                </div>
+              )}
+            </>
           )}
         </section>
       </div>

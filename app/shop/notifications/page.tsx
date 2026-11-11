@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Bell, CheckCheck, MessageSquare, Package, Trash2 } from "lucide-react";
+import { Bell, CheckCheck, MessageSquare, Package, Ticket, Trash2 } from "lucide-react";
 import { useAuth } from "../auth";
 import { useShop } from "../shop-data";
 import { useNotifications } from "../notifications-store";
@@ -148,6 +148,13 @@ export default function NotificationsPage() {
       return;
     }
 
+    // ticket notification -> profile > My Tickets > that ticket's details
+    const ticketId = (n as any).ticketId;
+    if (ticketId) {
+      router.push(`/shop/profile?tab=tickets&ticket=${encodeURIComponent(String(ticketId))}`);
+      return;
+    }
+
     const orderId = notificationOrderId(n);
     if (orderId) router.push(`/shop/orders/${encodeURIComponent(orderId)}`);
   };
@@ -285,7 +292,7 @@ export default function NotificationsPage() {
           {visible.length > 0 && (
             <div className="shop-card flex flex-1 flex-col divide-y divide-[#f1e0c4] overflow-hidden">
               {pageItems.map((n) => {
-                const Icon = n.type === "REVIEW_REPLY" ? MessageSquare : notificationOrderId(n) ? Package : Bell;
+                const Icon = n.type === "REVIEW_REPLY" ? MessageSquare : String(n.type).startsWith("TICKET_") ? Ticket : notificationOrderId(n) ? Package : Bell;
 const img = notificationImage(n, productImages, orderImages);
                 return (
                   <div

@@ -652,6 +652,25 @@ export default function OrderDetails({
 
         {/* ---------- side column ---------- */}
         <div className="min-w-0 space-y-3 sm:space-y-4">
+          <button
+            type="button"
+            onClick={() => {
+              const first: any = items[0];
+              window.dispatchEvent(
+                new CustomEvent("ayendriOpenChat", {
+                  detail: {
+                    id: orderMongoId,
+                    label: `Order #${orderNo} • ${first ? itemName(first) : "Order"}`,
+                    img: first ? itemImage(first) : "",
+                  },
+                }),
+              );
+            }}
+            className="w-full rounded-full border border-[#6b1f2a] bg-white py-3 text-sm font-bold text-[#6b1f2a] transition hover:bg-[#6b1f2a] hover:text-white"
+          >
+            💬 Chat / Raise a complaint
+          </button>
+
           {addr && (
             <section className="shop-card p-3.5 text-sm sm:p-5">
               <h2 className="font-extrabold">Delivery address</h2>
