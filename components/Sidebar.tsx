@@ -56,11 +56,14 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
   // [REQUESTS] STORE er pending return / replace / refund request (badge er jonno)
   const [pendingRequests, setPendingRequests] = useState(0);
   const [pendingReviews, setPendingReviews] = useState(0);
+  const [chatUnread, setChatUnread] = useState(0);
   const [reportsOpen, setReportsOpen] = useState(false);
+  const [ticketOpen, setTicketOpen] = useState(0);
 
   const isActive = (href?: string) => {
     if (!href) return false;
     if (href === "/dashboard") return pathname === "/dashboard";
+    if (href === "/dashboard/chatbot") return pathname === href;
     return pathname === href || pathname.startsWith(href + "/");
   };
 
@@ -163,6 +166,59 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
     return () => {
       cancelled = true;
       window.removeEventListener("storeReviewsChanged", loadPendingReviews);
+      clearInterval(timer);
+    };
+  }, [role, pathname]);
+
+  useEffect(() => {
+    if (role !== "STORE") return;
+    let cancelled = false;
+
+    const loadChatUnread = async () => {
+      if (document.hidden) return;
+      try {
+        const res = await axiosInstance.get("/api/chatbot/conversations", {
+          params: { limit: 1 },
+        });
+        if (!cancelled) setChatUnread(res.data?.unreadTotal ?? 0);
+      } catch {
+        if (!cancelled) setChatUnread(0);
+      }
+    };
+
+    loadChatUnread();
+    window.addEventListener("storeChatChanged", loadChatUnread);
+    const timer = setInterval(loadChatUnread, 15000);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("storeChatChanged", loadChatUnread);
+      clearInterval(timer);
+    };
+  }, [role, pathname]);
+
+  // [TICKETS] open / in_progress ticket count (dot er jonno)
+  useEffect(() => {
+    if (role !== "STORE") return;
+    let cancelled = false;
+
+    const loadTicketOpen = async () => {
+      if (document.hidden) return;
+      try {
+        const res = await axiosInstance.get("/api/ticket/store", {
+          params: { limit: 1 },
+        });
+        if (!cancelled) setTicketOpen(res.data?.openCount ?? 0);
+      } catch {
+        if (!cancelled) setTicketOpen(0);
+      }
+    };
+
+    loadTicketOpen();
+    window.addEventListener("storeTicketsChanged", loadTicketOpen);
+    const timer = setInterval(loadTicketOpen, 20000);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("storeTicketsChanged", loadTicketOpen);
       clearInterval(timer);
     };
   }, [role, pathname]);
@@ -316,6 +372,16 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                 label: "Chatbot",
                 icon: "pi-comments",
                 href: "/dashboard/chatbot",
+              },
+              {
+                label: "Chat Inbox",
+                icon: "pi-inbox",
+                href: "/dashboard/chatbot/inbox",
+              },
+              {
+                label: "Tickets",
+                icon: "pi-ticket",
+                href: "/dashboard/tickets",
               },
               ...(deliveryEnabled
                 ? [
@@ -717,8 +783,14 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                       ? pendingRequests
                       : item.label === "Reviews"
                         ? pendingReviews
-                        : 0;
+                        : item.label === "Chat Inbox"
+                          ? chatUnread
+                          : item.label === "Tickets"
+                            ? ticketOpen
+                            : 0;
               const showBadge = badgeCount > 0;
+              const isDot =
+                item.label === "Chat Inbox" || item.label === "Tickets";
 
               return (
                 <Link
@@ -783,31 +855,49 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                       }}
                     />
 
-                    {/* Notification badge */}
-                    {showBadge && (
-                      <span
-                        style={{
-                          position: "absolute",
-                          top: -5,
-                          right: -5,
-                          minWidth: 16,
-                          height: 16,
-                          padding: "0 3px",
-                          borderRadius: 999,
-                          background: "#e53935",
-                          color: "#fff",
-                          fontSize: 9.5,
-                          fontWeight: 700,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          border: "2px solid var(--surface)",
-                          lineHeight: 1,
-                        }}
-                      >
-                        {badgeCount > 9 ? "9+" : badgeCount}
-                      </span>
-                    )}
+                    {showBadge &&
+                      (isDot ? (
+                        <span
+                          title={
+                            item.label === "Tickets"
+                              ? "Open tickets"
+                              : "New customer chats"
+                          }
+                          style={{
+                            position: "absolute",
+                            top: -3,
+                            right: -3,
+                            width: 10,
+                            height: 10,
+                            borderRadius: 999,
+                            background: "#e53935",
+                            border: "2px solid var(--surface)",
+                          }}
+                        />
+                      ) : (
+                        <span
+                          style={{
+                            position: "absolute",
+                            top: -5,
+                            right: -5,
+                            minWidth: 16,
+                            height: 16,
+                            padding: "0 3px",
+                            borderRadius: 999,
+                            background: "#e53935",
+                            color: "#fff",
+                            fontSize: 9.5,
+                            fontWeight: 700,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            border: "2px solid var(--surface)",
+                            lineHeight: 1,
+                          }}
+                        >
+                          {badgeCount > 9 ? "9+" : badgeCount}
+                        </span>
+                      ))}
                   </span>
 
                   {showLabels && (

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import "./shop.css";
 import ShopHeader from "./components/ShopHeader";
@@ -61,7 +62,9 @@ export default function ShopLayout({
       </main>
       <ShopFooter />
       <BottomNav />
-      <ChatBotWidget />
+      <Suspense fallback={null}>
+        <ChatBotWidget />
+      </Suspense>
     </div>
   );
 }
