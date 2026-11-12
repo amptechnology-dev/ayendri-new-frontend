@@ -13,6 +13,7 @@ import { Button } from "primereact/button";
 import OrderSummary, { OrderLite } from "@/components/chatbot/OrderSummary";
 
 type Status = "open" | "in_progress" | "resolved" | "closed";
+type Feedback = { rating: number; comment: string; at: string };
 type Ticket = {
   _id: string;
   ticketNo: string;
@@ -26,6 +27,9 @@ type Ticket = {
   resolvedAt?: string | null;
   orderNumber?: string;
   orderId?: string | null;
+  images?: string[];
+  createdBy?: "USER" | "STORE";
+  feedback?: Feedback | null;
 };
 type Msg = {
   _id: string;
@@ -43,6 +47,8 @@ const STATUS_OPTIONS = [
   { label: "Closed", value: "closed" },
 ];
 const FILTER_OPTIONS = [{ label: "All", value: "" }, ...STATUS_OPTIONS];
+// store ticket close korte parbe na, shudhu customer korbe
+const EDIT_OPTIONS = STATUS_OPTIONS.filter((o) => o.value !== "closed");
 
 const statusStyle: Record<Status, string> = {
   open: "bg-red-100 text-red-800",
@@ -52,6 +58,45 @@ const statusStyle: Record<Status, string> = {
 };
 const statusLabel = (s: Status) =>
   STATUS_OPTIONS.find((o) => o.value === s)?.label || s;
+
+function RatingStars({
+  rating,
+  className = "text-lg",
+}: {
+  rating: number;
+  className?: string;
+}) {
+  const r = Math.max(0, Math.min(5, Math.round(rating)));
+  return (
+    <span className={className} aria-label={`${r} out of 5`}>
+      <span className="text-amber-500">{"★".repeat(r)}</span>
+      <span className="text-gray-300">{"★".repeat(5 - r)}</span>
+    </span>
+  );
+}
+
+function ImageGrid({ images }: { images: string[] }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {images.map((src, i) => (
+        <a
+          key={`${src}-${i}`}
+          href={src}
+          target="_blank"
+          rel="noreferrer"
+          title="Open full image"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={src}
+            alt={`Attachment ${i + 1}`}
+            className="h-20 w-20 rounded-lg border object-cover transition hover:opacity-80"
+          />
+        </a>
+      ))}
+    </div>
+  );
+}
 
 export default function TicketsPage() {
   const [rows, setRows] = useState<Ticket[]>([]);
@@ -166,7 +211,7 @@ export default function TicketsPage() {
               Support Tickets
             </h2>
             <p className="text-xs text-blue-100">
-              Customer complaints raised from chat
+              Customer complaints raised from chat or by customers directly
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -238,6 +283,14 @@ export default function TicketsPage() {
             )}
           />
           <Column
+            header="By"
+            body={(r: Ticket) => (
+              <span className="text-xs text-gray-500">
+                {r.createdBy === "USER" ? "Customer" : "Support"}
+              </span>
+            )}
+          />
+          <Column
             header="Status"
             body={(r: Ticket) => (
               <span
@@ -246,6 +299,16 @@ export default function TicketsPage() {
                 {statusLabel(r.status)}
               </span>
             )}
+          />
+          <Column
+            header="Feedback"
+            body={(r: Ticket) =>
+              r.feedback ? (
+                <RatingStars rating={r.feedback.rating} className="text-sm" />
+              ) : (
+                <span className="text-xs text-gray-400">-</span>
+              )
+            }
           />
           <Column
             header="Raised"
@@ -270,8 +333,19 @@ export default function TicketsPage() {
                 <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">
                   {t.description}
                 </p>
-                <p className="mt-2 text-xs text-gray-500">
+
+                {t.images && t.images.length > 0 && (
+                  <div className="mt-3">
+                    <p className="mb-1 text-xs font-semibold uppercase text-gray-500">
+                      Customer photos ({t.images.length})
+                    </p>
+                    <ImageGrid images={t.images} />
+                  </div>
+                )}
+
+                <p className="mt-3 text-xs text-gray-500">
                   {t.customerName || "Customer"} · {t.phoneNumber}
+                  {t.createdBy === "USER" ? " · Raised by customer" : ""}
                 </p>
               </div>
 
@@ -283,78 +357,131 @@ export default function TicketsPage() {
                 </p>
               )}
 
-              <div className="grid gap-3 sm:grid-cols-[200px_1fr]">
-                <div className="space-y-1">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Status
-                  </label>
-                  <Dropdown
-                    value={form.status}
-                    options={STATUS_OPTIONS}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, status: e.value }))
-                    }
-                    className="w-full"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-sm font-semibold text-gray-700">
-                    Solution 
-                  </label>
-                  <InputTextarea
-                    className="w-full"
-                    rows={3}
-                    autoResize
-                    maxLength={2000}
-                    value={form.resolution}
-                    onChange={(e) =>
-                      setForm((p) => ({ ...p, resolution: e.target.value }))
-                    }
-                    placeholder="Please right which solution are you give in "
-                  />
-                </div>
-              </div>
+              {t.status === "closed" ? (
+                <div className="space-y-2 rounded-lg border border-green-200 bg-green-50 p-3">
+                  <p className="text-sm font-semibold text-gray-800">
+                    Closed by customer
+                  </p>
 
-              <Button
-                label={saving ? "Saving..." : "Save & notify customer"}
-                icon={saving ? "pi pi-spin pi-spinner" : "pi pi-check"}
-                onClick={save}
-                disabled={saving}
-                className="w-full"
-              />
-
-              <div>
-                <p className="mb-2 text-sm font-semibold text-gray-700">
-                  Chat history
-                </p>
-                <div className="max-h-72 space-y-2 overflow-y-auto rounded-lg border bg-gray-50 p-3">
-                  {detail!.messages.map((m) => (
-                    <div
-                      key={m._id}
-                      className={`flex ${m.role === "store" ? "justify-end" : "justify-start"}`}
-                    >
-                      <div
-                        className={`max-w-[80%] whitespace-pre-wrap break-words rounded-xl px-3 py-2 text-sm ${
-                          m.role === "store"
-                            ? "bg-blue-600 text-white"
-                            : m.role === "assistant"
-                              ? "border border-dashed border-gray-300 bg-gray-100 text-gray-600"
-                              : "border bg-white text-gray-800"
-                        }`}
-                      >
-                        <span className="mb-0.5 block text-[10px] font-semibold uppercase opacity-70">
-                          {m.role === "store"
-                            ? "Support"
-                            : m.role === "assistant"
-                              ? "Bot"
-                              : "Customer"}
+                  {t.feedback ? (
+                    <div>
+                      <p className="text-xs font-semibold uppercase text-gray-500">
+                        Customer feedback
+                      </p>
+                      <div className="mt-0.5 flex items-center gap-2">
+                        <RatingStars rating={t.feedback.rating} className="text-xl" />
+                        <span className="text-sm font-semibold text-gray-700">
+                          {t.feedback.rating}/5
                         </span>
-                        {m.content}
                       </div>
+                      {t.feedback.comment ? (
+                        <p className="mt-1 whitespace-pre-wrap rounded-md bg-white p-2 text-sm text-gray-700">
+                          {t.feedback.comment}
+                        </p>
+                      ) : (
+                        <p className="mt-1 text-xs text-gray-500">
+                          No written feedback.
+                        </p>
+                      )}
+                      <p className="mt-1 text-[11px] text-gray-500">
+                        {new Date(t.feedback.at).toLocaleString()}
+                      </p>
                     </div>
-                  ))}
+                  ) : (
+                    <p className="text-xs text-gray-500">
+                      No feedback was given.
+                    </p>
+                  )}
+
+                  {t.resolution && (
+                    <div className="border-t border-green-200 pt-2">
+                      <p className="text-xs font-semibold uppercase text-gray-500">
+                        Solution given
+                      </p>
+                      <p className="mt-0.5 whitespace-pre-wrap text-sm text-gray-700">
+                        {t.resolution}
+                      </p>
+                    </div>
+                  )}
                 </div>
-              </div>
+              ) : (
+                <>
+                  <div className="grid gap-3 sm:grid-cols-[200px_1fr]">
+                    <div className="space-y-1">
+                      <label className="text-sm font-semibold text-gray-700">
+                        Status
+                      </label>
+                      <Dropdown
+                        value={form.status}
+                        options={EDIT_OPTIONS}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, status: e.value }))
+                        }
+                        className="w-full"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-sm font-semibold text-gray-700">
+                        Solution
+                      </label>
+                      <InputTextarea
+                        className="w-full"
+                        rows={3}
+                        autoResize
+                        maxLength={2000}
+                        value={form.resolution}
+                        onChange={(e) =>
+                          setForm((p) => ({ ...p, resolution: e.target.value }))
+                        }
+                        placeholder="Write the solution you are giving to the customer"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    label={saving ? "Saving..." : "Save & notify customer"}
+                    icon={saving ? "pi pi-spin pi-spinner" : "pi pi-check"}
+                    onClick={save}
+                    disabled={saving}
+                    className="w-full"
+                  />
+                </>
+              )}
+
+              {detail!.messages.length > 0 && (
+                <div>
+                  <p className="mb-2 text-sm font-semibold text-gray-700">
+                    Chat history
+                  </p>
+                  <div className="max-h-72 space-y-2 overflow-y-auto rounded-lg border bg-gray-50 p-3">
+                    {detail!.messages.map((m) => (
+                      <div
+                        key={m._id}
+                        className={`flex ${m.role === "store" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`max-w-[80%] whitespace-pre-wrap break-words rounded-xl px-3 py-2 text-sm ${
+                            m.role === "store"
+                              ? "bg-blue-600 text-white"
+                              : m.role === "assistant"
+                                ? "border border-dashed border-gray-300 bg-gray-100 text-gray-600"
+                                : "border bg-white text-gray-800"
+                          }`}
+                        >
+                          <span className="mb-0.5 block text-[10px] font-semibold uppercase opacity-70">
+                            {m.role === "store"
+                              ? "Support"
+                              : m.role === "assistant"
+                                ? "Bot"
+                                : "Customer"}
+                          </span>
+                          {m.content}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </Dialog>
