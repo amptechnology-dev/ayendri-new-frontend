@@ -83,6 +83,21 @@ export type OrderPickupAddress = {
   country?: string;
 };
 
+// [FIRST ORDER DISCOUNT] order place er somoy er snapshot
+export type FirstOrderDiscountBreakdown = {
+  productType: "PRODUCT" | "SERVICE";
+  percent: number;
+  amount: number;
+};
+
+export type FirstOrderDiscount = {
+  // ekta type hole sei percent, product + service mix hole null (breakdown dekho)
+  percent: number | null;
+  amount: number;
+  platform?: string;
+  breakdown?: FirstOrderDiscountBreakdown[];
+};
+
 export type OrderItem = {
   _id: string;
   productId: string;
@@ -160,7 +175,7 @@ export type OrderRow = {
   totalItems: number;
   totalMrp: number;
   discount: number;
-  // totalAmount = payable (GST soho)
+  // totalAmount = payable (GST soho, first order discount baad)
   totalAmount: number;
 
   // [GST] purono order e field na-o thakte pare
@@ -184,6 +199,9 @@ export type OrderRow = {
 
   // [PICKUP] store side order details e ashe, customer API te kokhono na
   pickupAddress?: OrderPickupAddress | null;
+
+  // [FIRST ORDER DISCOUNT] purono order e na-o thakte pare
+  firstOrderDiscount?: FirstOrderDiscount | null;
 
   // ---------- payment ----------
   paymentMethod: PaymentMethod;
@@ -329,7 +347,10 @@ export const getStageLabel = (o: OrderRow): { label: string; tone: string } => {
   if (o.priceStatus === "AWAITING_QUOTE")
     return { label: "Quote needed", tone: "bg-amber-100 text-amber-800" };
   if (o.priceStatus === "QUOTED")
-    return { label: "Awaiting customer", tone: "bg-purple-100 text-purple-800" };
+    return {
+      label: "Awaiting customer",
+      tone: "bg-purple-100 text-purple-800",
+    };
   if (isPaymentPending(o))
     return { label: "Awaiting payment", tone: "bg-amber-100 text-amber-800" };
   if (!o.autoShip)

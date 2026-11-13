@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Dropdown } from "primereact/dropdown";
 import { InputSwitch } from "primereact/inputswitch";
+import { InputNumber } from "primereact/inputnumber";
+import { Button } from "primereact/button";
 import { ToastContainer, toast } from "react-toastify";
 import axiosInstance from "@/service/axios.service";
 import {
@@ -14,16 +16,28 @@ import {
 } from "@/service/storeSetting.service";
 
 type PaymentMode = "BOTH" | "ONLINE_ONLY" | "OFF";
+
+type DiscountCfg = { enabled: boolean; percent: number };
+type FirstOrderDiscountSettings = {
+  product: DiscountCfg;
+  service: DiscountCfg;
+};
+
 type Settings = {
   storeBusinessType: StoreBusinessType;
   hasDelivery: boolean;
   paymentMode: PaymentMode;
+  mobileFirstOrderDiscount: FirstOrderDiscountSettings;
 };
 
 const DEFAULT_SETTINGS: Settings = {
   storeBusinessType: "MADE_FOR_PRODUCT",
   hasDelivery: true,
   paymentMode: "BOTH",
+  mobileFirstOrderDiscount: {
+    product: { enabled: false, percent: 0 },
+    service: { enabled: false, percent: 0 },
+  },
 };
 
 const PAYMENT_OPTIONS: {
@@ -109,6 +123,12 @@ const STORE_TYPE_OPTIONS: {
     ],
   },
 ];
+
+// backend theke ashe: { product: {enabled, percent}, service: {enabled, percent} }
+const toDiscountCfg = (c: any): DiscountCfg => ({
+  enabled: c?.enabled === true,
+  percent: Number(c?.percent) || 0,
+});
 
 // ---------- ON / OFF toggle card ----------
 function SettingCard({
@@ -216,6 +236,179 @@ function SettingCard({
   );
 }
 
+// ---------- ekta type er (PRODUCT / SERVICE) discount row ----------
+function DiscountRow({
+  label,
+  icon,
+  value,
+  saving,
+  disabled,
+  onSave,
+}: {
+  label: string;
+  icon: string;
+  value: DiscountCfg;
+  saving: boolean;
+  disabled: boolean;
+  onSave: (v: DiscountCfg) => void;
+}) {
+  const [percent, setPercent] = useState<number | null>(value.percent || null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setPercent(value.percent || null);
+  }, [value.percent]);
+
+  const handleToggle = (enabled: boolean) => {
+    if (enabled && !(value.percent > 0)) {
+      setError("Save a discount percent first");
+      return;
+    }
+    setError("");
+    onSave({ enabled, percent: value.percent });
+  };
+
+  const handleSavePercent = () => {
+    if (!percent || percent < 1 || percent > 90) {
+      setError("Enter a percent between 1 and 90");
+      return;
+    }
+    setError("");
+    onSave({ enabled: value.enabled, percent });
+  };
+
+  const changed = (percent ?? 0) !== value.percent;
+
+  return (
+    <div className="rounded-lg border border-gray-200 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <i className={`pi ${icon} text-blue-600`}></i>
+          <p className="text-sm font-semibold text-gray-800">{label}</p>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${
+              value.enabled
+                ? "bg-green-100 text-green-800"
+                : "bg-gray-200 text-gray-600"
+            }`}
+          >
+            {value.enabled ? "ON" : "OFF"}
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          {saving && (
+            <i className="pi pi-spin pi-spinner text-blue-500 text-sm"></i>
+          )}
+          <InputSwitch
+            checked={value.enabled}
+            onChange={(e) => handleToggle(!!e.value)}
+            disabled={disabled}
+          />
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-end gap-2 mt-3">
+        <div>
+          <label className="text-xs font-semibold text-gray-700 block mb-1">
+            Discount percent
+          </label>
+          <InputNumber
+            value={percent}
+            onValueChange={(e) => {
+              setPercent(e.value ?? null);
+              if (error) setError("");
+            }}
+            suffix="%"
+            min={1}
+            max={90}
+            maxFractionDigits={2}
+            useGrouping={false}
+            disabled={disabled}
+            inputClassName="p-inputtext-sm w-32"
+          />
+        </div>
+        <Button
+          label="Save"
+          size="small"
+          onClick={handleSavePercent}
+          disabled={disabled || !changed}
+        />
+      </div>
+      {error && (
+        <small className="text-red-500 flex items-center gap-1 mt-1">
+          <i className="pi pi-exclamation-circle"></i>
+          {error}
+        </small>
+      )}
+    </div>
+  );
+}
+
+// ---------- Mobile first order discount (Product + Service alada) ----------
+function FirstOrderDiscountCard({
+  value,
+  savingKey,
+  disabled,
+  onSave,
+}: {
+  value: FirstOrderDiscountSettings;
+  savingKey: string | null;
+  disabled: boolean;
+  onSave: (v: FirstOrderDiscountSettings) => void;
+}) {
+  const saving = savingKey === "mobileFirstOrderDiscount";
+
+  return (
+    <div className="rounded-xl border border-blue-100 overflow-hidden">
+      <div className="flex items-center gap-3 p-3 sm:p-4 bg-blue-50/50">
+        <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
+          <i className="pi pi-percentage text-blue-600 text-lg"></i>
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-gray-800">
+            Mobile first order discount
+          </p>
+          <p className="text-xs text-gray-500 mt-0.5">
+            Separate discount for a customer's first product order and first
+            service order from the mobile app
+          </p>
+        </div>
+      </div>
+
+      <div className="p-3 sm:p-4 bg-white space-y-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <DiscountRow
+            label="Products"
+            icon="pi-box"
+            value={value.product}
+            saving={saving}
+            disabled={disabled}
+            onSave={(v) => onSave({ ...value, product: v })}
+          />
+          <DiscountRow
+            label="Services"
+            icon="pi-calendar"
+            value={value.service}
+            saving={saving}
+            disabled={disabled}
+            onSave={(v) => onSave({ ...value, service: v })}
+          />
+        </div>
+
+        <ul className="text-xs text-gray-600 space-y-1 list-disc pl-4 leading-relaxed">
+          <li>Product and service discounts are independent of each other</li>
+          <li>
+            Only on the customer's first product order and first service order
+            with your store, placed from the mobile app
+          </li>
+          <li>Applied on the items total at checkout. Not shown in the cart</li>
+          <li>Shown on the invoice. Not applied to price-on-request orders</li>
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 function StoreSettingsPage() {
   const [stores, setStores] = useState<any[]>([]);
   const [storeId, setStoreId] = useState<string | null>(null);
@@ -273,6 +466,10 @@ function StoreSettingsPage() {
         paymentMode: (["BOTH", "ONLINE_ONLY", "OFF"].includes(s.paymentMode)
           ? s.paymentMode
           : "BOTH") as PaymentMode,
+        mobileFirstOrderDiscount: {
+          product: toDiscountCfg(s.mobileFirstOrderDiscount?.product),
+          service: toDiscountCfg(s.mobileFirstOrderDiscount?.service),
+        },
       });
     } catch (err: any) {
       toast.error(err?.response?.data?.message || "Failed to fetch settings");
@@ -300,7 +497,11 @@ function StoreSettingsPage() {
     } catch (err: any) {
       setSettings((s) => ({ ...s, [key]: prev }));
       if (axios.isAxiosError(err)) {
-        toast.error(err.response?.data?.message || "Failed to update settings");
+        toast.error(
+          err.response?.data?.errors?.[0]?.message ||
+            err.response?.data?.message ||
+            "Failed to update settings",
+        );
       } else {
         toast.error("Failed to update settings");
       }
@@ -452,6 +653,14 @@ function StoreSettingsPage() {
                   "Courier shipment options are hidden",
                 ]}
                 note="This applies to new orders. Orders already placed keep the delivery details they were created with."
+              />
+
+              {/* Mobile first order discount */}
+              <FirstOrderDiscountCard
+                value={settings.mobileFirstOrderDiscount}
+                savingKey={savingKey}
+                disabled={busy}
+                onSave={(v) => save("mobileFirstOrderDiscount", v)}
               />
 
               {/* Store type */}

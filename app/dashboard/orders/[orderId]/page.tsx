@@ -325,9 +325,6 @@ const copyText = async (text: string) => {
   }
 };
 
-// ===============================================================
-// Price summary
-// ===============================================================
 function PriceSummary({ order }: { order: OrderRow }) {
   const items = (order.items || []) as any[];
   const hasPending = items.some((i) => i.priceOnRequest && i.lineTotal == null);
@@ -339,6 +336,29 @@ function PriceSummary({ order }: { order: OrderRow }) {
     { label: "IGST", value: order.totalIgst },
   ].filter((r) => Number(r.value) > 0);
   const hasGst = gstRows.length > 0;
+
+  // [FIRST ORDER DISCOUNT] product / service alada row, na thakle (purono data) ekta row
+  const fod = order.firstOrderDiscount;
+  const fodRows =
+    fod && Number(fod.amount) > 0
+      ? fod.breakdown?.length
+        ? fod.breakdown.map((b) => ({
+            key: b.productType,
+            label: `First order discount - ${
+              b.productType === "SERVICE" ? "Services" : "Products"
+            } (${b.percent}%)`,
+            amount: b.amount,
+          }))
+        : [
+            {
+              key: "ALL",
+              label: fod.percent
+                ? `First order discount (${fod.percent}%)`
+                : "First order discount",
+              amount: fod.amount,
+            },
+          ]
+      : [];
 
   return (
     <SectionCard icon="pi-receipt" title="Price Summary">
@@ -368,6 +388,12 @@ function PriceSummary({ order }: { order: OrderRow }) {
         {Number(order.shippingCharge || 0) > 0 && (
           <KV label="Shipping">{money(order.shippingCharge)}</KV>
         )}
+
+        {fodRows.map((r) => (
+          <KV key={r.key} label={r.label}>
+            <span className="text-green-700">- {money(r.amount)}</span>
+          </KV>
+        ))}
       </div>
 
       <div className="mt-3 flex items-center justify-between rounded-lg bg-gradient-to-r from-blue-600 to-blue-700 px-3.5 py-2.5 text-white">

@@ -11,6 +11,10 @@ export type StoreSettings = {
   paymentFirst?: boolean;
   paymentMode?: PaymentMode;
   storeBusinessType?: StoreBusinessType;
+  mobileFirstOrderDiscount?: {
+    product: { enabled: boolean; percent: number };
+    service: { enabled: boolean; percent: number };
+  };
 };
 
 // backend er resolveBusinessType er mirror (purono store e storeBusinessType na-o thakte pare)
