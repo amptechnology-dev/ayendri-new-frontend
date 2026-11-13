@@ -5,6 +5,7 @@ import { useShop } from "../shop-data";
 import { useAuth } from "../auth";
 import { fetchMyOrders } from "../api";
 import { rawOrderItems, itemImage } from "../order-items";
+import { NewTicketForm } from "./MyTickets"; // adjust the path to wherever MyTickets.tsx lives
 
 // NEXT_PUBLIC_API_URL e jodi already "/api" thake, tahole path theke "/api" soriye nin
 const API = process.env.NEXT_PUBLIC_API_URL;
@@ -21,7 +22,8 @@ type PickedOrder = { id: string; label: string; img: string };
 
 const orderInfo = (o: any): PickedOrder => {
   const first: any = rawOrderItems(o)[0] ?? o.product;
-  const name = first?.name ?? first?.product?.name ?? first?.productName ?? "Order";
+  const name =
+    first?.name ?? first?.product?.name ?? first?.productName ?? "Order";
   const no = o.orderNumber ?? String(o._id).slice(-6);
   return {
     id: String(o._id),
@@ -32,7 +34,12 @@ const orderInfo = (o: any): PickedOrder => {
 
 type Role = "user" | "assistant" | "store";
 type Mode = "bot" | "human";
-type Msg = { id: string; role: Role; content: string };
+type Msg = {
+  id: string;
+  role: Role;
+  content: string;
+  canRaiseTicket?: boolean;
+};
 type UserInfo = { name: string; phoneNumber: string };
 
 const INITIAL_MESSAGES: Msg[] = [
@@ -87,6 +94,7 @@ const normalizeHistory = (raw: any): Msg[] => {
         id: item?._id || `history-${i}`,
         role: (r === "user" || r === "store" ? r : "assistant") as Role,
         content,
+        canRaiseTicket: !!item?.canRaiseTicket,
       };
     })
     .filter(Boolean) as Msg[];
@@ -155,6 +163,16 @@ const IconSend = ({ className }: { className?: string }) => (
     <path d="m22 2-7 20-4-9-9-4zM22 2 11 13" />
   </Svg>
 );
+const IconExpand = ({ className }: { className?: string }) => (
+  <Svg className={className}>
+    <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+  </Svg>
+);
+const IconShrink = ({ className }: { className?: string }) => (
+  <Svg className={className}>
+    <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7" />
+  </Svg>
+);
 const Spinner = ({ className = "h-3.5 w-3.5" }: { className?: string }) => (
   <svg className={`animate-spin ${className}`} viewBox="0 0 24 24" fill="none">
     <circle
@@ -181,6 +199,15 @@ export default function ChatBotWidget() {
   const storeId = storeMongoId || undefined;
 
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    if (!expanded) return;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [expanded]);
   const [messages, setMessages] = useState<Msg[]>(INITIAL_MESSAGES);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -199,6 +226,8 @@ export default function ChatBotWidget() {
   const [mode, setMode] = useState<Mode>("bot");
   const [agentRequested, setAgentRequested] = useState(false);
   const [requesting, setRequesting] = useState(false);
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [ticketDone, setTicketDone] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
   const didInitialScroll = useRef(false);
   const cursorRef = useRef<string | null>(null);
@@ -206,6 +235,12 @@ export default function ChatBotWidget() {
   const canSend = useMemo(
     () => Boolean(input.trim()) && !loading,
     [input, loading],
+  );
+
+  // only the most recent bot offer shows the button (the backend unlocks one ticket per chat)
+  const lastTicketMsgId = useMemo(
+    () => [...messages].reverse().find((m) => m.canRaiseTicket)?.id,
+    [messages],
   );
 
   // shop data load na thakle load kore nao (already loaded hole kichu kore na)
@@ -233,7 +268,7 @@ export default function ChatBotWidget() {
     if (open && bootstrapped && !userInfo) setShowForm(true);
   }, [open, bootstrapped, userInfo]);
 
-    const loadOrders = () => {
+  const loadOrders = () => {
     setOrderStep(true);
     setOrdersLoading(true);
     fetchMyOrders()
@@ -270,7 +305,7 @@ export default function ChatBotWidget() {
   // "Chat" button on the order page: fresh chat with that order preselected
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const o = (e as CustomEvent<PickedOrder>).detail;
+      const o = (e as CustomEvent<PickedOrder & { expand?: boolean }>).detail;
       if (!o?.id) return;
       const sid = generateSessionId();
       try {
@@ -284,6 +319,8 @@ export default function ChatBotWidget() {
       setOrderStep(false);
       setMode("bot");
       setAgentRequested(false);
+      setShowTicketForm(false);
+      setTicketDone(false);
       setMessages([
         ...INITIAL_MESSAGES,
         {
@@ -292,6 +329,7 @@ export default function ChatBotWidget() {
           content: `Got it, we'll help you with ${o.label}. Please tell us what went wrong, or tap "Talk to Customer Service" to raise a complaint.`,
         },
       ]);
+      setExpanded(!!o.expand);
       setOpen(true);
     };
     window.addEventListener("ayendriOpenChat", onOpen);
@@ -382,10 +420,13 @@ export default function ChatBotWidget() {
   }, [messages, open, historyLoading]);
 
   // khali/undefined content kokhono add hobe na
-  const append = (role: Role, content?: string) => {
+  const append = (role: Role, content?: string, canRaiseTicket = false) => {
     const text = String(content ?? "").trim();
     if (!text) return;
-    setMessages((cur) => [...cur, { id: makeId(role), role, content: text }]);
+    setMessages((cur) => [
+      ...cur,
+      { id: makeId(role), role, content: text, canRaiseTicket },
+    ]);
   };
 
   const chooseOrder = (o: PickedOrder) => {
@@ -394,7 +435,10 @@ export default function ChatBotWidget() {
     } catch {}
     setPickedOrder(o);
     setOrderStep(false);
-    append("assistant", `Got it, we'll help you with ${o.label}. Please tell us what went wrong.`);
+    append(
+      "assistant",
+      `Got it, we'll help you with ${o.label}. Please tell us what went wrong.`,
+    );
   };
 
   const skipOrder = () => {
@@ -444,7 +488,7 @@ export default function ChatBotWidget() {
       if (json.data?.source !== "human") {
         const reply = json.data?.reply;
         if (!reply) throw new Error("Bot response failed");
-        append("assistant", reply);
+        append("assistant", reply, !!json.data?.canRaiseTicket);
       }
     } catch (e: any) {
       append(
@@ -534,6 +578,8 @@ export default function ChatBotWidget() {
     setMode("bot");
     setPickedOrder(null);
     setOrderStep(false);
+    setShowTicketForm(false);
+    setTicketDone(false);
     if (!userInfo) setShowForm(true);
   };
 
@@ -561,8 +607,20 @@ export default function ChatBotWidget() {
 
       {/* Chat panel */}
       {open && (
-        <div className="fixed inset-x-3 bottom-24 z-50 md:inset-x-auto md:bottom-8 md:right-8 md:w-[340px]">
-          <div className="overflow-hidden rounded-2xl border border-white/50 bg-white/70 shadow-[0_20px_50px_rgba(0,0,0,0.15)] backdrop-blur-xl">
+        <div
+          className={
+            expanded
+              ? "fixed inset-0 z-[60] bg-[#fbf6ef]"
+              : "fixed inset-x-3 bottom-24 z-50 md:inset-x-auto md:bottom-8 md:right-8 md:w-[340px]"
+          }
+        >
+          <div
+            className={`overflow-hidden border border-white/50 bg-white/70 backdrop-blur-xl ${
+              expanded
+                ? "mx-auto flex h-full max-w-4xl flex-col md:border-x"
+                : "rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.15)]"
+            }`}
+          >
             {/* Header */}
             <div className="flex items-center justify-between border-b border-black/5 bg-white/40 px-4 py-2.5">
               <div className="flex items-center gap-2">
@@ -578,6 +636,21 @@ export default function ChatBotWidget() {
                 </p>
               </div>
               <div className="flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => setExpanded((v) => !v)}
+                  title={expanded ? "Minimize" : "Full screen"}
+                  aria-label={
+                    expanded ? "Minimize chat" : "Open chat full screen"
+                  }
+                  className={iconBtn}
+                >
+                  {expanded ? (
+                    <IconShrink className="h-3.5 w-3.5" />
+                  ) : (
+                    <IconExpand className="h-3.5 w-3.5" />
+                  )}
+                </button>
                 <button
                   type="button"
                   onClick={startFreshChat}
@@ -598,7 +671,10 @@ export default function ChatBotWidget() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false);
+                    setExpanded(false);
+                  }}
                   title="Close"
                   aria-label="Close chat"
                   className={iconBtn}
@@ -609,7 +685,11 @@ export default function ChatBotWidget() {
             </div>
 
             {/* Body */}
-            <div className="relative flex h-[min(54vh,420px)] flex-col">
+            <div
+              className={`relative flex flex-col ${
+                expanded ? "min-h-0 flex-1" : "h-[min(54vh,420px)]"
+              }`}
+            >
               {showForm && (
                 <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/60 px-5 backdrop-blur-md">
                   <form
@@ -679,10 +759,14 @@ export default function ChatBotWidget() {
                   </p>
                   <div className="mt-2 flex-1 space-y-2 overflow-y-auto">
                     {ordersLoading && (
-                      <p className="text-[12px] text-neutral-500">Loading your orders…</p>
+                      <p className="text-[12px] text-neutral-500">
+                        Loading your orders…
+                      </p>
                     )}
                     {!ordersLoading && orders.length === 0 && (
-                      <p className="text-[12px] text-neutral-500">No orders found.</p>
+                      <p className="text-[12px] text-neutral-500">
+                        No orders found.
+                      </p>
                     )}
                     {orders.map((o) => (
                       <button
@@ -693,11 +777,17 @@ export default function ChatBotWidget() {
                       >
                         {o.img ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img src={o.img} alt="" className="h-10 w-10 shrink-0 rounded object-cover" />
+                          <img
+                            src={o.img}
+                            alt=""
+                            className="h-10 w-10 shrink-0 rounded object-cover"
+                          />
                         ) : (
                           <div className="h-10 w-10 shrink-0 rounded bg-neutral-100" />
                         )}
-                        <span className="min-w-0 flex-1 truncate text-[12px] text-neutral-800">{o.label}</span>
+                        <span className="min-w-0 flex-1 truncate text-[12px] text-neutral-800">
+                          {o.label}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -708,6 +798,27 @@ export default function ChatBotWidget() {
                   >
                     My issue is not about an order
                   </button>
+                </div>
+              )}
+
+              {showTicketForm && token && (
+                <div className="absolute inset-0 z-30 overflow-y-auto bg-white/95 px-3 py-3 backdrop-blur-md">
+                  <NewTicketForm
+                    token={token}
+                    sessionId={sessionId}
+                    initialOrderId={pickedOrder?.id}
+                    backLabel="← Back to chat"
+                    onCancel={() => setShowTicketForm(false)}
+                    onCreated={() => {
+                      setShowTicketForm(false);
+                      setTicketDone(true);
+                      append(
+                        "assistant",
+                        "Your ticket has been raised. Our team will update you in My Tickets. 🙏",
+                      );
+                      window.dispatchEvent(new Event("ayendriTicketsChanged"));
+                    }}
+                  />
                 </div>
               )}
 
@@ -741,7 +852,11 @@ export default function ChatBotWidget() {
                         className={`flex ${isUser ? "justify-end" : "justify-start"}`}
                       >
                         <div
-                          className={`max-w-[85%] whitespace-pre-wrap rounded-xl px-3 py-2 text-[13px] leading-5 ${
+                          className={`whitespace-pre-wrap rounded-xl px-3 py-2 ${
+                            expanded
+                              ? "max-w-[75%] text-[15px] leading-6"
+                              : "max-w-[85%] text-[13px] leading-5"
+                          } ${
                             isUser
                               ? "rounded-br-sm bg-[#6b1f2a] text-white"
                               : isStore
@@ -757,6 +872,19 @@ export default function ChatBotWidget() {
                           {m.role === "assistant"
                             ? text.replace(/\*\*/g, "")
                             : text}
+                          {m.role === "assistant" &&
+                            m.canRaiseTicket &&
+                            m.id === lastTicketMsgId &&
+                            !ticketDone &&
+                            token && (
+                              <button
+                                type="button"
+                                onClick={() => setShowTicketForm(true)}
+                                className="mt-2 block rounded-lg bg-[#6b1f2a] px-3 py-1.5 text-[12px] font-semibold text-white transition hover:bg-[#561922]"
+                              >
+                                🎫 Raise a ticket
+                              </button>
+                            )}
                         </div>
                       </div>
                     </div>
@@ -810,7 +938,11 @@ export default function ChatBotWidget() {
                 {pickedOrder && (
                   <p className="mb-2 truncate rounded-lg bg-[#fff8e6] px-2 py-1 text-[11px] text-[#6b1f2a]">
                     Regarding: {pickedOrder.label}{" "}
-                    <button type="button" onClick={loadOrders} className="font-semibold underline">
+                    <button
+                      type="button"
+                      onClick={loadOrders}
+                      className="font-semibold underline"
+                    >
                       Change
                     </button>
                   </p>
@@ -824,7 +956,9 @@ export default function ChatBotWidget() {
                         key={c.id}
                         type="button"
                         onClick={() =>
-                          c.id === "order" && token ? loadOrders() : sendMessage(c.query)
+                          c.id === "order" && token
+                            ? loadOrders()
+                            : sendMessage(c.query)
                         }
                         disabled={loading}
                         className="shrink-0 rounded-full border border-neutral-300/70 bg-white/50 px-2.5 py-1 text-[11px] text-neutral-600 transition hover:border-[#6b1f2a]/50 hover:text-[#6b1f2a] disabled:cursor-not-allowed disabled:opacity-50"

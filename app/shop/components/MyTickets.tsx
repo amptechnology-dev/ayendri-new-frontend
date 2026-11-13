@@ -93,18 +93,24 @@ function Stars({
 const MAX_IMAGES = 5;
 const MAX_MB = 5;
 
-function NewTicketForm({
+export function NewTicketForm({
   token,
   onCancel,
   onCreated,
+  initialOrderId,
+  sessionId,
+  backLabel = "← Back to My Tickets",
 }: {
   token: string;
   onCancel: () => void;
   onCreated: () => void;
+  initialOrderId?: string;
+  sessionId?: string;
+  backLabel?: string;
 }) {
   const [orders, setOrders] = useState<OrderOpt[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
-  const [orderId, setOrderId] = useState("");
+  const [orderId, setOrderId] = useState(initialOrderId ?? "");
   const [subject, setSubject] = useState("");
   const [description, setDescription] = useState("");
   const [files, setFiles] = useState<File[]>([]);
@@ -170,6 +176,7 @@ function NewTicketForm({
     try {
       const fd = new FormData();
       fd.append("orderId", orderId);
+      if (sessionId) fd.append("sessionId", sessionId);
       fd.append("subject", subject.trim());
       fd.append("description", description.trim());
       files.forEach((f) => fd.append("images", f));
@@ -203,7 +210,7 @@ function NewTicketForm({
         onClick={onCancel}
         className="text-sm font-medium text-[#6b1f2a] hover:underline"
       >
-        ← Back to My Tickets
+        {backLabel}
       </button>
 
       <div className="space-y-3 rounded-xl border border-[#f2b632]/40 bg-white p-4 shadow-sm">
@@ -838,21 +845,15 @@ export default function MyTickets({
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <h2 className="text-lg font-bold text-[#6b1f2a]">My Tickets</h2>
-        <button
-          type="button"
-          onClick={() => setView("new")}
-          className="rounded-lg bg-[#6b1f2a] px-3 py-1.5 text-sm font-semibold text-white"
-        >
-          + New Ticket
-        </button>
+
       </div>
 
       {loading && <p className="text-sm text-neutral-500">Loading...</p>}
       {error && <p className="text-sm text-red-600">{error}</p>}
       {!loading && !error && tickets.length === 0 && (
         <div className="rounded-xl border border-dashed p-8 text-center text-sm text-neutral-500">
-          No tickets yet. If you have a complaint, tap &quot;New Ticket&quot; to
-          raise one.
+          No tickets yet. If our assistant can&apos;t solve your issue, it will
+          help you raise one.
         </div>
       )}
 

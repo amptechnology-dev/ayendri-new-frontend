@@ -659,7 +659,8 @@ export default function OrderDetails({
               window.dispatchEvent(
                 new CustomEvent("ayendriOpenChat", {
                   detail: {
-                    id: orderMongoId,
+                    expand: true,
+id: orderMongoId,
                     label: `Order #${orderNo} • ${first ? itemName(first) : "Order"}`,
                     img: first ? itemImage(first) : "",
                   },
@@ -668,7 +669,7 @@ export default function OrderDetails({
             }}
             className="w-full rounded-full border border-[#6b1f2a] bg-white py-3 text-sm font-bold text-[#6b1f2a] transition hover:bg-[#6b1f2a] hover:text-white"
           >
-            💬 Chat / Raise a complaint
+            💬 Chat with us
           </button>
 
           {addr && (

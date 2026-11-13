@@ -167,11 +167,11 @@ function LoginForm() {
               id="phone"
               type="tel"
               inputMode="numeric"
-              autoComplete="tel-national"
+              autoComplete="tel"
               placeholder="Enter your 10-digit mobile number"
               value={phone}
               onChange={(e) =>
-                setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+                setPhone(e.target.value.replace(/\D/g, ""))
               }
               className={inputCls}
               maxLength={10}
