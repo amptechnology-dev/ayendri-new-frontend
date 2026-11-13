@@ -1485,8 +1485,18 @@ function ProductTypeSelector({
   return (
     <div className="space-y-1.5">
       <div className="flex flex-col sm:flex-row gap-2">
-        {btn("PRODUCT", "Product", "Physical item, delivered to the customer", "pi-box")}
-        {btn("SERVICE", "Service", "Customer picks a booking date", "pi-calendar")}
+        {btn(
+          "PRODUCT",
+          "Product",
+          "Physical item, delivered to the customer",
+          "pi-box",
+        )}
+        {btn(
+          "SERVICE",
+          "Service",
+          "Customer picks a booking date",
+          "pi-calendar",
+        )}
       </div>
       <p className="text-[11px] text-gray-500">
         {value === "SERVICE"
@@ -1715,6 +1725,12 @@ function PaymentModeBlock({ storeId }: { storeId?: string | null }) {
 // ===============================================================
 function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // [OTP] update-er jonno
+  const [otpOpen, setOtpOpen] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [otpSending, setOtpSending] = useState(false);
+  const pendingDataRef = useRef<ProductFormData | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [productCode, setProductCode] = useState<string>("");
   const [currentStockInfo, setCurrentStockInfo] = useState<number | null>(null);
@@ -2580,13 +2596,47 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
     toast.error(firstErrorMessage(errs) || "Please check the form fields");
   };
 
+  // ---------- [OTP] ----------
+  const sendUpdateOtp = async () => {
+    try {
+      setOtpSending(true);
+      const res = await axiosInstance.post("/api/product/send-otp");
+      toast.success(res.data?.message || "OTP sent");
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message || "Failed to send OTP");
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
   const onSubmit = async (data: ProductFormData) => {
     const validationError = validateForm();
     if (validationError) {
       toast.error(validationError);
       return;
     }
+    // [OTP] edit hole age OTP verify
+    if (isEditMode) {
+      pendingDataRef.current = data;
+      setOtp("");
+      setOtpOpen(true);
+      await sendUpdateOtp();
+      return;
+    }
+    await saveProduct(data);
+  };
 
+  const confirmOtpAndSave = async () => {
+    const data = pendingDataRef.current;
+    if (!data) return;
+    if (!otp.trim()) {
+      toast.error("Enter the OTP");
+      return;
+    }
+    await saveProduct(data, otp.trim());
+  };
+
+  const saveProduct = async (data: ProductFormData, otpCode?: string) => {
     setIsSubmitting(true);
     try {
       const url = isEditMode
@@ -2594,6 +2644,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
         : `/api/product/create-product`;
 
       const formData = new FormData();
+      if (otpCode) formData.append("otp", otpCode);
       formData.append("name", data.name || "");
       formData.append("description", data.description || "");
       formData.append("unit", data.unit || "");
@@ -2794,6 +2845,8 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       setColorImages({});
       setCustomPickup(false);
       setPickup(EMPTY_PICKUP);
+      setOtpOpen(false);
+      window.dispatchEvent(new Event("storeProductsChanged"));
       onSuccess();
     } catch (error: any) {
       const apiErrors = error.response?.data?.errors;
@@ -3062,10 +3115,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
               stockEnabled ? "sm:grid-cols-5" : "sm:grid-cols-3"
             }`}
           >
-            <Field
-              label="MRP"
-              hint="Original price (optional)"
-            >
+            <Field label="MRP" hint="Original price (optional)">
               <Controller
                 name="mrp"
                 control={control}
@@ -3086,10 +3136,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
               />
             </Field>
 
-            <Field
-              label="Selling price"
-              hint="Leave empty to quote later"
-            >
+            <Field label="Selling price" hint="Leave empty to quote later">
               <Controller
                 name="offerPrice"
                 control={control}
@@ -3271,9 +3318,7 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
           <GstFieldsBlock
             control={control}
             basePath="gst"
-            title={
-              hasVariants ? "GST rates (all variants)" : "GST rates"
-            }
+            title={hasVariants ? "GST rates (all variants)" : "GST rates"}
             hint={
               hasVariants
                 ? "Applies to all variants. To use a different GST for a color or size, set a GST override on that variant."
@@ -3530,6 +3575,52 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                 onClick={closeCamera}
               />
             </div>
+          </div>
+        </div>
+      </Dialog>
+
+      {/* OTP DIALOG (update confirm) */}
+      <Dialog
+        header="Verify OTP to update"
+        visible={otpOpen}
+        onHide={() => !isSubmitting && setOtpOpen(false)}
+        style={{ width: "min(92vw, 420px)" }}
+        modal
+        draggable={false}
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-gray-600">
+            Enter the OTP sent to your registered mobile number to save changes.
+          </p>
+          <InputText
+            className="w-full"
+            value={otp}
+            onChange={(e) =>
+              setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))
+            }
+            inputMode="numeric"
+            placeholder="Enter OTP"
+            autoFocus
+          />
+          <div className="flex items-center justify-between gap-2">
+            <Button
+              type="button"
+              label="Resend OTP"
+              icon="pi pi-refresh"
+              size="small"
+              outlined
+              loading={otpSending}
+              disabled={isSubmitting}
+              onClick={sendUpdateOtp}
+            />
+            <Button
+              type="button"
+              label={isSubmitting ? "Saving..." : "Verify & Update"}
+              icon="pi pi-check"
+              loading={isSubmitting}
+              disabled={!otp.trim()}
+              onClick={confirmOtpAndSave}
+            />
           </div>
         </div>
       </Dialog>

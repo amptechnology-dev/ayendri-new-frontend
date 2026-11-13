@@ -108,7 +108,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, role }) => {
           ? "Store"
           : "Cashier";
 
-  const pageTitle = "Amp Product Management System";
+  const pageTitle = "Ayendri Admin Panel";
 
   const toggleSidebar = () => {
     try {
@@ -171,7 +171,7 @@ const Navbar: React.FC<NavbarProps> = ({ user, role }) => {
           </h1>
           {!isMobile && (
             <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
-              Welcome back, manage Amp Product operations
+              Welcome back, manage Ayendri Product operations
             </p>
           )}
         </div>

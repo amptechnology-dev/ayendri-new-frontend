@@ -59,6 +59,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
   const [chatUnread, setChatUnread] = useState(0);
   const [reportsOpen, setReportsOpen] = useState(false);
   const [ticketOpen, setTicketOpen] = useState(0);
+  const [unverifiedCount, setUnverifiedCount] = useState(0);
 
   const isActive = (href?: string) => {
     if (!href) return false;
@@ -75,6 +76,30 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
       setReportsOpen(true);
     }
   }, [pathname]);
+
+  // [UNVERIFIED] verify baki product count
+  useEffect(() => {
+    if (role !== "STORE") return;
+    let cancelled = false;
+
+    const loadUnverified = async () => {
+      try {
+        const res = await axiosInstance.get("/api/product/all-products", {
+          params: { verified: "false", limit: 1 },
+        });
+        if (!cancelled) setUnverifiedCount(res.data?.totalProducts ?? 0);
+      } catch {
+        if (!cancelled) setUnverifiedCount(0);
+      }
+    };
+
+    loadUnverified();
+    window.addEventListener("storeProductsChanged", loadUnverified);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("storeProductsChanged", loadUnverified);
+    };
+  }, [role, pathname]);
 
   // [STOCK] store settings theke stock management on/off load
   useEffect(() => {
@@ -337,6 +362,11 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                 icon: "pi-box",
                 href: "/dashboard/products",
               },
+              {
+                label: "Unverified Products",
+                icon: "pi-exclamation-circle",
+                href: "/dashboard/unverified-products",
+              },
               // [STOCK] stock management off thakle ei menu dekhabe na
               ...(stockEnabled
                 ? [
@@ -490,7 +520,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
         }}
       >
         <img
-          src="/img/photos/amp-logo.png"
+          src="/img/photos/ayendri.png"
           alt="AMP Technology"
           style={{
             width: 36,
@@ -515,7 +545,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                 lineHeight: 1.2,
               }}
             >
-              AMP Technology
+              Ayendri
             </h2>
             <p
               style={{
@@ -526,7 +556,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                 color: "var(--muted)",
               }}
             >
-              Dashboard Panel
+              Admin Panel
             </p>
           </div>
         )}
@@ -781,13 +811,15 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
                     ? orderUnreadCount
                     : item.label === "Returns & Refunds"
                       ? pendingRequests
-                      : item.label === "Reviews"
-                        ? pendingReviews
-                        : item.label === "Chat Inbox"
-                          ? chatUnread
-                          : item.label === "Tickets"
-                            ? ticketOpen
-                            : 0;
+                      : item.label === "Unverified Products"
+                        ? unverifiedCount
+                        : item.label === "Reviews"
+                          ? pendingReviews
+                          : item.label === "Chat Inbox"
+                            ? chatUnread
+                            : item.label === "Tickets"
+                              ? ticketOpen
+                              : 0;
               const showBadge = badgeCount > 0;
               const isDot =
                 item.label === "Chat Inbox" || item.label === "Tickets";

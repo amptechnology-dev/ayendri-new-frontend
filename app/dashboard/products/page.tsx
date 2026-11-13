@@ -670,9 +670,7 @@ function PreviewBody({
                   <th className="text-left px-3 py-2">Variant</th>
                   <th className="text-left px-3 py-2">MRP</th>
                   <th className="text-left px-3 py-2">Offer</th>
-                  {showStock && (
-                    <th className="text-left px-3 py-2">Stock</th>
-                  )}
+                  {showStock && <th className="text-left px-3 py-2">Stock</th>}
                 </tr>
               </thead>
               <tbody>
@@ -714,10 +712,7 @@ function PreviewBody({
                     {/* [TIER] variant er quantity pricing */}
                     {u.tiers && u.tiers.length > 0 && (
                       <tr>
-                        <td
-                          colSpan={showStock ? 4 : 3}
-                          className="px-3 pb-2"
-                        >
+                        <td colSpan={showStock ? 4 : 3} className="px-3 pb-2">
                           <TierChips tiers={u.tiers} />
                         </td>
                       </tr>
@@ -770,6 +765,7 @@ function Page() {
         params: {
           page: pagination.page,
           limit: pagination.rows,
+          verified: "true",
           ...(search ? { search } : {}),
         },
       });
@@ -822,7 +818,11 @@ function Page() {
   const handleFormSuccess = () => {
     const wasCreate = !editProductId;
     closeForm();
-    // notun product e newest first, tai page 1 e niye jai
+    if (wasCreate) {
+      toast.info(
+        "Product saved. Verify it from Unverified Products to publish.",
+      );
+    }
     if (wasCreate && pagination.page !== 1) {
       setPagination((prev) => ({ ...prev, page: 1 }));
     } else {
