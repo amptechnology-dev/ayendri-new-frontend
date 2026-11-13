@@ -81,6 +81,8 @@ type FormState = {
   internationalFallbackCharge: number | null;
   handlingValue: number | null;
   handlingUnit: DurationUnit;
+  bookingCutoffTime: string;
+  blockedDates: string[];
 };
 
 type RuleKind = "productRules" | "serviceRules";
@@ -93,6 +95,26 @@ const UNIT_OPTIONS: { value: DurationUnit; label: string }[] = [
 
 const RADIUS_PRESETS = [5, 10, 20, 50, 100];
 const PINCODE_REGEX = /^[1-9][0-9]{5}$/;
+
+const TIME_REGEX = /^([01]\d|2[0-3]):[0-5]\d$/;
+const DEFAULT_CUTOFF = "16:00";
+
+const todayYmdIST = () =>
+  new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+const cutoffLabel = (t: string) => {
+  if (!TIME_REGEX.test(t)) return "-";
+  const [h, m] = t.split(":").map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h >= 12 ? "PM" : "AM"}`;
+};
+
+const fmtYmd = (ymd: string) =>
+  new Date(`${ymd}T00:00:00.000Z`).toLocaleDateString("en-IN", {
+    timeZone: "UTC",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
@@ -129,6 +151,8 @@ const makeDefaultForm = (): FormState => ({
   internationalFallbackCharge: 0,
   handlingValue: 1,
   handlingUnit: "DAYS",
+  bookingCutoffTime: DEFAULT_CUTOFF,
+  blockedDates: [],
 });
 
 const errMsg = (err: any, fallback: string) =>
@@ -399,6 +423,123 @@ function RuleSection({
   );
 }
 
+// ---------- [BOOKING] cutoff time + blocked date ----------
+function BookingRulesSection({
+  cutoffTime,
+  blockedDates,
+  errors,
+  onCutoff,
+  onAddDate,
+  onRemoveDate,
+}: {
+  cutoffTime: string;
+  blockedDates: string[];
+  errors: Record<string, string>;
+  onCutoff: (v: string) => void;
+  onAddDate: (ymd: string) => void;
+  onRemoveDate: (ymd: string) => void;
+}) {
+  const [pick, setPick] = useState("");
+  const today = todayYmdIST();
+
+  const add = () => {
+    if (!pick) return;
+    if (pick < today) {
+      toast.error("Blocked date must be today or a future date");
+      return;
+    }
+    if (blockedDates.includes(pick)) {
+      toast.info("This date is already blocked");
+      return;
+    }
+    onAddDate(pick);
+    setPick("");
+  };
+
+  return (
+    <div className="border border-purple-200 bg-purple-50/30 rounded-lg p-3 space-y-3">
+      <p className="text-sm font-semibold text-gray-700">
+        <i className="pi pi-calendar-clock text-purple-600 mr-1.5"></i>
+        Service booking rules
+      </p>
+
+      <div>
+        <label className="text-sm font-semibold text-gray-700 block mb-1">
+          Same-day booking closes at
+        </label>
+        <input
+          type="time"
+          value={cutoffTime}
+          onChange={(e) => onCutoff(e.target.value)}
+          className={`border rounded-md px-2 py-1.5 bg-white text-sm ${
+            errors.bookingCutoffTime ? "border-red-400" : ""
+          }`}
+        />
+        <FieldError msg={errors.bookingCutoffTime} />
+        <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
+          Before {cutoffLabel(cutoffTime)} customers can book for today. After
+          that, the earliest booking is tomorrow. A booking can be cancelled
+          (and refunded) only until {cutoffLabel(cutoffTime)} on the day before
+          the booking date. Set 12:00 AM to stop same-day bookings completely.
+        </p>
+      </div>
+
+      <div>
+        <label className="text-sm font-semibold text-gray-700 block mb-1">
+          Dates with no bookings
+        </label>
+        <div className="flex flex-wrap gap-2">
+          <input
+            type="date"
+            min={today}
+            value={pick}
+            onChange={(e) => setPick(e.target.value)}
+            className="border rounded-md px-2 py-1.5 bg-white text-sm"
+          />
+          <Button
+            label="Block date"
+            icon="pi pi-plus"
+            outlined
+            size="small"
+            disabled={!pick}
+            onClick={add}
+          />
+        </div>
+        <FieldError msg={errors.blockedBookingDates} />
+
+        {blockedDates.length > 0 ? (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {blockedDates.map((d) => (
+              <span
+                key={d}
+                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs bg-white border border-purple-200 text-purple-800"
+              >
+                {fmtYmd(d)}
+                <button
+                  type="button"
+                  onClick={() => onRemoveDate(d)}
+                  aria-label={`Unblock ${d}`}
+                  className="hover:text-red-600"
+                >
+                  <i className="pi pi-times text-[10px]" />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : (
+          <p className="text-[11px] text-gray-400 mt-2">No blocked dates.</p>
+        )}
+
+        <p className="text-[11px] text-gray-500 mt-2 leading-relaxed">
+          Customers cannot book any service of your store on these dates, and
+          the dates are not shown in the booking calendar. Only today or future
+          dates can be blocked; past dates are removed automatically.
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function DeliveryPage() {
   const [stores, setStores] = useState<StoreOption[]>([]);
   const [storesLoading, setStoresLoading] = useState(true);
@@ -547,6 +688,12 @@ function DeliveryPage() {
         internationalFallbackCharge: s.internationalFallbackCharge ?? 0,
         handlingValue: s.handlingValue ?? s.handlingDays ?? 1,
         handlingUnit: s.handlingUnit ?? "DAYS",
+        bookingCutoffTime: TIME_REGEX.test(s.bookingCutoffTime || "")
+          ? (s.bookingCutoffTime as string)
+          : DEFAULT_CUTOFF,
+        blockedDates: (s.blockedBookingDates || [])
+          .filter((d: string) => d >= todayYmdIST())
+          .sort(),
       });
     } catch (error: any) {
       toast.error(errMsg(error, "Failed to load delivery settings"));
@@ -662,6 +809,20 @@ function DeliveryPage() {
     setErrors({});
   };
 
+  const addBlockedDate = (ymd: string) => {
+    setForm((p) => ({
+      ...p,
+      blockedDates: [...new Set([...p.blockedDates, ymd])].sort(),
+    }));
+    clearError("blockedBookingDates");
+  };
+
+  const removeBlockedDate = (ymd: string) =>
+    setForm((p) => ({
+      ...p,
+      blockedDates: p.blockedDates.filter((d) => d !== ymd),
+    }));
+
   // ---------- save ----------
   const handleSave = async () => {
     if (!storeId) return;
@@ -677,6 +838,12 @@ function DeliveryPage() {
 
     if (!deliveryType) {
       toast.error("Turn on at least one delivery option");
+      return;
+    }
+
+    if (!TIME_REGEX.test(form.bookingCutoffTime)) {
+      setErrors({ bookingCutoffTime: "Enter a valid time" });
+      toast.error("Please fix the highlighted fields");
       return;
     }
 
@@ -744,6 +911,8 @@ function DeliveryPage() {
       pincode: d.pincode,
       handlingValue: d.handlingValue,
       handlingUnit: d.handlingUnit,
+      bookingCutoffTime: form.bookingCutoffTime,
+      blockedBookingDates: form.blockedDates.filter((x) => x >= todayYmdIST()),
       productChargeRules: d.productChargeRules,
       serviceChargeRules: d.serviceChargeRules,
       ...(national
@@ -1286,6 +1455,15 @@ function DeliveryPage() {
                   </p>
                 </div>
               )}
+
+              <BookingRulesSection
+                cutoffTime={form.bookingCutoffTime}
+                blockedDates={form.blockedDates}
+                errors={errors}
+                onCutoff={(v) => setField("bookingCutoffTime", v)}
+                onAddDate={addBlockedDate}
+                onRemoveDate={removeBlockedDate}
+              />
 
               {/* National */}
               {/* {form.outside && (

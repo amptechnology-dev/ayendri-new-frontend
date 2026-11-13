@@ -41,6 +41,8 @@ export type DeliverySettings = {
   handlingUnit?: DurationUnit;
   handlingDays?: number;
   isActive: boolean;
+  bookingCutoffTime?: string; // "HH:mm" (IST)
+  blockedBookingDates?: string[]; // ["YYYY-MM-DD"]
 };
 
 export type SaveDeliveryPayload = {
@@ -63,6 +65,8 @@ export type SaveDeliveryPayload = {
   internationalFallbackCharge?: number;
   handlingValue?: number;
   handlingUnit?: DurationUnit;
+  bookingCutoffTime?: string; // "HH:mm" (IST)
+  blockedBookingDates?: string[]; // ["YYYY-MM-DD"]
 };
 
 export type PincodeInfo = {
