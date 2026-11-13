@@ -308,7 +308,7 @@ export default function ShopHeader() {
         
       </div>
 
-      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-3 gap-y-2 px-3 py-2 sm:px-5 md:flex-nowrap md:gap-4">
+      <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-2 pt-3 sm:px-5 md:flex-nowrap md:gap-4">
         <Link href="/shop" className="flex shrink-0 items-center pl-3 sm:pl-5 md:pl-8" aria-label="AYENDRI home">
           <Image
             src="/img/photos/ayendri.png"
@@ -316,7 +316,7 @@ export default function ShopHeader() {
             width={400}
             height={160}
             priority
-            className="relative z-10 -mb-[6px] -mt-[22px] h-16 w-auto object-contain min-[380px]:-mb-2 min-[380px]:-mt-6 min-[380px]:h-[72px] sm:-mb-3 sm:-mt-6 sm:h-20 md:-mb-4 md:-mt-9 md:h-24"
+            className="relative z-10 -mb-[6px] -mt-[14px] h-16 w-auto object-contain min-[380px]:-mb-2 min-[380px]:-mt-4 min-[380px]:h-[72px] sm:-mb-3 sm:-mt-4 sm:h-20 md:-mb-4 md:-mt-7 md:h-24"
           />
         </Link>
 

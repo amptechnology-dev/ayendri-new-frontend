@@ -2,7 +2,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronRight, ChevronsRight } from "lucide-react";
+import { ChevronRight, ChevronsRight, Download, Smartphone, Sparkles, Lock } from "lucide-react";
 import { inr, off, type Product } from "../data";
 import { useCart } from "../cart";
 import Reveal from "./Reveal";
@@ -311,9 +311,51 @@ function Intention() {
   );
 }
 
+/* ---------- 0. App-only offer (sits right under the hero) ---------- */
+const APP_URL = "https://play.google.com/store/apps/details?id=com.ampdevs.eshop"; // change if your link differs
+
+function AppOffer() {
+  return (
+    <section className="w-full border-y border-[#f2b632] bg-[#4a0710] py-4 sm:py-6">
+      <div className="mx-auto flex max-w-[1500px] flex-col items-center gap-4 px-4 sm:px-6 md:flex-row md:justify-between">
+        {/* offers */}
+        <div className="flex items-center gap-4 sm:gap-6">
+          <div className="text-center">
+            <div className="text-3xl font-black leading-none text-[#ffd66b] sm:text-4xl">20%</div>
+            <div className="mt-1 text-[10px] font-bold tracking-[.2em] text-white/80">OFF PRODUCTS</div>
+          </div>
+          <div className="h-10 w-px bg-[#f2b632]/40" />
+          <div className="text-center">
+            <div className="text-3xl font-black leading-none text-[#ffd66b] sm:text-4xl">10%</div>
+            <div className="mt-1 text-[10px] font-bold tracking-[.2em] text-white/80">OFF SERVICES</div>
+          </div>
+        </div>
+
+        {/* message */}
+        <div className="text-center md:flex-1 md:text-left">
+          <div className="text-base font-extrabold text-white sm:text-lg">Download the app and save more</div>
+          <div className="mt-0.5 text-xs text-[#fff1c2] sm:text-sm">Only available in the app, not on the website.</div>
+        </div>
+
+        {/* button */}
+        <a
+          href={APP_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex w-full items-center justify-center gap-2 bg-[#f2b632] px-6 py-3 text-sm font-extrabold text-[#4a0710] transition hover:bg-[#ffd66b] md:w-auto"
+        >
+          <Download size={18} />
+          Get the app
+        </a>
+      </div>
+    </section>
+  );
+}
+
 export default function HomeSections() {
   return (
     <>
+      <Reveal><AppOffer /></Reveal>
       <Reveal><DivinePicks /></Reveal>
       <Reveal><AboutCard /></Reveal>
       <Reveal><CelebrateDiwali /></Reveal>
