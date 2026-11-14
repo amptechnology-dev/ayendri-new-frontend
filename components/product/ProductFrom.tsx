@@ -1725,15 +1725,12 @@ function PaymentModeBlock({ storeId }: { storeId?: string | null }) {
 // ===============================================================
 function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // [OTP] update-er jonno
-  const [otpOpen, setOtpOpen] = useState(false);
-  const [otp, setOtp] = useState("");
-  const [otpSending, setOtpSending] = useState(false);
-  const pendingDataRef = useRef<ProductFormData | null>(null);
 
   const [loading, setLoading] = useState(false);
   const [productCode, setProductCode] = useState<string>("");
   const [currentStockInfo, setCurrentStockInfo] = useState<number | null>(null);
+  // [PENDING] edit korar somoy ei product e age theke pending update ache kina
+  const [hasPendingUpdate, setHasPendingUpdate] = useState(false);
   const isEditMode = !!productId;
 
   // video 15s er beshi hole trim dialog khule (prepareFiles), trimDialog form er baire render hoy
@@ -2243,10 +2240,12 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
   const fetchProductData = async () => {
     try {
       setLoading(true);
+      // [PENDING] owner-only endpoint: live data + pending update merge hoye ashe
       const res = await axiosInstance.get(
-        `/api/product/single-product/${productId}`,
+        `/api/product/edit-product/${productId}`,
       );
       const product = res.data.product;
+      setHasPendingUpdate(res.data?.hasPendingUpdate === true);
 
       setValue("name", product.name);
       setValue("description", product.description || "");
@@ -2596,47 +2595,17 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
     toast.error(firstErrorMessage(errs) || "Please check the form fields");
   };
 
-  // ---------- [OTP] ----------
-  const sendUpdateOtp = async () => {
-    try {
-      setOtpSending(true);
-      const res = await axiosInstance.post("/api/product/send-otp");
-      toast.success(res.data?.message || "OTP sent");
-    } catch (err: any) {
-      toast.error(err?.response?.data?.message || "Failed to send OTP");
-    } finally {
-      setOtpSending(false);
-    }
-  };
-
+  // [PENDING] update e ar OTP lage na. OTP lagbe verify korar somoy (Unverified Products page e)
   const onSubmit = async (data: ProductFormData) => {
     const validationError = validateForm();
     if (validationError) {
       toast.error(validationError);
       return;
     }
-    // [OTP] edit hole age OTP verify
-    if (isEditMode) {
-      pendingDataRef.current = data;
-      setOtp("");
-      setOtpOpen(true);
-      await sendUpdateOtp();
-      return;
-    }
     await saveProduct(data);
   };
 
-  const confirmOtpAndSave = async () => {
-    const data = pendingDataRef.current;
-    if (!data) return;
-    if (!otp.trim()) {
-      toast.error("Enter the OTP");
-      return;
-    }
-    await saveProduct(data, otp.trim());
-  };
-
-  const saveProduct = async (data: ProductFormData, otpCode?: string) => {
+  const saveProduct = async (data: ProductFormData) => {
     setIsSubmitting(true);
     try {
       const url = isEditMode
@@ -2644,7 +2613,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
         : `/api/product/create-product`;
 
       const formData = new FormData();
-      if (otpCode) formData.append("otp", otpCode);
       formData.append("name", data.name || "");
       formData.append("description", data.description || "");
       formData.append("unit", data.unit || "");
@@ -2845,7 +2813,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
       setColorImages({});
       setCustomPickup(false);
       setPickup(EMPTY_PICKUP);
-      setOtpOpen(false);
       window.dispatchEvent(new Event("storeProductsChanged"));
       onSuccess();
     } catch (error: any) {
@@ -2892,6 +2859,18 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                 Current stock: {currentStockInfo}
               </span>
             )}
+          </div>
+        )}
+
+        {/* [PENDING] edit e age theke pending update thakle janano */}
+        {isEditMode && hasPendingUpdate && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-start gap-2">
+            <i className="pi pi-info-circle text-amber-600 mt-0.5"></i>
+            <p className="text-xs text-amber-800">
+              This product has changes waiting for OTP verification. You are
+              editing those pending changes. Customers still see the old
+              version until you verify it from Unverified Products.
+            </p>
           </div>
         )}
 
@@ -3575,52 +3554,6 @@ function ProductFrom({ productId, onClose, onSuccess }: ProductFormProps) {
                 onClick={closeCamera}
               />
             </div>
-          </div>
-        </div>
-      </Dialog>
-
-      {/* OTP DIALOG (update confirm) */}
-      <Dialog
-        header="Verify OTP to update"
-        visible={otpOpen}
-        onHide={() => !isSubmitting && setOtpOpen(false)}
-        style={{ width: "min(92vw, 420px)" }}
-        modal
-        draggable={false}
-      >
-        <div className="space-y-3">
-          <p className="text-sm text-gray-600">
-            Enter the OTP sent to your registered mobile number to save changes.
-          </p>
-          <InputText
-            className="w-full"
-            value={otp}
-            onChange={(e) =>
-              setOtp(e.target.value.replace(/\D/g, "").slice(0, 8))
-            }
-            inputMode="numeric"
-            placeholder="Enter OTP"
-            autoFocus
-          />
-          <div className="flex items-center justify-between gap-2">
-            <Button
-              type="button"
-              label="Resend OTP"
-              icon="pi pi-refresh"
-              size="small"
-              outlined
-              loading={otpSending}
-              disabled={isSubmitting}
-              onClick={sendUpdateOtp}
-            />
-            <Button
-              type="button"
-              label={isSubmitting ? "Saving..." : "Verify & Update"}
-              icon="pi pi-check"
-              loading={isSubmitting}
-              disabled={!otp.trim()}
-              onClick={confirmOtpAndSave}
-            />
           </div>
         </div>
       </Dialog>

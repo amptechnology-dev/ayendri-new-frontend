@@ -92,6 +92,7 @@ type ProductRow = {
   isMadeForProduct?: boolean;
   isActive: boolean;
   isVerified: boolean;
+  hasPendingUpdate?: boolean; // [PENDING]
   createdAt?: string;
   averageRating?: number;
   totalReviews?: number;
@@ -399,6 +400,10 @@ function StatusBadges({ p }: { p: ProductRow }) {
       >
         {p.isVerified ? "Verified" : "Pending"}
       </Badge>
+      {/* [PENDING] verified product e notun edit OTP verify er opekkhay */}
+      {p.hasPendingUpdate && (
+        <Badge className="bg-amber-100 text-amber-800">Update pending</Badge>
+      )}
     </div>
   );
 }
@@ -534,6 +539,17 @@ function PreviewBody({
 
   return (
     <div className="space-y-4">
+      {/* [PENDING] live data dekhacche, notun edit verify er opekkhay */}
+      {product.hasPendingUpdate && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 flex items-start gap-2">
+          <i className="pi pi-info-circle text-amber-600 mt-0.5"></i>
+          <p className="text-xs text-amber-800">
+            This is the live version customers see. Your latest changes are
+            waiting in Unverified Products for OTP verification.
+          </p>
+        </div>
+      )}
+
       {/* Gallery */}
       <div className="space-y-2">
         <div className="relative w-full h-64 sm:h-80 rounded-lg overflow-hidden border border-blue-100 bg-black">
@@ -815,14 +831,15 @@ function Page() {
     setEditProductId(null);
   };
 
+  // [PENDING] create hole unverified e jabe, edit hole pending update hishebe unverified e jabe
   const handleFormSuccess = () => {
     const wasCreate = !editProductId;
     closeForm();
-    if (wasCreate) {
-      toast.info(
-        "Product saved. Verify it from Unverified Products to publish.",
-      );
-    }
+    toast.info(
+      wasCreate
+        ? "Product saved. Verify it from Unverified Products to publish."
+        : "Changes saved. Verify the product from Unverified Products to make them live.",
+    );
     if (wasCreate && pagination.page !== 1) {
       setPagination((prev) => ({ ...prev, page: 1 }));
     } else {
@@ -1260,6 +1277,7 @@ function Page() {
                           p.hasStockManagement && <StockBadge p={p} />}
                       </div>
 
+                      {/* [PENDING] "Update pending" badge StatusBadges er moddhei ache */}
                       <StatusBadges p={p} />
 
                       <p className="text-xs text-gray-500">
