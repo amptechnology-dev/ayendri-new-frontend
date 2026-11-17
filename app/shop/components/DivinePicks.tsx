@@ -275,7 +275,7 @@ function Mahasale() {
 
         {/* sanctum arch */}
         <div className="relative flex min-h-0 flex-col rounded-b-2xl rounded-t-[100px] bg-gradient-to-b from-[#0f6b6b] to-[#073f45] px-1.5 pb-1.5 pt-4 shadow-[inset_0_4px_14px_rgba(0,0,0,.35)] sm:flex-1 sm:rounded-t-[130px] sm:pb-2 sm:pt-6">
-          <div className="text-center text-[10px] font-extrabold tracking-[.4em] text-[#fbe3b0] sm:text-[11px]">DIWALI</div>
+          <div className="text-center text-[10px] font-extrabold tracking-[.4em] text-[#fbe3b0] sm:text-[11px]">PUJA</div>
           <h3 className="bg-gradient-to-b from-[#ffe28d] via-[#f5c04a] to-[#dd9c26] bg-clip-text text-center text-[21px] font-black leading-[26px] tracking-[.04em] text-transparent sm:text-[27px] sm:leading-[32px]">MAHASALE</h3>
           <p className="mb-1.5 text-center text-[11px] text-[#f6e3c4] sm:mb-2 sm:text-[12px]">Up to 75% off on puja essentials</p>
 

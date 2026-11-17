@@ -81,7 +81,7 @@ export function LegacyPicks() {
         <p className="mt-5 text-center text-[#8b5a3c]">Puja essentials for every day, in one place</p>
         <div className="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col overflow-hidden rounded-3xl bg-gradient-to-b from-[#7a1118] to-[#4a0710] text-center text-white shadow-xl">
-            <div className="pt-6"><div className="text-[11px] font-bold tracking-[.35em] text-[#f2b632]">DIWALI</div><h3 className="text-4xl font-black text-[#f2b632]">MAHASALE</h3><p className="px-4 text-xs">Up to 75% off on puja essentials</p></div>
+            <div className="pt-6"><div className="text-[11px] font-bold tracking-[.35em] text-[#f2b632]">PUJA</div><h3 className="text-4xl font-black text-[#f2b632]">MAHASALE</h3><p className="px-4 text-xs">Up to 75% off on puja essentials</p></div>
             <div className="grid flex-1 grid-cols-2 gap-3 p-4">
               {tiles.map(([n, s, i]) => (
                 <Link key={n} href="/shop/category/all" className="rounded-2xl border border-dashed border-[#f2b632]/50 bg-white/5 p-3">
@@ -232,40 +232,7 @@ function CelebrateDiwali() {
   );
 }
 
-/* ---------- 5. Red festival banner ---------- */
-// function FestivalBanner() {
-//   const cards = [["DIWALI OFFER", "Flat 50% Off", "on bestsellers", "Shop now", "/shop/category/all"], ["COMBOS", "Up to 70% Off", "on Divine Combos", "Shop combos", "/shop/category/all"], ["FREE GIFT", "Free Silver Coin", "on purchase above ₹2,000", "Start shopping", "/shop/category/all"]];
-//   return (
-//     <section className="shop-pattern overflow-hidden text-center">
-//       <div className="shop-band" />
-//       <div className="px-2 py-8 sm:px-3 md:py-12">
-//         <h2 className="text-3xl font-extrabold leading-tight !text-white [text-shadow:0_2px_10px_rgba(0,0,0,.55)] sm:text-5xl md:text-7xl">
-//           ये दिवाली राम राज्य वाली!
-//         </h2>
-//         <div className="mt-3 text-base font-extrabold tracking-[.12em] !text-[#ffd66b] [text-shadow:0_2px_8px_rgba(0,0,0,.55)] sm:text-2xl sm:tracking-[.25em] md:text-3xl">
-//           THE GREAT DHARMA FESTIVAL
-//         </div>
-//         <p className="mt-2 text-xs font-semibold !text-[#fff1c2] [text-shadow:0_1px_6px_rgba(0,0,0,.55)] sm:text-sm">
-//           Lowest price ever on Karungali, Rudraksha, Rashi stones and more
-//         </p>
-//         <div className="mx-auto mt-6 grid max-w-[1500px] grid-cols-1 gap-4 md:mt-8 md:grid-cols-3 md:gap-5">
-//           {cards.map(([k, t, s, b, h]) => (
-//             <div key={t} className="rounded-3xl border border-[#f2b632] bg-gradient-to-b from-[#fff4dc] to-[#ffe2b8] px-5 py-7 shadow-xl transition hover:-translate-y-1.5 md:px-4 md:py-10 lg:px-6">
-//               <div className="text-xs font-bold tracking-widest !text-[#a3161c]">{k}</div>
-//               <div className="mt-2 text-3xl font-black !text-[#4a0710] sm:text-4xl lg:text-5xl">{t}</div>
-//               <div className="mt-1 text-sm font-medium !text-[#5a1a22]">{s}</div>
-//               <Link href={h} className="mt-5 inline-block rounded-full bg-[#7a1118] px-6 py-2.5 text-sm font-bold !text-white shadow-md hover:bg-[#5e0d13]">{b} →</Link>
-//             </div>
-//           ))}
-//         </div>
-//         <p className="mt-6 text-xs font-medium !text-[#fff1c2]/90 [text-shadow:0_1px_4px_rgba(0,0,0,.5)]">
-//           *Offers valid during The Great Dharma Festival. T&amp;C apply.
-//         </p>
-//       </div>
-//       <div className="shop-band" />
-//     </section>
-//   );
-// }
+
 
 /* ---------- 6. Shop by Intention ---------- */
 function Intention() {
