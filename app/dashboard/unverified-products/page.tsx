@@ -24,6 +24,8 @@ type Row = {
   store?: { storeName?: string };
   category?: { name?: string };
   productType?: "PRODUCT" | "SERVICE";
+  isVerified?: boolean; // [PENDING] true + list e ashle = update
+  hasPendingUpdate?: boolean; // [PENDING]
 };
 
 const ROWS_OPTIONS = [10, 25, 50, 100];
@@ -131,11 +133,23 @@ function UnverifiedProductsPage() {
         otp: otp.trim(),
       });
       toast.success(res.data?.message || "Products verified");
+
+      // [PENDING] kono product apply hoyni (ex: duplicate name) hole janao
+      const failed: { name?: string; message?: string }[] =
+        res.data?.failed || [];
+      failed.forEach((f) =>
+        toast.error(`${f.name || "Product"}: ${f.message || "Failed"}`),
+      );
+
       setOtpOpen(false);
       setSelected([]);
       window.dispatchEvent(new Event("storeProductsChanged"));
       // current page faka hoye gele ager page e jao
-      if (products.length === targetIds.length && pg.first > 0) {
+      if (
+        products.length === targetIds.length &&
+        failed.length === 0 &&
+        pg.first > 0
+      ) {
         setPg((p) => ({ ...p, first: Math.max(0, p.first - p.rows) }));
       } else {
         await fetchProducts();
@@ -166,7 +180,8 @@ function UnverifiedProductsPage() {
               Unverified Products
             </h2>
             <p className="text-xs text-amber-50">
-              {total} waiting. Verify with OTP to show them to customers.
+              {total} waiting. Verify with OTP to publish new products and
+              apply updates.
             </p>
           </div>
           <div className="flex gap-2">
@@ -270,6 +285,21 @@ function UnverifiedProductsPage() {
               );
             }}
           />
+          {/* [PENDING] notun product na existing product er update */}
+          <Column
+            header="Change"
+            body={(row: Row) =>
+              row.isVerified ? (
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-800">
+                  Update
+                </span>
+              ) : (
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-green-100 text-green-800">
+                  New
+                </span>
+              )
+            }
+          />
           <Column
             header="Type"
             body={(row: Row) =>
@@ -344,7 +374,8 @@ function UnverifiedProductsPage() {
         >
           <div className="space-y-3">
             <p className="text-sm text-gray-600">
-              Enter the OTP sent to your registered mobile number.
+              Enter the OTP sent to your registered mobile number. New products
+              will be published and pending updates will go live.
             </p>
             <InputText
               className="w-full"
@@ -379,7 +410,7 @@ function UnverifiedProductsPage() {
           </div>
         </Dialog>
 
-        {/* Edit dialog (ProductForm nijei update-er age OTP chay) */}
+        {/* Edit dialog (ekhon update e OTP lage na, OTP shudhu verify er somoy) */}
         {formVisible && (
           <Dialog
             header="Edit Product"
