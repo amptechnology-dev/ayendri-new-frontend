@@ -99,6 +99,31 @@ export default function ShopHeader() {
   const [bump, setBump] = useState(false);
   const [drawer, setDrawer] = useState(false);
 
+  // category row: arrows + edge fade when it overflows
+  const navRef = useRef<HTMLElement>(null);
+  const [canL, setCanL] = useState(false);
+  const [canR, setCanR] = useState(false);
+
+  useEffect(() => {
+    const el = navRef.current;
+    if (!el) return;
+    const update = () => {
+      setCanL(el.scrollLeft > 4);
+      setCanR(el.scrollLeft + el.clientWidth < el.scrollWidth - 4);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [loaded, categories.length]);
+
+  const nudge = (dir: 1 | -1) =>
+    navRef.current?.scrollBy({ left: dir * 360, behavior: "smooth" });
+
   // close the drawer after navigating
   useEffect(() => {
     setDrawer(false);
@@ -454,7 +479,37 @@ export default function ShopHeader() {
       </div>
 
       {/* nav row (desktop only, collapses once the page is scrolled) */}
-      <nav className="shop-navrow shop-scroll mx-auto flex max-md:hidden min-h-[52px] max-w-[1400px] snap-x items-center gap-3 overflow-x-auto px-3 pb-3 pt-2 text-sm font-semibold sm:px-5">
+      <div className="relative mx-auto max-w-[1400px] max-md:hidden">
+        {canL && (
+          <>
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-14 bg-gradient-to-r from-[#fde7c8] to-transparent" />
+            <button
+              type="button"
+              onClick={() => nudge(-1)}
+              aria-label="Scroll categories left"
+              className="absolute left-2 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-[#f2b632] bg-[#7a1118] text-white shadow-lg transition hover:brightness-110 active:scale-95"
+            >
+              <ChevronRight size={18} className="rotate-180" />
+            </button>
+          </>
+        )}
+        {canR && (
+          <>
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-14 bg-gradient-to-l from-[#fde7c8] to-transparent" />
+            <button
+              type="button"
+              onClick={() => nudge(1)}
+              aria-label="Scroll categories right"
+              className="absolute right-2 top-1/2 z-20 grid h-9 w-9 -translate-y-1/2 place-items-center rounded-full border border-[#f2b632] bg-[#7a1118] text-white shadow-lg transition hover:brightness-110 active:scale-95"
+            >
+              <ChevronRight size={18} />
+            </button>
+          </>
+        )}
+      <nav
+        ref={navRef}
+        className="shop-navrow shop-scroll flex min-h-[52px] items-center gap-3 overflow-x-auto scroll-smooth px-3 pb-3 pt-3 text-sm font-semibold sm:px-5"
+      >
         {/* <Link
           href="/shop/category/idols"
           onMouseEnter={() => setOpen(null)}
@@ -528,6 +583,7 @@ export default function ShopHeader() {
             </Link>
           ))}
       </nav>
+      </div>
 
       {/* mega menu: sub-categories on the left, products on the right (large screens only) */}
       {active && (
