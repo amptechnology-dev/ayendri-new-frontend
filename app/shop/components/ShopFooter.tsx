@@ -7,19 +7,41 @@ import { useShop } from "../shop-data";
 import { useTerms } from "../terms-api";
 
 const Facebook = ({ size = 18 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden
+  >
     <path d="M13.5 21v-7.5h2.6l.4-3h-3V8.6c0-.9.3-1.5 1.6-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.9 1.4-3.9 4v2.2H8v3h2.5V21h3z" />
   </svg>
 );
 const Instagram = ({ size = 18 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.9"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden
+  >
     <rect x="3" y="3" width="18" height="18" rx="5" />
     <circle cx="12" cy="12" r="4" />
     <circle cx="17.2" cy="6.8" r="0.6" fill="currentColor" />
   </svg>
 );
 const Youtube = ({ size = 18 }: { size?: number }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 24 24"
+    fill="currentColor"
+    aria-hidden
+  >
     <path d="M21.6 7.2a2.5 2.5 0 0 0-1.8-1.8C18.2 5 12 5 12 5s-6.2 0-7.8.4A2.5 2.5 0 0 0 2.4 7.2C2 8.8 2 12 2 12s0 3.2.4 4.8a2.5 2.5 0 0 0 1.8 1.8C5.8 19 12 19 12 19s6.2 0 7.8-.4a2.5 2.5 0 0 0 1.8-1.8c.4-1.6.4-4.8.4-4.8s0-3.2-.4-4.8zM10 15V9l5.2 3L10 15z" />
   </svg>
 );
@@ -52,7 +74,11 @@ const ArtDiya = ({ className, style }: ArtP) => (
   <svg {...artProps} className={className} style={style} stroke="#5e0d13">
     <path d="M14 54 Q50 96 86 54Z" fill="#a3161c" />
     <path d="M50 50 C42 40 44 26 50 16 C56 26 58 40 50 50Z" fill="#f08a24" />
-    <path d="M50 48 C46 42 47 35 50 30 C53 35 54 42 50 48Z" fill="#ffe27a" stroke="none" />
+    <path
+      d="M50 48 C46 42 47 35 50 30 C53 35 54 42 50 48Z"
+      fill="#ffe27a"
+      stroke="none"
+    />
     <path d="M36 74 H64" fill="none" stroke="#f2b632" />
   </svg>
 );
@@ -68,7 +94,10 @@ const ArtTemple = ({ className, style }: ArtP) => (
 );
 const ArtSpark = ({ className, style }: ArtP) => (
   <svg {...artProps} className={className} style={style} stroke="#a3161c">
-    <path d="M50 10 Q54 46 90 50 Q54 54 50 90 Q46 54 10 50 Q46 46 50 10Z" fill="#f2b632" />
+    <path
+      d="M50 10 Q54 46 90 50 Q54 54 50 90 Q46 54 10 50 Q46 46 50 10Z"
+      fill="#f2b632"
+    />
   </svg>
 );
 
@@ -99,7 +128,7 @@ export default function ShopFooter() {
   const shown = terms.slice(0, 6);
 
   return (
-        <footer
+    <footer
       className="relative isolate overflow-hidden px-6 pb-28 pt-12 font-medium text-[#2a0508]"
       style={{
         backgroundColor: "#f6e8cc",
@@ -160,14 +189,14 @@ export default function ShopFooter() {
         <div>
           <Link href="/shop" className="inline-flex" aria-label="AYENDRI home">
             <Image
-              src="/img/photos/ayendri.png"
+              src="/img/photos/ayendriii.png"
               alt="AYENDRI"
               width={400}
               height={160}
               className="h-24 w-auto object-contain sm:h-28"
             />
           </Link>
-                    <div className="mt-4 max-w-[310px]">
+          <div className="mt-4 max-w-[310px]">
             <p className="text-sm font-semibold leading-relaxed !text-[#2a0508] [text-shadow:0_1px_6px_rgba(255,240,205,.9)]">
               Sacred for a Higher You. Authentic, energised spiritual products
               delivered with care.

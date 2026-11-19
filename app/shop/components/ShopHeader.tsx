@@ -329,14 +329,16 @@ export default function ShopHeader() {
       {/* announcement strip (desktop only, collapses on scroll) */}
       <div className="shop-strip flex max-md:hidden items-center justify-between gap-3 px-4 py-2 text-[13px] font-semibold md:px-6">
         <span className="hidden w-[170px] md:block" aria-hidden />
-        
-        
       </div>
 
       <div className="mx-auto flex max-w-[1400px] flex-wrap items-center gap-x-3 gap-y-2 px-3 pb-2 pt-3 sm:px-5 md:flex-nowrap md:gap-4">
-        <Link href="/shop" className="flex shrink-0 items-center pl-3 sm:pl-5 md:pl-8" aria-label="AYENDRI home">
+        <Link
+          href="/shop"
+          className="flex shrink-0 items-center pl-3 sm:pl-5 md:pl-8"
+          aria-label="AYENDRI home"
+        >
           <Image
-            src="/img/photos/ayendri.png"
+            src="/img/photos/ayendriii.png"
             alt="AYENDRI"
             width={400}
             height={160}
@@ -443,7 +445,11 @@ export default function ShopHeader() {
             )}
           </Link>
 
-          <Link href="/shop/cart" className={`${ICON_BTN} ${BTN_SCROLLED}`} aria-label="Cart">
+          <Link
+            href="/shop/cart"
+            className={`${ICON_BTN} ${BTN_SCROLLED}`}
+            aria-label="Cart"
+          >
             <ShoppingCart size={20} />
             <span className="sr-only">Cart</span>
             <span className={`${bump ? "shop-bump" : ""} ${BADGE}`}>
@@ -506,11 +512,11 @@ export default function ShopHeader() {
             </button>
           </>
         )}
-      <nav
-        ref={navRef}
-        className="shop-navrow shop-scroll flex min-h-[52px] items-center gap-3 overflow-x-auto scroll-smooth px-3 pb-3 pt-3 text-sm font-semibold sm:px-5"
-      >
-        {/* <Link
+        <nav
+          ref={navRef}
+          className="shop-navrow shop-scroll flex min-h-[52px] items-center gap-3 overflow-x-auto scroll-smooth px-3 pb-3 pt-3 text-sm font-semibold sm:px-5"
+        >
+          {/* <Link
           href="/shop/category/idols"
           onMouseEnter={() => setOpen(null)}
           className={GOLD_PILL}
@@ -518,71 +524,71 @@ export default function ShopHeader() {
           <span className={TAG}>Sale</span>
           <Flame size={16} /> Diwali Offers
         </Link> */}
-        <Link
-          href="/shop/category/services"
-          onMouseEnter={() => setOpen(null)}
-          className={GOLD_PILL}
-        >
-          <span className={TAG}>Book</span>
-          <Landmark size={16} /> Services
-        </Link>
-        <Link
-          href="/shop/category/all"
-          onMouseEnter={() => setOpen(null)}
-          className={`${GLASS_PILL} px-4 py-2.5 font-extrabold !border-[#7a1118]/40 !bg-white/70 !text-[#4a0710]`}
-        >
-          Shop All
-        </Link>
+          <Link
+            href="/shop/category/services"
+            onMouseEnter={() => setOpen(null)}
+            className={GOLD_PILL}
+          >
+            <span className={TAG}>Book</span>
+            <Landmark size={16} /> Services
+          </Link>
+          <Link
+            href="/shop/category/all"
+            onMouseEnter={() => setOpen(null)}
+            className={`${GLASS_PILL} px-4 py-2.5 font-extrabold !border-[#7a1118]/40 !bg-white/70 !text-[#4a0710]`}
+          >
+            Shop All
+          </Link>
 
-        {!loaded &&
-          Array.from({ length: 6 }).map((_, i) => (
-            <span
-              key={i}
-              className="h-10 w-28 shrink-0 animate-pulse rounded-full bg-white/20"
-            />
-          ))}
-        {loaded &&
-          categories.map((c) => (
-            <Link
-              key={c.slug}
-              href={`/shop/category/${c.slug}`}
-              // only a real mouse opens the mega menu; touch taps go straight to the category
-              onPointerEnter={(e) => {
-                if (e.pointerType !== "mouse") return;
-                cancelClose();
-                setOpen(c.slug);
-                setSubIdx(0);
-              }}
-              onPointerLeave={(e) => {
-                if (e.pointerType === "mouse") scheduleClose();
-              }}
-              className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,.25)] transition duration-200 active:scale-95 ${
-                open === c.slug
-                  ? "border-[#fff1c2] bg-[#fffaf3] !text-[#4a0710]"
-                  : "border-[#7a1118]/40 bg-white/70 !text-[#4a0710] hover:border-[#f2b632] hover:bg-white"
-              }`}
-            >
-              {c.image ? (
-                <img
-                  src={c.image}
-                  alt=""
-                  loading="lazy"
-                  decoding="async"
-                  className="h-6 w-6 rounded-full object-cover ring-1 ring-white/60"
-                />
-              ) : (
-                <span className="grid h-6 w-6 place-items-center rounded-full bg-[#f2b632] text-[11px] text-[#4a0710]">
-                  ✦
-                </span>
-              )}
-              {c.name}
-              <ChevronDown
-                size={14}
-                className={`transition ${open === c.slug ? "rotate-180" : ""}`}
+          {!loaded &&
+            Array.from({ length: 6 }).map((_, i) => (
+              <span
+                key={i}
+                className="h-10 w-28 shrink-0 animate-pulse rounded-full bg-white/20"
               />
-            </Link>
-          ))}
-      </nav>
+            ))}
+          {loaded &&
+            categories.map((c) => (
+              <Link
+                key={c.slug}
+                href={`/shop/category/${c.slug}`}
+                // only a real mouse opens the mega menu; touch taps go straight to the category
+                onPointerEnter={(e) => {
+                  if (e.pointerType !== "mouse") return;
+                  cancelClose();
+                  setOpen(c.slug);
+                  setSubIdx(0);
+                }}
+                onPointerLeave={(e) => {
+                  if (e.pointerType === "mouse") scheduleClose();
+                }}
+                className={`flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 shadow-[0_2px_8px_rgba(0,0,0,.25)] transition duration-200 active:scale-95 ${
+                  open === c.slug
+                    ? "border-[#fff1c2] bg-[#fffaf3] !text-[#4a0710]"
+                    : "border-[#7a1118]/40 bg-white/70 !text-[#4a0710] hover:border-[#f2b632] hover:bg-white"
+                }`}
+              >
+                {c.image ? (
+                  <img
+                    src={c.image}
+                    alt=""
+                    loading="lazy"
+                    decoding="async"
+                    className="h-6 w-6 rounded-full object-cover ring-1 ring-white/60"
+                  />
+                ) : (
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-[#f2b632] text-[11px] text-[#4a0710]">
+                    ✦
+                  </span>
+                )}
+                {c.name}
+                <ChevronDown
+                  size={14}
+                  className={`transition ${open === c.slug ? "rotate-180" : ""}`}
+                />
+              </Link>
+            ))}
+        </nav>
       </div>
 
       {/* mega menu: sub-categories on the left, products on the right (large screens only) */}
@@ -695,7 +701,7 @@ export default function ShopHeader() {
               {/* top bar: logo, account, close */}
               <div className="flex items-center gap-2 border-b border-white/15 px-4 py-3">
                 <Image
-                  src="/img/photos/ayendri.png"
+                  src="/img/photos/ayendriii.png"
                   alt="AYENDRI"
                   width={36}
                   height={36}

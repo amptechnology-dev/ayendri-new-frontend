@@ -520,7 +520,7 @@ const Sidebar: React.FC<SidebarProps> = ({ role, user }) => {
         }}
       >
         <img
-          src="/img/photos/ayendri.png"
+          src="/img/photos/ayendriii.png"
           alt="AMP Technology"
           style={{
             width: 36,

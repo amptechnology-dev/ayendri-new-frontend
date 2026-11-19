@@ -20,7 +20,7 @@ const geistMono = Geist_Mono({
 });
 
 // Favicon: public folder er path (public/ likhte hobe na)
-const FAVICON = "/img/photos/ayendri.png";
+const FAVICON = "/img/photos/ayendriii.png";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://ayendri.com"),
